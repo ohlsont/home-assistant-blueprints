@@ -14,6 +14,13 @@ blueprint:
   domain: automation
 
   input:
+    section_policy:
+      name: "Section — Policy"
+      description: " "
+      default: "Policy"
+      selector:
+        text:
+
     energy_saving_boolean:
       name: Policy — Energy saving boolean (from Energy Saving Policy)
       description: >
@@ -24,6 +31,13 @@ blueprint:
         entity:
           domain: input_boolean
           multiple: false
+
+    section_sensors:
+      name: "Section — Sensors"
+      description: " "
+      default: "Sensors"
+      selector:
+        text:
 
     indoor_temperature_sensor:
       name: Sensors — Indoor temperature sensor (bathroom)
@@ -42,6 +56,13 @@ blueprint:
           domain: sensor
           device_class: temperature
           multiple: false
+
+    section_control:
+      name: "Section — Control"
+      description: " "
+      default: "Control"
+      selector:
+        text:
 
     controll_sensor:
       name: Control — Controllable sensor (MQTT number)
@@ -62,6 +83,13 @@ blueprint:
           max: 30
           step: 0.5
           unit_of_measurement: "°C"
+
+    section_energy_saving:
+      name: "Section — Energy saving"
+      description: " "
+      default: "Energy saving"
+      selector:
+        text:
 
     virtual_temperature:
       name: Energy saving — Virtual temperature (°C)
@@ -84,6 +112,13 @@ blueprint:
           max: 20
           step: 0.5
           unit_of_measurement: "°C"
+
+    section_cold_boost:
+      name: "Section — Cold boost"
+      description: " "
+      default: "Cold boost"
+      selector:
+        text:
 
     cold_threshold:
       name: Cold boost — Threshold (°C)
@@ -129,6 +164,13 @@ blueprint:
           step: 0.1
           unit_of_measurement: "°C"
 
+    section_timing:
+      name: "Section — Timing"
+      description: " "
+      default: "Timing"
+      selector:
+        text:
+
     refresh_temperature_delay:
       name: Timing — Refresh interval (minutes) when saving = OFF
       description: How often to update the controllable temperature in cheap/don't-care periods
@@ -141,6 +183,13 @@ blueprint:
           unit_of_measurement: Minutes
           mode: slider
 
+    section_safety:
+      name: "Section — Safety"
+      description: " "
+      default: "Safety"
+      selector:
+        text:
+
     min_write_delta:
       name: Safety — Minimum change to write (°C)
       description: Only update if the difference from current value is at least this much
@@ -151,6 +200,13 @@ blueprint:
           max: 2
           step: 0.1
           unit_of_measurement: "°C"
+
+    section_limits:
+      name: "Section — Limits"
+      description: " "
+      default: "Limits"
+      selector:
+        text:
 
     mirror_min_c:
       name: Limits — Control temperature minimum (°C)
