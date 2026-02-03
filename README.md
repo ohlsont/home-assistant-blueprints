@@ -57,3 +57,9 @@ flowchart TD
 
 ## Files
 - Blueprint: `blueprints/automation/blockheat/block-heat.yaml`
+- Blueprint: `blueprints/automation/blockheat/daikin-energy-saver.yaml`
+
+## Daikin Energy Saver (Policy-Driven)
+This additional blueprint targets the Daikin climate entity directly and
+switches between a normal temperature and a saving temperature based on the
+Energy Saving Policy input_boolean, with an optional outdoor temperature guard.

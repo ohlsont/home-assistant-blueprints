@@ -1,0 +1,180 @@
+blueprint:
+  name: Daikin Heat Pump Energy Saver (driven by Energy Saving Policy)
+  description: >
+    Controls Daikin heat pump behavior based on energy price periods using an input_boolean
+    from the Energy Saving Policy blueprint.
+    - When **energy saving = ON** (expensive periods): Set lower target temperature to reduce heating.
+    - When **energy saving = OFF** (cheap periods): Resume normal comfortable temperature.
+    Works with Daikin integration to adjust target temperature based on electricity prices.
+  domain: automation
+
+  input:
+    energy_saving_boolean:
+      name: Energy saving boolean (from Energy Saving Policy)
+      description: >
+        The input_boolean entity managed by the Energy Saving Policy blueprint.
+        ON = "expensive period, save energy", OFF = "cheap period, normal heating".
+      selector:
+        entity:
+          domain: input_boolean
+          multiple: false
+
+    climate_entity:
+      name: Daikin heat pump climate entity
+      description: Your Daikin heat pump climate entity
+      selector:
+        entity:
+          domain: climate
+          multiple: false
+
+    normal_temperature:
+      name: Normal/comfort temperature (°C)
+      description: Target temperature during cheap periods (energy saving = OFF)
+      default: 22
+      selector:
+        number:
+          min: 18
+          max: 28
+          step: 0.5
+          unit_of_measurement: "°C"
+
+    saving_temperature:
+      name: Energy saving temperature (°C)
+      description: Reduced target temperature during expensive periods (energy saving = ON)
+      default: 19
+      selector:
+        number:
+          min: 15
+          max: 25
+          step: 0.5
+          unit_of_measurement: "°C"
+
+    outdoor_temp_threshold:
+      name: Outdoor temperature threshold (°C)
+      description: Only apply energy saving when outdoor temp is above this (avoid discomfort in extreme cold)
+      default: -10
+      selector:
+        number:
+          min: -30
+          max: 10
+          step: 1
+          unit_of_measurement: "°C"
+
+    outdoor_temp_sensor:
+      name: Outdoor temperature sensor (optional)
+      description: Leave empty to disable outdoor temperature safety check
+      default: ""
+      selector:
+        entity:
+          domain: sensor
+          device_class: temperature
+          multiple: false
+
+    min_temp_change:
+      name: Minimum temperature change (°C)
+      description: Only adjust if difference is at least this much (avoids unnecessary changes)
+      default: 0.5
+      selector:
+        number:
+          min: 0
+          max: 3
+          step: 0.1
+          unit_of_measurement: "°C"
+
+mode: restart
+max_exceeded: silent
+
+variables:
+  climate_entity: !input climate_entity
+  normal_temperature: !input normal_temperature
+  saving_temperature: !input saving_temperature
+  outdoor_temp_sensor: !input outdoor_temp_sensor
+  outdoor_temp_threshold: !input outdoor_temp_threshold
+  min_temp_change: !input min_temp_change
+
+trigger:
+  # React to energy saving policy changes
+  - platform: state
+    entity_id: !input energy_saving_boolean
+
+  # Ensure correct state after restart
+  - platform: homeassistant
+    event: start
+
+  # Periodic check to correct drift
+  - platform: time_pattern
+    minutes: "/15"
+
+condition: []
+
+action:
+  - variables:
+      current_temp: "{{ state_attr(climate_entity, 'temperature') | float(0) }}"
+      outdoor_temp: >-
+        {% if outdoor_temp_sensor != "" %}
+          {{ states(outdoor_temp_sensor) | float(999) }}
+        {% else %}
+          {{ 999 }}
+        {% endif %}
+      outdoor_ok: "{{ outdoor_temp >= outdoor_temp_threshold or outdoor_temp == 999 }}"
+
+  - choose:
+      # --- ENERGY SAVING = ON (expensive period) → REDUCE HEATING ---
+      - conditions:
+          - condition: state
+            entity_id: !input energy_saving_boolean
+            state: "on"
+          - condition: template
+            value_template: "{{ outdoor_ok }}"
+        sequence:
+          - variables:
+              target_temp: "{{ saving_temperature | float }}"
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ (current_temp - target_temp) | abs >= min_temp_change }}"
+                sequence:
+                  - service: climate.set_temperature
+                    target:
+                      entity_id: !input climate_entity
+                    data:
+                      temperature: "{{ target_temp }}"
+                  - service: logbook.log
+                    data:
+                      name: Daikin Energy Saver
+                      message: >-
+                        Energy saving ON → reduced heating to {{ target_temp }}°C
+                        (was {{ current_temp }}°C)
+
+      # --- ENERGY SAVING = OFF (cheap period) → NORMAL HEATING ---
+      - conditions:
+          - condition: state
+            entity_id: !input energy_saving_boolean
+            state: "off"
+        sequence:
+          - variables:
+              target_temp: "{{ normal_temperature | float }}"
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ (current_temp - target_temp) | abs >= min_temp_change }}"
+                sequence:
+                  - service: climate.set_temperature
+                    target:
+                      entity_id: !input climate_entity
+                    data:
+                      temperature: "{{ target_temp }}"
+                  - service: logbook.log
+                    data:
+                      name: Daikin Energy Saver
+                      message: >-
+                        Energy saving OFF → normal heating to {{ target_temp }}°C
+                        (was {{ current_temp }}°C)
+
+    default:
+      - service: logbook.log
+        data:
+          name: Daikin Energy Saver
+          message: >-
+            No action taken: outdoor temp {{ outdoor_temp }}°C
+            (threshold {{ outdoor_temp_threshold }}°C)
