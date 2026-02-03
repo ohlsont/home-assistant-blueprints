@@ -1,0 +1,233 @@
+blueprint:
+  name: Energy Saving Policy — top N 15-min expensive slots + ignore by low price / high PV / low floor temp
+  description: |
+    Computes when to "save energy" (ON) vs "don’t care" (OFF).
+    - OFF if price < ignore_below OR PV >= ignore_above_w OR (optional) floor temp < min_floor_temp
+    - Else ON during the day's N most expensive 15-min slots (N = minutes_to_block/15)
+    Writes state to an input_boolean and can run actions on toggle.
+  domain: automation
+
+  input:
+    target_boolean:
+      name: Target input_boolean (energy saving active)
+      description: Helper that will reflect ON = "save energy now", OFF = "don't care"
+      selector: { entity: { domain: input_boolean } }
+
+    nordpool_price:
+      name: Nordpool price sensor (15-min aware)
+      description: e.g. sensor.nordpool_kwh_se3_sek_3_10_0
+      selector: { entity: { domain: sensor } }
+
+    minutes_to_block:
+      name: Minutes per day to prefer turning things off (multiple of 15)
+      default: 240
+      selector: { number: { min: 15, max: 1440, step: 15, mode: box } }
+
+    price_ignore_below:
+      name: Ignore pricing if price < (SEK/kWh)
+      description: If current price is below this, set OFF (don't save) regardless of top-N
+      default: 0.0
+      selector: { number: { min: 0, max: 10, step: 0.01, mode: box } }
+
+    pv_sensor:
+      name: (Optional) PV production sensor (W)
+      default: ""
+      selector:
+        entity:
+          domain: sensor
+          multiple: false
+
+    pv_ignore_above_w:
+      name: Ignore pricing if PV ≥ (W)
+      description: If PV is at/above this, set OFF (don't save) regardless of top-N
+      default: 0
+      selector: { number: { min: 0, max: 50000, step: 50, mode: box } }
+
+    # NEW: optional floor temperature sensor
+    floor_temp_sensor:
+      name: (Optional) Floor temperature sensor
+      description: Leave empty to disable minimum floor temperature logic
+      default: ""
+      selector:
+        entity:
+          domain: sensor
+          multiple: false
+
+    # NEW: optional minimum floor temperature
+    min_floor_temp:
+      name: (Optional) Minimum floor temperature
+      description: If > 0 and sensor is set, do NOT enable energy saving while floor is colder than this.
+      default: 0.0
+      selector:
+        number:
+          min: 0
+          max: 40
+          step: 0.1
+          mode: box
+
+    min_toggle_interval_min:
+      name: Minimum minutes between state changes (debounce)
+      default: 15
+      selector: { number: { min: 0, max: 120, step: 1, mode: slider } }
+
+    on_enable_actions:
+      name: Actions when energy saving turns ON
+      description: Optional actions to run when target_boolean switches to ON
+      default: []
+      selector: { action: {} }
+
+    on_disable_actions:
+      name: Actions when energy saving turns OFF
+      description: Optional actions to run when target_boolean switches to OFF
+      default: []
+      selector: { action: {} }
+
+mode: restart
+max_exceeded: silent
+
+variables:
+  tgt_bool: !input target_boolean
+  np: !input nordpool_price
+  minutes_to_block: !input minutes_to_block
+  price_ignore_below: !input price_ignore_below
+  pv_sensor: !input pv_sensor
+  pv_ignore_above_w: !input pv_ignore_above_w
+  min_toggle_interval_min: !input min_toggle_interval_min
+
+  # NEW: bring inputs into variables
+  floor_temp_sensor: !input floor_temp_sensor
+  min_floor_temp: !input min_floor_temp
+
+trigger:
+  - platform: state
+    entity_id: !input nordpool_price
+  - platform: time_pattern
+    minutes: "/5"
+  - platform: state
+    entity_id: !input target_boolean
+
+condition: []
+
+action:
+  - variables:
+      price: "{{ states(np) | float(0) }}"
+      prices_today: >-
+        {{ state_attr(np, 'today') if state_attr(np, 'today') is iterable else [] }}
+      nslots: "{{ (minutes_to_block | int(240)) // 15 }}"
+      cutoff: >-
+        {% set arr = prices_today | list %}
+        {% set sorted_desc = arr | sort(reverse=true) %}
+        {% if (nslots | int(16)) > 0 and (sorted_desc | count) >= (nslots | int(16)) %}
+          {{ (sorted_desc[(nslots | int(16)) - 1]) | float(9999) }}
+        {% else %}
+          {{ 9999 }}
+        {% endif %}
+      blocked_now: "{{ price >= (cutoff | float(9999)) }}"
+
+      pv_now: >-
+        {% if pv_sensor %}
+          {{ states(pv_sensor) | float(0) }}
+        {% else %}
+          0
+        {% endif %}
+      ignore_by_price: "{{ (price_ignore_below | float(0)) > 0 and price < (price_ignore_below | float(0)) }}"
+      ignore_by_pv:    "{{ (pv_ignore_above_w | int(0)) > 0 and (pv_now | float(0)) >= (pv_ignore_above_w | float(0)) }}"
+
+      # NEW: floor temp handling
+      floor_temp: >-
+        {% if floor_temp_sensor %}
+          {{ states(floor_temp_sensor) | float(0) }}
+        {% else %}
+          0
+        {% endif %}
+      below_min_floor: >-
+        {{ (min_floor_temp | float(0)) > 0
+           and floor_temp is not none
+           and (floor_temp | float(0)) < (min_floor_temp | float(0)) }}
+
+      # Extended "don't care" logic: price, PV OR too-cold floor
+      dont_care: "{{ ignore_by_price or ignore_by_pv or below_min_floor }}"
+
+      # Only allow energy saving when we *do* care AND we're in a blocked slot,
+      # AND the floor is not too cold.
+      target_on: >-
+        {{ (not dont_care) and blocked_now }}
+
+      now_ts: "{{ now().timestamp() }}"
+      last_change_ts: "{{ states[tgt_bool].last_changed.timestamp() if states[tgt_bool] is defined else 0 }}"
+      enough_time_passed: "{{ (now_ts - last_change_ts) >= (min_toggle_interval_min | int(15) * 60) }}"
+      current_on: "{{ is_state(tgt_bool, 'on') }}"
+
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ target_on and (not current_on) and enough_time_passed }}"
+        sequence:
+          - service: input_boolean.turn_on
+            target: { entity_id: "{{ tgt_bool }}" }
+          - event: energy_saving_state_changed
+            event_data:
+              state: "on"
+              price: "{{ price }}"
+              cutoff: "{{ cutoff }}"
+              pv_now: "{{ pv_now }}"
+              floor_temp: "{{ floor_temp }}"
+              reason: >-
+                {{ 'top-N blocked (price ≥ cutoff)' }}
+          - choose:
+              - conditions: []
+                sequence: !input on_enable_actions
+          - service: logbook.log
+            data:
+              name: Energy Saving
+              message: >-
+                ON — price={{ price|round(3) }} ≥ cutoff={{ cutoff|round(3) }},
+                PV={{ pv_now|round(0) }} W,
+                floor={{ floor_temp|round(1) }}°C
+
+      - conditions:
+          - condition: template
+            value_template: "{{ (not target_on) and current_on and enough_time_passed }}"
+        sequence:
+          - service: input_boolean.turn_off
+            target: { entity_id: "{{ tgt_bool }}" }
+          - event: energy_saving_state_changed
+            event_data:
+              state: "off"
+              price: "{{ price }}"
+              cutoff: "{{ cutoff }}"
+              pv_now: "{{ pv_now }}"
+              floor_temp: "{{ floor_temp }}"
+              reason: >-
+                {% if ignore_by_price or ignore_by_pv or below_min_floor %}
+                  ignore by
+                  {{ 'price' if ignore_by_price else '' }}
+                  {{ ' & ' if (ignore_by_price and (ignore_by_pv or below_min_floor)) else '' }}
+                  {{ 'PV' if ignore_by_pv else '' }}
+                  {{ ' & ' if ((ignore_by_price or ignore_by_pv) and below_min_floor) else '' }}
+                  {{ 'floor temp' if below_min_floor else '' }}
+                {% else %}
+                  price < cutoff
+                {% endif %}
+          - choose:
+              - conditions: []
+                sequence: !input on_disable_actions
+          - service: logbook.log
+            data:
+              name: Energy Saving
+              message: >-
+                OFF — 
+                {% if ignore_by_price or ignore_by_pv or below_min_floor %}
+                  ignored by
+                  {{ 'price' if ignore_by_price else '' }}
+                  {{ ' / ' if (ignore_by_price and (ignore_by_pv or below_min_floor)) else '' }}
+                  {{ 'PV' if ignore_by_pv else '' }}
+                  {{ ' / ' if ((ignore_by_price or ignore_by_pv) and below_min_floor) else '' }}
+                  {{ 'floor temp' if below_min_floor else '' }}
+                {% else %}
+                  price below cutoff
+                {% endif %}
+                (price={{ price|round(3) }}, cutoff={{ cutoff|round(3) }},
+                 PV={{ pv_now|round(0) }} W,
+                 floor={{ floor_temp|round(1) }}°C)
+  # No action if the target equals current state or debounce not satisfied
