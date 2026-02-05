@@ -9,6 +9,7 @@
 - Drop to maintenance target (default 20 C) when comfort rooms satisfied.
 - Enforce maintenance minimum (default 19 C) unless electric assist is allowed.
 - Add optional electric assist fallback after 30 minutes below target by 0.5 C, allow min 18 C.
+- Electric assist fallback should always be allowed; remove toggle.
 - Enforce electric assist cooldown using input_datetime helper (no delay-based cooldown).
 - Allow storage room target to drive heating when comfort rooms are satisfied.
 - Keep Energy Saving Policy override behavior unchanged.

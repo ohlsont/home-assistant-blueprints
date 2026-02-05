@@ -53,7 +53,7 @@ plus outdoor temperature and three room sensors (two comfort rooms + storage).
 - Storage cap: 25 °C
 - Storage target: 25 °C
 - Maintenance target/min: 20 °C / 19 °C
-- Electric assist (optional): 30 min below target by 0.5 °C, min control 18 °C
+- Electric assist: 30 min below target by 0.5 °C, min control 18 °C
 
 ### Example
 - Outdoor = -10 °C
@@ -77,18 +77,19 @@ flowchart TD
   I --> K["Target = setpoint + boost"]
   J --> K
   K --> L{"Comfort rooms satisfied?"}
-  L -- Yes --> M["Target = maintenance temp"]
+  L -- Yes --> M["Target = maintenance temp (min = direct electric)"]
   L -- No --> N["Target = comfort temp (storage capped)"]
   M --> O["Clamp target to min/max"]
   N --> O
   O --> P["Write target if delta >= min_write_delta"]
 ```
 
-### Electric Assist (Optional)
-If enabled, the blueprint can allow a lower control temperature to trigger
-direct electric heating when the compressor cannot keep up. It activates only
-after the coldest comfort room has been below target by the configured delta
-for the configured duration, and is disabled by default.
+### Electric Assist
+The blueprint can allow a lower control temperature to trigger direct electric
+heating when the compressor cannot keep up. It activates only after the coldest
+comfort room has been below target by the configured delta for the configured
+duration.
+Electric assist is always allowed when the fallback criteria are met.
 The cooldown is enforced using an input_datetime helper configured in the
 blueprint inputs.
 

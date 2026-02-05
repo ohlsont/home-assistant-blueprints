@@ -217,7 +217,7 @@ blueprint:
 
     maintenance_min_c:
       name: Comfort — Maintenance minimum (°C)
-      description: Do not set control temperature below this unless electric assist is allowed
+      description: Do not set control temperature below this when holding maintenance
       default: 19
       selector:
         number:
@@ -225,13 +225,6 @@ blueprint:
           max: 30
           step: 0.5
           unit_of_measurement: "°C"
-
-    allow_direct_electric:
-      name: Electric assist — Allow direct electric fallback
-      description: If enabled, allow control temp to drop lower when compressor cannot keep up
-      default: false
-      selector:
-        boolean:
 
     direct_electric_min_c:
       name: Electric assist — Minimum control temperature (°C)
@@ -418,7 +411,6 @@ variables:
   comfort_satisfied_margin_c: !input comfort_satisfied_margin_c
   maintenance_target_c: !input maintenance_target_c
   maintenance_min_c: !input maintenance_min_c
-  allow_direct_electric: !input allow_direct_electric
   direct_electric_min_c: !input direct_electric_min_c
   electric_fallback_minutes: !input electric_fallback_minutes
   electric_fallback_delta_c: !input electric_fallback_delta_c
@@ -458,7 +450,7 @@ trigger:
       {% set last_ts = as_timestamp(states(electric_fallback_last_trigger)) | float(0) %}
       {% set now_ts = now().timestamp() %}
       {% set cooldown_ok = (now_ts - last_ts) >= (electric_fallback_cooldown_minutes | float(60) * 60) %}
-      {{ is_state(es_bool, 'off') and (allow_direct_electric | bool) and
+      {{ is_state(es_bool, 'off') and
          (comfort_min is number) and (comfort_min < (target - delta)) and cooldown_ok }}
     for:
       minutes: !input electric_fallback_minutes
@@ -525,7 +517,7 @@ action:
           - choose:
               - conditions:
                   - condition: template
-                    value_template: "{{ force_direct_electric and (allow_direct_electric | bool) }}"
+                    value_template: "{{ force_direct_electric }}"
                 sequence:
                   - variables:
                       cur_ctrl: "{{ states(controll_sensor) | float(default=none) }}"
@@ -583,12 +575,7 @@ action:
                         direct_min: "{{ direct_electric_min_c | float(18) }}"
                         storage_cap: "{{ storage_cap_c | float(25) }}"
                         storage_target: "{{ storage_target_c | float(25) }}"
-                        effective_min: >-
-                          {% if allow_direct_electric | bool %}
-                            {{ direct_min }}
-                          {% else %}
-                            {{ maint_min }}
-                          {% endif %}
+                        effective_min: "{{ direct_min }}"
                         boost_raw: >-
                           {% if outdoor_temp is number and outdoor_temp < (cold_threshold | float) %}
                             {{ ((cold_threshold | float) - outdoor_temp) / (boost_slope_c | float(5)) }}

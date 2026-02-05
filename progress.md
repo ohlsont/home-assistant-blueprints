@@ -73,10 +73,28 @@
   - dashboards/blockheat/block-heat-diagnostics-card.yaml (created)
   - README.md (updated)
 
+## Session: 2026-02-05 (Electric Assist Always Allowed)
+
+### Phase 3: Implementation
+- **Status:** complete
+- Actions taken:
+  - Removed the allow-direct-electric option so fallback is always allowed.
+  - Updated fallback logic, effective minimum clamp, diagnostics card, and README text.
+- Files created/modified:
+  - blueprints/automation/blockheat/block-heat.yaml (updated)
+  - dashboards/blockheat/block-heat-diagnostics-card.yaml (updated)
+  - README.md (updated)
+  - findings.md (updated)
+
+### Phase 4: Testing & Verification
+- **Status:** complete
+- Actions taken:
+  - Manually reviewed fallback trigger, maintenance clamp, and target selection logic.
+
 ## Test Results
 | Test | Input | Expected | Actual | Status |
 |------|-------|----------|--------|--------|
-| Manual review | Read blueprint logic | Matches plan | Not executed | pending |
+| Manual review | Read blueprint logic | Matches plan | Logic matches current requirements | pass |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |

@@ -27,13 +27,13 @@ Phase 4
 - **Status:** complete
 
 ### Phase 4: Testing & Verification
-- [ ] Manual review of formulas against blueprint
-- [ ] Document verification notes in progress.md
-- **Status:** pending
+- [x] Manual review of formulas against blueprint
+- [x] Document verification notes in progress.md
+- **Status:** complete
 
 ### Phase 5: Delivery
-- [ ] Summarize changes and next steps
-- **Status:** pending
+- [x] Summarize changes and next steps
+- **Status:** complete
 
 ## Key Questions
 1. Where should the diagnostics card live? (New YAML under blueprints/automation/blockheat/)

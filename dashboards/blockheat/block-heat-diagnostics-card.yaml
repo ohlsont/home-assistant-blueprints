@@ -57,9 +57,8 @@ cards:
 
       {% set maintenance_target = inputs['maintenance_target_c'] | float(20) %}
       {% set maintenance_min = inputs['maintenance_min_c'] | float(19) %}
-      {% set allow_direct = inputs['allow_direct_electric'] | bool %}
       {% set direct_min = inputs['direct_electric_min_c'] | float(18) %}
-      {% set effective_min = direct_min if allow_direct else maintenance_min %}
+      {% set effective_min = direct_min %}
 
       {% set target_unclamped = comfort_target_capped %}
       {% if comfort_satisfied and storage_needs_heat %}
@@ -96,7 +95,7 @@ cards:
       {% set cooldown_ok = (now_ts - last_ts) >= cooldown_sec %}
 
       {% set fallback_delta = inputs['electric_fallback_delta_c'] | float(0.5) %}
-      {% set fallback_eligible = (not energy_saving_on) and allow_direct and
+      {% set fallback_eligible = (not energy_saving_on) and
           (comfort_min is number) and (comfort_min < (comfort_target - fallback_delta)) and cooldown_ok %}
 
       **Mode**: {{ 'Energy saving ON' if energy_saving_on else 'Energy saving OFF' }}
@@ -117,7 +116,6 @@ cards:
       **Control (current)**: {{ control_temp | round(2) if control_temp is number else 'unknown' }} C
 
       **Maintenance target/min**: {{ maintenance_target | round(2) }} C / {{ maintenance_min | round(2) }} C
-      **Direct electric allowed**: {{ 'yes' if allow_direct else 'no' }}
       **Direct electric min**: {{ direct_min | round(2) }} C
       **Fallback eligible now**: {{ 'yes' if fallback_eligible else 'no' }}
       **Fallback cooldown remaining**: {{ cooldown_remaining_min }} min
