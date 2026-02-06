@@ -1,0 +1,164 @@
+# Block Heat modular package (YAML-authoritative)
+#
+# Usage:
+# 1) Copy blueprint files to /config/blueprints/automation/blockheat/{core,policy,consumers}
+# 2) Copy this file to /config/packages/blockheat_modular.yaml
+# 3) Replace all REPLACE_* entity ids below
+# 4) Validate config and restart/reload Home Assistant
+
+input_number:
+  block_heat_target_saving:
+    name: Block Heat Target Saving
+    min: 0
+    max: 40
+    step: 0.1
+    mode: box
+    unit_of_measurement: "°C"
+
+  block_heat_target_comfort:
+    name: Block Heat Target Comfort
+    min: 0
+    max: 40
+    step: 0.1
+    mode: box
+    unit_of_measurement: "°C"
+
+  block_heat_target_final:
+    name: Block Heat Target Final
+    min: 0
+    max: 40
+    step: 0.1
+    mode: box
+    unit_of_measurement: "°C"
+
+input_boolean:
+  block_heat_fallback_active:
+    name: Block Heat Fallback Active
+
+input_datetime:
+  block_heat_fallback_last_trigger:
+    name: Block Heat Fallback Last Trigger
+    has_date: true
+    has_time: true
+
+automation:
+  - id: blockheat_policy_energy_saving
+    alias: Block Heat - Policy - Energy Saving
+    description: Computes energy saving boolean from Nordpool/PV/floor constraints.
+    use_blueprint:
+      path: blockheat/policy/energy_saving_policy_bool.yaml
+      input:
+        target_boolean: "input_boolean.REPLACE_energy_saving"
+        nordpool_price: "sensor.REPLACE_nordpool_price"
+        minutes_to_block: 240
+        price_ignore_below: 0
+        pv_sensor: "sensor.REPLACE_pv_power"
+        pv_ignore_above_w: 0
+        floor_temp_sensor: "sensor.REPLACE_floor_temp"
+        min_floor_temp: 0
+        min_toggle_interval_min: 15
+
+  - id: blockheat_core_target_saving
+    alias: Block Heat - Core - Target Saving
+    description: Computes saving-mode target helper.
+    use_blueprint:
+      path: blockheat/core/block-heat-target-saving.yaml
+      input:
+        energy_saving_boolean: "input_boolean.REPLACE_energy_saving"
+        outdoor_temperature_sensor: "sensor.REPLACE_outdoor_temperature"
+        target_saving_helper: "input_number.block_heat_target_saving"
+        heatpump_setpoint: 20
+        saving_cold_offset_c: 1
+        virtual_temperature: 20
+        energy_saving_warm_shutdown_outdoor: 7
+        control_min_c: 10
+        control_max_c: 26
+        helper_write_delta_c: 0.05
+
+  - id: blockheat_core_target_comfort
+    alias: Block Heat - Core - Target Comfort
+    description: Computes comfort-mode target helper.
+    use_blueprint:
+      path: blockheat/core/block-heat-target-comfort.yaml
+      input:
+        comfort_room_1_sensor: "sensor.REPLACE_comfort_room_1"
+        comfort_room_2_sensor: "sensor.REPLACE_comfort_room_2"
+        storage_room_sensor: "sensor.REPLACE_storage_room"
+        outdoor_temperature_sensor: "sensor.REPLACE_outdoor_temperature"
+        target_comfort_helper: "input_number.block_heat_target_comfort"
+        comfort_target_c: 22
+        comfort_to_heatpump_offset_c: 2
+        storage_target_c: 25
+        storage_to_heatpump_offset_c: 2
+        maintenance_target_c: 20
+        comfort_margin_c: 0.2
+        cold_threshold: 0
+        max_boost: 3
+        boost_slope_c: 5
+        control_min_c: 10
+        control_max_c: 26
+        helper_write_delta_c: 0.05
+
+  - id: blockheat_core_fallback_manager
+    alias: Block Heat - Core - Fallback Manager
+    description: Controls fallback-active boolean + cooldown timestamp.
+    use_blueprint:
+      path: blockheat/core/block-heat-fallback-manager.yaml
+      input:
+        energy_saving_boolean: "input_boolean.REPLACE_energy_saving"
+        comfort_room_1_sensor: "sensor.REPLACE_comfort_room_1"
+        comfort_room_2_sensor: "sensor.REPLACE_comfort_room_2"
+        fallback_active_boolean: "input_boolean.block_heat_fallback_active"
+        electric_fallback_last_trigger: "input_datetime.block_heat_fallback_last_trigger"
+        comfort_target_c: 22
+        electric_fallback_delta_c: 0.5
+        release_delta_c: 0.1
+        electric_fallback_minutes: 30
+        electric_fallback_cooldown_minutes: 60
+
+  - id: blockheat_core_final_writer
+    alias: Block Heat - Core - Final Writer
+    description: Final arbiter and only writer to the control number.
+    use_blueprint:
+      path: blockheat/core/block-heat.yaml
+      input:
+        energy_saving_boolean: "input_boolean.REPLACE_energy_saving"
+        fallback_active_boolean: "input_boolean.block_heat_fallback_active"
+        target_saving_helper: "input_number.block_heat_target_saving"
+        target_comfort_helper: "input_number.block_heat_target_comfort"
+        target_final_helper: "input_number.block_heat_target_final"
+        control_number_entity: "number.REPLACE_control_temperature"
+        control_min_c: 10
+        control_max_c: 26
+        control_write_delta_c: 0.2
+        helper_write_delta_c: 0.05
+
+# Optional consumer automations (uncomment if used):
+#
+# - id: blockheat_consumer_daikin
+#   alias: Block Heat - Consumer - Daikin Energy Saver
+#   use_blueprint:
+#     path: blockheat/consumers/daikin-energy-saver.yaml
+#     input:
+#       energy_saving_boolean: "input_boolean.REPLACE_energy_saving"
+#       climate_entity: "climate.REPLACE_daikin"
+#       normal_temperature: 22
+#       saving_temperature: 19
+#       outdoor_temp_threshold: -10
+#       outdoor_temp_sensor: "sensor.REPLACE_outdoor_temperature"
+#       min_temp_change: 0.5
+#
+# - id: blockheat_consumer_floor_heat
+#   alias: Block Heat - Consumer - Floor Heat
+#   use_blueprint:
+#     path: blockheat/consumers/floor_heat_top_minutes_with_schedule.yaml
+#     input:
+#       climate_entity: "climate.REPLACE_floor_heat"
+#       energy_saving_boolean: "input_boolean.REPLACE_energy_saving"
+#       comfort_temp_c: 22
+#       prefer_preset_manual: true
+#       hvac_mode_when_on: "heat"
+#       soft_off_temp_override_c: ""
+#       min_keep_temp_c: ""
+#       comfort_schedule: "schedule.REPLACE_floor_heat_comfort"
+#       min_switch_interval_min: 15

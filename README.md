@@ -10,6 +10,46 @@ This repo contains Home Assistant automation blueprints for policy-driven heatin
 - `blueprints/automation/blockheat/consumers/`
   - Downstream policy consumers (Daikin and floor-heat control).
 
+## YAML-First HA Setup (`configuration.yaml` + package)
+If you want faster setup and reproducibility, use Home Assistant packages instead
+of creating all helpers/automations in the UI.
+
+### Files in this repo for YAML-first setup
+- `homeassistant/configuration.yaml.packages-snippet.yaml`
+  - Snippet to enable packages in `/config/configuration.yaml`.
+- `homeassistant/packages/blockheat_modular.yaml`
+  - Authoritative helper + automation package using blueprint paths under
+    `blockheat/{core,policy,consumers}`.
+
+### Quick copy commands (run from this repo)
+```bash
+cp -R blueprints/automation/blockheat /config/blueprints/automation/
+mkdir -p /config/packages
+cp homeassistant/packages/blockheat_modular.yaml /config/packages/blockheat_modular.yaml
+```
+
+### `configuration.yaml` wiring
+Add this under the existing top-level `homeassistant:` block in
+`/config/configuration.yaml`:
+```yaml
+packages: !include_dir_named packages
+```
+If `homeassistant:` does not exist, use the full snippet from:
+`homeassistant/configuration.yaml.packages-snippet.yaml`.
+
+### Required placeholder replacement before reload
+In `/config/packages/blockheat_modular.yaml`, replace all `REPLACE_*` entities,
+especially:
+- `input_boolean.REPLACE_energy_saving`
+- `sensor.REPLACE_nordpool_price`
+- `sensor.REPLACE_outdoor_temperature`
+- `sensor.REPLACE_comfort_room_1`
+- `sensor.REPLACE_comfort_room_2`
+- `sensor.REPLACE_storage_room`
+- `number.REPLACE_control_temperature`
+
+Optional consumer placeholders are in commented blocks for Daikin and floor heat.
+
 ## Blueprints
 - `blueprints/automation/blockheat/core/block-heat-target-saving.yaml`
   - Saving-mode target calculator for Block Heat.
