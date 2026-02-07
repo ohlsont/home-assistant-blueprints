@@ -114,7 +114,9 @@ Use these helper entity ids unless you have an existing naming convention:
 ### Comfort Target Calculator
 - Inputs: two comfort sensors, storage sensor, outdoor sensor, comfort/storage/maintenance settings, cold boost settings.
 - Formula:
-  - boost = f(cold threshold, outdoor, slope, max)
+  - boost (pull-down) = f(cold threshold, outdoor, slope, max)
+  - comfort path = `(comfort_target - comfort_offset) - boost`
+  - storage path = `(storage_target - storage_offset) - boost`
   - comfort unsatisfied -> comfort path
   - comfort satisfied + storage needs heat -> max(storage path, comfort path)
   - comfort satisfied + storage OK -> maintenance target
@@ -166,6 +168,28 @@ Assistant Developer Tools by forcing helper/sensor states.
 | Recovery above release threshold | `fallback_active = off` | Pending manual run | Requires HA runtime |
 | Final target delta below deadband | no control write | Pending manual run | Requires HA runtime |
 | Final target delta above deadband | control entity updated | Pending manual run | Requires HA runtime |
+
+## Spreadsheet Simulation Workbook
+The workbook `blockheat_scenarios_with_graphs.xlsx` contains a deterministic
+timeline simulation of the Blockheat control chain.
+
+- Purpose:
+  - Validate how outdoor cooling affects room/storage temperatures and routing
+    through saving, comfort, fallback, and final write-deadband logic.
+- Editable sheet:
+  - `Inputs` (parameters and per-day `energy_saving_override` toggles).
+- Computed sheet:
+  - `Simulation` (14-day formulas for thermal response, target selection,
+    fallback activation/release, final target, and control-write behavior).
+- Chart sheet:
+  - `Graphs` (system overview trends for temperatures, targets/signals, binary
+    policy/fallback/write states, and comfort deficit vs cold boost).
+
+Default assumptions in the workbook:
+- Outdoor profile is linear from `20°C` to `-20°C` over 14 days.
+- Time step is daily (`1440` minutes).
+- Thermal response uses moderate coefficients (room/storage coupling constants
+  in `Inputs`).
 
 ## Local Structural Checks (This Repo Session)
 - Added 4 Block Heat blueprints with isolated responsibilities.
