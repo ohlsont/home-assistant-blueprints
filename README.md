@@ -1,18 +1,113 @@
-# Blockheat Home Assistant Blueprints
+# Blockheat Home Assistant Integration
 
-This repo contains Home Assistant automation blueprints for policy-driven heating.
+This repo now ships a custom Home Assistant integration for policy-driven heating,
+plus legacy blueprint references.
 
 ## Folder Layout
+- `custom_components/blockheat/`
+  - HACS-compatible integration path (`config_flow`, runtime adapter, pure Python engine).
+- `homeassistant/custom_components/blockheat/`
+  - Local development/testing mirror of the integration code.
 - `blueprints/automation/blockheat/core/`
-  - Block Heat modular control chain (target calculators, fallback manager, final writer).
+  - Legacy Block Heat core blueprint chain (reference only during migration).
 - `blueprints/automation/blockheat/policy/`
-  - Policy producer blueprints (shared energy-saving decision logic).
+  - Legacy policy producer blueprint (reference).
 - `blueprints/automation/blockheat/consumers/`
-  - Downstream policy consumers (Daikin and floor-heat control).
+  - Legacy consumer blueprints (reference).
 
-## YAML-First HA Setup (`configuration.yaml` + package)
+## Primary Path: Custom Integration (Config Entry UI)
+The recommended runtime is now `custom_components/blockheat` with one config
+entry that owns policy, target calculators, fallback, final writer, and optional
+Daikin/floor consumers.
+
+### Install via HACS (GitHub)
+1. Open HACS -> Integrations -> three-dot menu -> Custom repositories.
+2. Add this repository URL as type **Integration**.
+3. Search for **Blockheat** in HACS and install it.
+4. Restart Home Assistant.
+5. Go to **Settings -> Devices & Services -> Add Integration** and add **Blockheat**.
+6. Complete both config steps:
+   - Step 1: entity mapping (policy sensors/helpers/control + optional consumers)
+   - Step 2: tuning values (policy windows, target/fallback thresholds, deadbands)
+
+### Install Manually to Home Assistant
+From this repo:
+
+```bash
+mkdir -p /config/custom_components
+cp -R custom_components/blockheat /config/custom_components/blockheat
+```
+
+Then in Home Assistant:
+1. Restart Home Assistant.
+2. Go to **Settings -> Devices & Services -> Add Integration**.
+3. Add **Blockheat**.
+4. Complete both config steps:
+   - Step 1: entity mapping (policy sensors/helpers/control + optional consumers)
+   - Step 2: tuning values (policy windows, target/fallback thresholds, deadbands)
+
+### Testing
+Install dev dependencies once:
+
+```bash
+uv sync --group dev
+```
+
+Run the full suite:
+
+```bash
+uv run python -m pytest tests -q
+```
+
+Run the coverage gate used by CI:
+
+```bash
+uv run python -m pytest tests -q --cov=homeassistant.custom_components.blockheat --cov-branch --cov-report=term-missing --cov-fail-under=80
+```
+
+Notes:
+- Existing `unittest` test modules under `tests/blockheat/` are collected and run by `pytest`.
+- Shared fake Home Assistant test fixtures are defined in `tests/conftest.py`.
+
+### Compatibility Contract (v1)
+The integration keeps these helper ids as the stable interface:
+
+- `input_number.block_heat_target_saving`
+- `input_number.block_heat_target_comfort`
+- `input_number.block_heat_target_final`
+- `input_boolean.block_heat_fallback_active`
+- `input_datetime.block_heat_fallback_last_trigger`
+
+Compatibility events:
+- `energy_saving_state_changed` (legacy compatibility)
+- `blockheat_policy_changed` (namespaced event)
+- `blockheat_snapshot` (diagnostics snapshot event)
+
+### Migration / Cutover (Big-Bang)
+Pre-cutover:
+1. Backup current helper + automation YAML/state.
+2. Run parity tests from this repo:
+   - `uv run python -m pytest tests/blockheat/test_engine.py tests/blockheat/test_parity_suite.py -q`
+3. Confirm config entry values map 1:1 to existing blueprint inputs.
+
+Cutover:
+1. Disable all Blockheat blueprint automations at once.
+2. Enable the Blockheat config entry.
+3. Verify helper writes and control number writes for at least one full periodic cycle.
+
+Rollback:
+1. Disable the Blockheat config entry.
+2. Re-enable prior blueprint automations.
+3. No helper renaming is required.
+
+### Known Non-Goals (v1)
+- No control-logic redesign; behavior is parity-focused.
+- No action-sequence hooks equivalent to blueprint `on_enable_actions` / `on_disable_actions`.
+
+## Legacy Path: YAML-First Blueprints (`configuration.yaml` + package)
 If you want faster setup and reproducibility, use Home Assistant packages instead
-of creating all helpers/automations in the UI.
+of creating helpers/automations in the UI. This remains available as a legacy
+reference path during migration.
 
 ### Files in this repo for YAML-first setup
 - `homeassistant/configuration.yaml.packages-snippet.yaml`
@@ -50,7 +145,7 @@ especially:
 
 Optional consumer placeholders are in commented blocks for Daikin and floor heat.
 
-## Blueprints
+## Legacy Blueprints (Reference)
 - `blueprints/automation/blockheat/core/block-heat-target-saving.yaml`
   - Saving-mode target calculator for Block Heat.
   - Writes to `input_number` saving-target helper.
@@ -94,7 +189,7 @@ Use these helper entity ids unless you have an existing naming convention:
 - `input_boolean.block_heat_fallback_active`
 - `input_datetime.block_heat_fallback_last_trigger`
 
-### Recommended Setup Order
+### Recommended Setup Order (Legacy Blueprint Path)
 1. Create helper entities listed above.
 2. Create automation from `blueprints/automation/blockheat/core/block-heat-target-saving.yaml`.
 3. Create automation from `blueprints/automation/blockheat/core/block-heat-target-comfort.yaml`.
