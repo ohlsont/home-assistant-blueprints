@@ -68,9 +68,17 @@ Then in Home Assistant:
   - Any state change on mapped required/optional entities
   - A periodic 5-minute interval (`DEFAULT_RECOMPUTE_MINUTES = 5`)
 - Recompute always updates the diagnostics coordinator payload and fires `blockheat_snapshot`.
+- Snapshot payload now includes:
+  - `snapshot_schema_version`
+  - `policy.transition_reason`
+  - `comfort_target_debug`, `final_target_debug`
+  - `daikin.debug`, `floor.debug`
 - Policy transitions also fire:
   - `energy_saving_state_changed`
   - `blockheat_policy_changed`
+- Dedicated diagnostic entities update every recompute:
+  - Sensors: `sensor.blockheat_policy_price`, `sensor.blockheat_policy_cutoff`, `sensor.blockheat_policy_transition`, `sensor.blockheat_final_source`, `sensor.blockheat_fallback_comfort_min`, `sensor.blockheat_fallback_trigger_threshold`, `sensor.blockheat_fallback_release_threshold`, `sensor.blockheat_control_write_delta`, `sensor.blockheat_daikin_action`, `sensor.blockheat_floor_action`
+  - Binary sensors: `binary_sensor.blockheat_policy_blocked_now`, `binary_sensor.blockheat_policy_ignore_by_price`, `binary_sensor.blockheat_policy_ignore_by_pv`, `binary_sensor.blockheat_policy_below_min_floor`, `binary_sensor.blockheat_policy_enough_time_passed`, `binary_sensor.blockheat_fallback_arm_condition`, `binary_sensor.blockheat_fallback_cooldown_ok`, `binary_sensor.blockheat_control_write_applied`
 
 ### Integration Services
 Services are exposed under the `blockheat` domain:
@@ -307,8 +315,16 @@ Use these helper entity ids unless you have an existing naming convention:
 A helper-driven diagnostics card is available at:
 - `dashboards/blockheat/block-heat-diagnostics-card.yaml`
 
-The markdown card reads helper outputs and state routing directly from the final
-arbiter inputs. It does not duplicate target formulas.
+The card now combines:
+- Helper outputs (`target_saving`, `target_comfort`, `target_final`, control number)
+- Runtime diagnostic entities (policy/fallback/debug signals)
+- A 7-day trend graph for key targets and policy state
+
+Use this for quick root-cause checks:
+1. Confirm policy/fallback state.
+2. Check `policy_price` vs `policy_cutoff` and ignore flags.
+3. Check `final_source` + `control_write_delta` + `control_write_applied`.
+4. Check consumer actions (`daikin_action`, `floor_action`) for downstream behavior.
 
 To use it:
 1. Copy YAML into a Lovelace manual card or view YAML editor.

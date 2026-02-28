@@ -109,6 +109,42 @@ async def test_async_recompute_writes_expected_targets_then_skips_small_deltas(
 
 
 @pytest.mark.asyncio
+async def test_snapshot_includes_additive_debug_fields(
+    blockheat_env: SimpleNamespace,
+    fake_hass: Any,
+    build_config: Any,
+    seed_runtime_states: Any,
+) -> None:
+    ctx = _make_runtime_context(
+        blockheat_env,
+        fake_hass,
+        build_config,
+        seed_runtime_states,
+        overrides={
+            blockheat_env.const.CONF_MIN_TOGGLE_INTERVAL_MIN: 0,
+            blockheat_env.const.CONF_MINUTES_TO_BLOCK: 30,
+        },
+        seed_kwargs={
+            "policy_state": "off",
+            "price": 9.0,
+            "prices_today": [1.0, 2.0, 9.0, 8.0],
+            "control_value": 20.0,
+        },
+    )
+
+    snapshot = await ctx.runtime.async_recompute("debug_snapshot")
+    assert snapshot["snapshot_schema_version"] == 1
+    assert snapshot["policy"]["transition_reason"] == "top_n_blocked"
+    assert snapshot["comfort_target_debug"]["comfort_satisfied"] is False
+    assert "boost_clamped" in snapshot["comfort_target_debug"]
+    assert snapshot["final_target_debug"]["source"] == "saving"
+    assert snapshot["final_target_debug"]["control_write_applied"] is True
+    assert isinstance(snapshot["final_target_debug"]["control_write_delta"], float)
+    assert snapshot["daikin"]["debug"]["action"] == "disabled"
+    assert snapshot["floor"]["debug"]["action"] == "disabled"
+
+
+@pytest.mark.asyncio
 async def test_policy_transition_fires_events_and_toggles_boolean(
     blockheat_env: SimpleNamespace,
     fake_hass: Any,
@@ -294,6 +330,8 @@ async def test_optional_consumers_disabled_missing_and_write_paths(
     disabled_snapshot = await disabled_ctx.runtime.async_recompute("consumers_disabled")
     assert disabled_snapshot["daikin"]["enabled"] is False
     assert disabled_snapshot["floor"]["enabled"] is False
+    assert disabled_snapshot["daikin"]["debug"]["action"] == "disabled"
+    assert disabled_snapshot["floor"]["debug"]["action"] == "disabled"
 
     missing_ctx = _make_runtime_context(
         blockheat_env,
@@ -312,6 +350,8 @@ async def test_optional_consumers_disabled_missing_and_write_paths(
     )
     assert missing_snapshot["daikin"]["skipped"] == "missing_climate_entity"
     assert missing_snapshot["floor"]["skipped"] == "missing_climate_entity"
+    assert missing_snapshot["daikin"]["debug"]["skip_reason"] == "missing_climate_entity"
+    assert missing_snapshot["floor"]["debug"]["skip_reason"] == "missing_climate_entity"
 
     write_ctx = _make_runtime_context(
         blockheat_env,
@@ -364,6 +404,10 @@ async def test_optional_consumers_disabled_missing_and_write_paths(
     )
     assert daikin_calls
     assert floor_calls
+    write_snapshot = write_ctx.coordinator.data
+    assert write_snapshot is not None
+    assert write_snapshot["daikin"]["debug"]["action"] == "write"
+    assert write_snapshot["floor"]["debug"]["action"] == "set_soft_off"
 
 
 @pytest.mark.asyncio

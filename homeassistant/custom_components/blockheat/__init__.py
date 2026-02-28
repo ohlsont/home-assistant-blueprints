@@ -10,6 +10,7 @@ from homeassistant.core import HomeAssistant, ServiceCall
 
 from .const import (
     DOMAIN,
+    PLATFORMS,
     SERVICE_DUMP_DIAGNOSTICS,
     SERVICE_RECOMPUTE,
 )
@@ -46,6 +47,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ENTRY_UNSUB_RELOAD: unsub_reload,
     }
 
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     await _async_register_services(hass)
     return True
 
@@ -60,6 +62,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unsub_reload = entry_data[ENTRY_UNSUB_RELOAD]
     await runtime.async_unload()
     unsub_reload()
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if not unload_ok:
+        return False
 
     if not hass.data.get(DOMAIN):
         await _async_unregister_services(hass)

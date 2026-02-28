@@ -80,6 +80,7 @@ from .const import (
     EVENT_ENERGY_SAVING_STATE_CHANGED,
     OPTIONAL_ENTITY_KEYS,
     REQUIRED_ENTITY_KEYS,
+    SNAPSHOT_SCHEMA_VERSION,
 )
 from .coordinator import BlockheatCoordinator
 from .engine import (
@@ -180,7 +181,7 @@ class BlockheatRuntime:
             policy_on_effective = policy_result["policy_on_effective"]
 
             saving_target = await self._async_apply_saving_target()
-            comfort_target = await self._async_apply_comfort_target()
+            comfort_target, comfort_target_debug = await self._async_apply_comfort_target()
 
             (
                 fallback_active_effective,
@@ -190,7 +191,7 @@ class BlockheatRuntime:
                 policy_on_effective,
             )
 
-            final_target = await self._async_apply_final_target(
+            final_target, final_target_debug = await self._async_apply_final_target(
                 policy_on_effective=policy_on_effective,
                 fallback_active_effective=fallback_active_effective,
                 saving_target=saving_target,
@@ -201,13 +202,16 @@ class BlockheatRuntime:
             floor_result = await self._async_apply_floor(policy_on_effective, now)
 
             snapshot = {
+                "snapshot_schema_version": SNAPSHOT_SCHEMA_VERSION,
                 "reason": reason,
                 "at": now.isoformat(),
                 "policy": policy_result,
                 "saving_target": saving_target,
                 "comfort_target": comfort_target,
+                "comfort_target_debug": comfort_target_debug,
                 "fallback": fallback_debug,
                 "final_target": final_target,
+                "final_target_debug": final_target_debug,
                 "daikin": daikin_result,
                 "floor": floor_result,
             }
@@ -259,12 +263,14 @@ class BlockheatRuntime:
 
         policy_on_effective = current_on
         transition = "none"
+        transition_reason = "no_change"
         if computation.should_turn_on:
             await self._async_call_entity_service(
                 "input_boolean", "turn_on", target_boolean
             )
             policy_on_effective = True
             transition = "on"
+            transition_reason = "top_n_blocked"
             self._fire_policy_events("on", computation)
             await self._async_log(
                 "Energy Saving",
@@ -286,8 +292,17 @@ class BlockheatRuntime:
                 or computation.below_min_floor
             ):
                 reason = "ignored by price/PV/floor"
+                ignored_by: list[str] = []
+                if computation.ignore_by_price:
+                    ignored_by.append("price")
+                if computation.ignore_by_pv:
+                    ignored_by.append("pv")
+                if computation.below_min_floor:
+                    ignored_by.append("floor")
+                transition_reason = f"ignored_by_{'_'.join(ignored_by)}"
             else:
                 reason = "price below cutoff"
+                transition_reason = "price_below_cutoff"
             await self._async_log(
                 "Energy Saving",
                 (
@@ -301,6 +316,7 @@ class BlockheatRuntime:
             "target_on": computation.target_on,
             "current_on": current_on,
             "transition": transition,
+            "transition_reason": transition_reason,
             "policy_on_effective": policy_on_effective,
             "blocked_now": computation.blocked_now,
             "cutoff": computation.cutoff,
@@ -358,7 +374,7 @@ class BlockheatRuntime:
 
         return target
 
-    async def _async_apply_comfort_target(self) -> float:
+    async def _async_apply_comfort_target(self) -> tuple[float, dict[str, Any]]:
         target_helper = self._cfg_str(CONF_TARGET_COMFORT_HELPER)
         target_current = self._state_float(target_helper)
 
@@ -400,7 +416,13 @@ class BlockheatRuntime:
                 value=computation.target,
             )
 
-        return computation.target
+        return computation.target, {
+            "comfort_satisfied": computation.comfort_satisfied,
+            "storage_needs_heat": computation.storage_needs_heat,
+            "boost_clamped": computation.boost_clamped,
+            "comfort_target_unclamped": computation.comfort_target_unclamped,
+            "storage_target_unclamped": computation.storage_target_unclamped,
+        }
 
     async def _async_apply_fallback(
         self,
@@ -498,7 +520,7 @@ class BlockheatRuntime:
         fallback_active_effective: bool,
         saving_target: float,
         comfort_target: float,
-    ) -> float:
+    ) -> tuple[float, dict[str, Any]]:
         final_helper = self._cfg_str(CONF_TARGET_FINAL_HELPER)
         control_number = self._cfg_str(CONF_CONTROL_NUMBER_ENTITY)
 
@@ -515,11 +537,18 @@ class BlockheatRuntime:
             control_max_c=self._cfg_float(CONF_CONTROL_MAX_C, 26.0),
         )
 
-        if self._delta_ok(
+        helper_write_threshold = self._cfg_float(CONF_FINAL_HELPER_WRITE_DELTA_C, 0.05)
+        helper_write_delta = (
+            abs(final.target - final_helper_current)
+            if final_helper_current is not None
+            else None
+        )
+        helper_write_applied = self._delta_ok(
             final.target,
             final_helper_current,
-            self._cfg_float(CONF_FINAL_HELPER_WRITE_DELTA_C, 0.05),
-        ):
+            helper_write_threshold,
+        )
+        if helper_write_applied:
             await self._async_call_entity_service(
                 "input_number",
                 "set_value",
@@ -527,11 +556,16 @@ class BlockheatRuntime:
                 value=final.target,
             )
 
-        if self._delta_ok(
+        control_write_threshold = self._cfg_float(CONF_CONTROL_WRITE_DELTA_C, 0.2)
+        control_write_delta = (
+            abs(final.target - control_current) if control_current is not None else None
+        )
+        control_write_applied = self._delta_ok(
             final.target,
             control_current,
-            self._cfg_float(CONF_CONTROL_WRITE_DELTA_C, 0.2),
-        ):
+            control_write_threshold,
+        )
+        if control_write_applied:
             await self._async_call_entity_service(
                 "number",
                 "set_value",
@@ -539,15 +573,42 @@ class BlockheatRuntime:
                 value=final.target,
             )
 
-        return final.target
+        return final.target, {
+            "source": final.source,
+            "helper_write_applied": helper_write_applied,
+            "helper_write_delta": helper_write_delta,
+            "helper_write_threshold": helper_write_threshold,
+            "control_write_applied": control_write_applied,
+            "control_write_delta": control_write_delta,
+            "control_write_threshold": control_write_threshold,
+        }
 
     async def _async_apply_daikin(self, policy_on_effective: bool) -> dict[str, Any]:
         if not self._cfg_bool(CONF_ENABLE_DAIKIN_CONSUMER, False):
-            return {"enabled": False}
+            return {
+                "enabled": False,
+                "debug": {
+                    "action": "disabled",
+                    "skip_reason": "consumer_disabled",
+                    "current_temp": None,
+                    "target_temp": None,
+                    "outdoor_ok": None,
+                },
+            }
 
         climate_entity = self._cfg_str(CONF_DAIKIN_CLIMATE_ENTITY)
         if not climate_entity:
-            return {"enabled": True, "skipped": "missing_climate_entity"}
+            return {
+                "enabled": True,
+                "skipped": "missing_climate_entity",
+                "debug": {
+                    "action": "skipped",
+                    "skip_reason": "missing_climate_entity",
+                    "current_temp": None,
+                    "target_temp": None,
+                    "outdoor_ok": None,
+                },
+            }
 
         climate_state = self.hass.states.get(climate_entity)
         current_temp = None
@@ -568,7 +629,8 @@ class BlockheatRuntime:
             outdoor_sensor_defined=bool(outdoor_sensor),
         )
 
-        if computation.should_write and computation.target_temp is not None:
+        should_write = computation.should_write and computation.target_temp is not None
+        if should_write:
             await self._async_call_entity_service(
                 "climate",
                 "set_temperature",
@@ -576,26 +638,72 @@ class BlockheatRuntime:
                 temperature=computation.target_temp,
             )
 
+        if should_write:
+            action = "write"
+            skip_reason: str | None = None
+        elif computation.target_temp is None:
+            action = "no_write"
+            skip_reason = "no_target"
+        else:
+            action = "no_write"
+            skip_reason = "below_min_temp_change"
+
         return {
             "enabled": True,
             "target": computation.target_temp,
-            "written": computation.should_write,
+            "written": should_write,
             "outdoor_ok": computation.outdoor_ok,
+            "debug": {
+                "action": action,
+                "skip_reason": skip_reason,
+                "current_temp": computation.current_temp,
+                "target_temp": computation.target_temp,
+                "outdoor_ok": computation.outdoor_ok,
+            },
         }
 
     async def _async_apply_floor(
         self, policy_on_effective: bool, now: datetime
     ) -> dict[str, Any]:
         if not self._cfg_bool(CONF_ENABLE_FLOOR_CONSUMER, False):
-            return {"enabled": False}
+            return {
+                "enabled": False,
+                "debug": {
+                    "action": "disabled",
+                    "skip_reason": "consumer_disabled",
+                    "desired_temp": None,
+                    "soft_off_target": None,
+                    "schedule_on": None,
+                },
+            }
 
         climate_entity = self._cfg_str(CONF_FLOOR_CLIMATE_ENTITY)
         if not climate_entity:
-            return {"enabled": True, "skipped": "missing_climate_entity"}
+            return {
+                "enabled": True,
+                "skipped": "missing_climate_entity",
+                "debug": {
+                    "action": "skipped",
+                    "skip_reason": "missing_climate_entity",
+                    "desired_temp": None,
+                    "soft_off_target": None,
+                    "schedule_on": None,
+                },
+            }
 
         climate_state = self.hass.states.get(climate_entity)
         if climate_state is None:
-            return {"enabled": True, "skipped": "climate_state_missing"}
+            return {
+                "enabled": True,
+                "skipped": "climate_state_missing",
+                "debug": {
+                    "action": "skipped",
+                    "skip_reason": "climate_state_missing",
+                    "desired_temp": None,
+                    "soft_off_target": None,
+                    "schedule_on": None,
+                },
+            }
 
         schedule_entity = self._cfg_str(CONF_FLOOR_COMFORT_SCHEDULE)
         schedule_defined = bool(schedule_entity)
@@ -665,11 +773,20 @@ class BlockheatRuntime:
                 temperature=computation.soft_off_target,
             )
 
+        debug_action = computation.action if computation.action is not None else "none"
+        debug_skip_reason = None if computation.action is not None else "no_action_needed"
         return {
             "enabled": True,
             "action": computation.action,
             "desired_temp": computation.desired_temp,
             "soft_off_target": computation.soft_off_target,
+            "debug": {
+                "action": debug_action,
+                "skip_reason": debug_skip_reason,
+                "desired_temp": computation.desired_temp,
+                "soft_off_target": computation.soft_off_target,
+                "schedule_on": computation.schedule_on,
+            },
         }
 
     def _delta_ok(self, target: float, current: float | None, delta: float) -> bool:

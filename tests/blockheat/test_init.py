@@ -56,6 +56,12 @@ async def test_setup_entry_registers_services_once_and_resolves_runtimes(
     assert await package.async_setup_entry(fake_hass, entry_1) is True
     assert await package.async_setup_entry(fake_hass, entry_2) is True
 
+    assert const.PLATFORMS == ["sensor", "binary_sensor"]
+    assert fake_hass.config_entries.forward_calls == [
+        ("entry-1", ("sensor", "binary_sensor")),
+        ("entry-2", ("sensor", "binary_sensor")),
+    ]
+
     assert fake_hass.services.has_service(const.DOMAIN, const.SERVICE_RECOMPUTE)
     assert fake_hass.services.has_service(const.DOMAIN, const.SERVICE_DUMP_DIAGNOSTICS)
     assert (
@@ -105,6 +111,10 @@ async def test_unload_entry_unregisters_services_only_after_last_entry(
     assert not fake_hass.services.has_service(
         const.DOMAIN, const.SERVICE_DUMP_DIAGNOSTICS
     )
+    assert fake_hass.config_entries.unload_calls == [
+        ("entry-1", ("sensor", "binary_sensor")),
+        ("entry-2", ("sensor", "binary_sensor")),
+    ]
     assert entry_1._listener_unsubscribed is True
     assert entry_2._listener_unsubscribed is True
 
