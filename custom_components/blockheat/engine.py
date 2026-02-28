@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Iterable, Sequence
+
 
 DEFAULT_POLICY_CUTOFF = 9999.0
 DEFAULT_MISSING_OUTDOOR = 999.0
@@ -15,8 +16,6 @@ def as_float(value: object, default: float | None = None) -> float | None:
     if value is None:
         return default
     if isinstance(value, str) and value.strip() == "":
-        return default
-    if not isinstance(value, (str, int, float)):
         return default
     try:
         return float(value)
@@ -29,8 +28,6 @@ def as_int(value: object, default: int = 0) -> int:
     if value is None:
         return default
     if isinstance(value, str) and value.strip() == "":
-        return default
-    if not isinstance(value, (str, int, float)):
         return default
     try:
         return int(float(value))
@@ -161,9 +158,7 @@ def compute_policy(
     ignore_by_price = price_ignore_below > 0 and current_price < price_ignore_below
     ignore_by_pv = pv_ignore_above_w > 0 and current_pv >= pv_ignore_above_w
     below_min_floor = min_floor_temp > 0 and current_floor < min_floor_temp
-    target_on = (
-        not (ignore_by_price or ignore_by_pv or below_min_floor)
-    ) and blocked_now
+    target_on = (not (ignore_by_price or ignore_by_pv or below_min_floor)) and blocked_now
 
     if last_changed is None:
         enough_time_passed = True
@@ -241,15 +236,11 @@ def compute_comfort_target(
         boost_raw = 0.0
     boost_clamped = clamp(boost_raw, 0.0, max_boost)
 
-    comfort_target_unclamped = (
-        comfort_target_c - comfort_to_heatpump_offset_c
-    ) - boost_clamped
-    storage_target_unclamped = (
-        storage_target_c - storage_to_heatpump_offset_c
-    ) - boost_clamped
+    comfort_target_unclamped = (comfort_target_c - comfort_to_heatpump_offset_c) + boost_clamped
+    storage_target_unclamped = (storage_target_c - storage_to_heatpump_offset_c) + boost_clamped
 
-    storage_needs_heat = storage_temp is not None and storage_temp < (
-        storage_target_c - comfort_margin_c
+    storage_needs_heat = (
+        storage_temp is not None and storage_temp < (storage_target_c - comfort_margin_c)
     )
 
     if comfort_satisfied and storage_needs_heat:
@@ -375,15 +366,11 @@ def compute_daikin(
     """Compute optional Daikin consumer action."""
     cur_temp = as_float(current_temp, 0.0) or 0.0
     if outdoor_sensor_defined:
-        out_temp = (
-            as_float(outdoor_temp, DEFAULT_MISSING_OUTDOOR) or DEFAULT_MISSING_OUTDOOR
-        )
+        out_temp = as_float(outdoor_temp, DEFAULT_MISSING_OUTDOOR) or DEFAULT_MISSING_OUTDOOR
     else:
         out_temp = DEFAULT_MISSING_OUTDOOR
 
-    outdoor_ok = (
-        out_temp >= outdoor_temp_threshold or out_temp == DEFAULT_MISSING_OUTDOOR
-    )
+    outdoor_ok = out_temp >= outdoor_temp_threshold or out_temp == DEFAULT_MISSING_OUTDOOR
 
     if policy_on and outdoor_ok:
         target_temp = saving_temperature
@@ -423,9 +410,7 @@ def compute_floor(
     now: datetime,
 ) -> FloorComputation:
     """Compute optional floor consumer action."""
-    override_raw = (
-        "" if soft_off_temp_override_c is None else str(soft_off_temp_override_c)
-    )
+    override_raw = "" if soft_off_temp_override_c is None else str(soft_off_temp_override_c)
     if override_raw.strip() != "":
         soft_off_target = as_float(soft_off_temp_override_c, dev_min) or dev_min
     else:
@@ -452,8 +437,8 @@ def compute_floor(
     if last_changed is None:
         enough_time_passed = True
     else:
-        enough_time_passed = (now - last_changed).total_seconds() >= (
-            min_switch_interval_min * 60
+        enough_time_passed = (
+            (now - last_changed).total_seconds() >= (min_switch_interval_min * 60)
         )
 
     target_on = desired_temp > (soft_off_target + 0.2)

@@ -155,6 +155,11 @@ Pre-cutover:
    - `uv run python -m pytest tests/blockheat/test_engine.py tests/blockheat/test_parity_suite.py -q`
 3. Confirm config entry values map 1:1 to existing blueprint inputs.
 
+Behavior note (cold boost correction):
+- In this version, comfort cold boost is additive: below `cold_threshold`, colder
+  outdoor temperatures raise comfort/storage paths by up to `max_boost`.
+- Re-check `control_min_c`/`control_max_c` and fallback tuning after cutover.
+
 Cutover:
 1. Disable all Blockheat blueprint automations at once.
 2. Enable the Blockheat config entry.
@@ -274,9 +279,9 @@ Use these helper entity ids unless you have an existing naming convention:
 ### Comfort Target Calculator
 - Inputs: two comfort sensors, storage sensor, outdoor sensor, comfort/storage/maintenance settings, cold boost settings.
 - Formula:
-  - boost (pull-down) = f(cold threshold, outdoor, slope, max)
-  - comfort path = `(comfort_target - comfort_offset) - boost`
-  - storage path = `(storage_target - storage_offset) - boost`
+  - boost (additive) = f(cold threshold, outdoor, slope, max)
+  - comfort path = `(comfort_target - comfort_offset) + boost`
+  - storage path = `(storage_target - storage_offset) + boost`
   - comfort unsatisfied -> comfort path
   - comfort satisfied + storage needs heat -> max(storage path, comfort path)
   - comfort satisfied + storage OK -> maintenance target

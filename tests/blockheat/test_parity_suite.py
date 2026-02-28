@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, UTC
 import importlib.util
+from pathlib import Path
 import sys
 import unittest
-from datetime import UTC, datetime, timedelta
-from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 ENGINE_MODULE = "homeassistant.custom_components.blockheat.engine"
@@ -149,7 +149,46 @@ class ParitySuite(unittest.TestCase):
             control_min_c=10.0,
             control_max_c=26.0,
         )
-        self.assertGreaterEqual(comfort.target, 10.0)
+        self.assertEqual(comfort.target, 26.0)
+
+    def test_cold_boost_raises_target_below_threshold(self) -> None:
+        at_threshold = compute_comfort_target(
+            room1_temp=21.0,
+            room2_temp=21.0,
+            storage_temp=25.0,
+            outdoor_temp=0.0,
+            comfort_target_c=22.0,
+            comfort_to_heatpump_offset_c=2.0,
+            storage_target_c=25.0,
+            storage_to_heatpump_offset_c=2.0,
+            maintenance_target_c=20.0,
+            comfort_margin_c=0.2,
+            cold_threshold=0.0,
+            max_boost=3.0,
+            boost_slope_c=5.0,
+            control_min_c=10.0,
+            control_max_c=26.0,
+        )
+        colder = compute_comfort_target(
+            room1_temp=21.0,
+            room2_temp=21.0,
+            storage_temp=25.0,
+            outdoor_temp=-5.0,
+            comfort_target_c=22.0,
+            comfort_to_heatpump_offset_c=2.0,
+            storage_target_c=25.0,
+            storage_to_heatpump_offset_c=2.0,
+            maintenance_target_c=20.0,
+            comfort_margin_c=0.2,
+            cold_threshold=0.0,
+            max_boost=3.0,
+            boost_slope_c=5.0,
+            control_min_c=10.0,
+            control_max_c=26.0,
+        )
+        self.assertEqual(at_threshold.boost_clamped, 0.0)
+        self.assertGreater(colder.boost_clamped, 0.0)
+        self.assertGreater(colder.target, at_threshold.target)
 
     def test_fallback_arm_and_release(self) -> None:
         now = datetime(2026, 2, 18, 10, 0, tzinfo=UTC)
