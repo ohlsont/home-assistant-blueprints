@@ -1,0 +1,56 @@
+{
+  "title": "Blockheat",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Blockheat entities",
+        "description": "Map Blockheat helpers and source entities.",
+        "data": {
+          "target_boolean": "Energy saving boolean",
+          "nordpool_price": "Nordpool price sensor",
+          "comfort_room_1_sensor": "Comfort room 1 sensor",
+          "comfort_room_2_sensor": "Comfort room 2 sensor",
+          "storage_room_sensor": "Storage room sensor",
+          "outdoor_temperature_sensor": "Outdoor temperature sensor",
+          "target_saving_helper": "Saving target helper",
+          "target_comfort_helper": "Comfort target helper",
+          "target_final_helper": "Final target helper",
+          "fallback_active_boolean": "Fallback active helper",
+          "electric_fallback_last_trigger": "Fallback last-trigger helper",
+          "control_number_entity": "Control number entity",
+          "pv_sensor": "PV sensor (optional)",
+          "floor_temp_sensor": "Floor temp sensor (optional)",
+          "enable_daikin_consumer": "Enable Daikin consumer",
+          "daikin_climate_entity": "Daikin climate entity (optional)",
+          "daikin_outdoor_temp_sensor": "Daikin outdoor sensor (optional)",
+          "enable_floor_consumer": "Enable floor consumer",
+          "floor_climate_entity": "Floor climate entity (optional)",
+          "floor_comfort_schedule": "Floor comfort schedule (optional)"
+        }
+      },
+      "tuning": {
+        "title": "Blockheat tuning",
+        "description": "Set policy, target, fallback and consumer thresholds."
+      }
+    },
+    "error": {
+      "invalid_required_entities": "Required entity id values cannot be empty."
+    },
+    "abort": {
+      "single_instance_allowed": "Only one Blockheat config entry is supported."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Blockheat entities"
+      },
+      "tuning": {
+        "title": "Blockheat tuning"
+      }
+    },
+    "error": {
+      "invalid_required_entities": "Required entity id values cannot be empty."
+    }
+  }
+}

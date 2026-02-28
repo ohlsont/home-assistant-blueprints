@@ -1,0 +1,14 @@
+{
+  "domain": "blockheat",
+  "name": "Blockheat",
+  "version": "0.1.0",
+  "integration_type": "hub",
+  "config_flow": true,
+  "documentation": "https://github.com/ohlsont/home-assistant-blueprints",
+  "issue_tracker": "https://github.com/ohlsont/home-assistant-blueprints/issues",
+  "codeowners": [
+    "@tomas"
+  ],
+  "iot_class": "local_push",
+  "requirements": []
+}

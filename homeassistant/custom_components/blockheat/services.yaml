@@ -1,0 +1,21 @@
+recompute:
+  name: Recompute Blockheat
+  description: Force an immediate policy/target recompute and write pass.
+  fields:
+    entry_id:
+      name: Config entry id
+      description: Optional config entry id. If omitted all Blockheat entries are recomputed.
+      example: "abcd1234"
+      selector:
+        text:
+
+dump_diagnostics:
+  name: Dump Blockheat diagnostics
+  description: Recompute and emit a snapshot event with full diagnostics payload.
+  fields:
+    entry_id:
+      name: Config entry id
+      description: Optional config entry id. If omitted all Blockheat entries are included.
+      example: "abcd1234"
+      selector:
+        text:
