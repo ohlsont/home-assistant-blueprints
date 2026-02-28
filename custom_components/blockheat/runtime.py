@@ -193,31 +193,56 @@ class BlockheatRuntime:
 
     @callback
     def _async_handle_start(self, _: Event) -> None:
-        self.hass.async_create_task(self.async_recompute("ha_start"))
+        self.hass.async_create_task(
+            self.async_recompute(
+                "ha_start",
+                trigger={"source": "homeassistant_start"},
+            )
+        )
 
     @callback
-    def _async_handle_state_event(self, _: Event) -> None:
-        self.hass.async_create_task(self.async_recompute("state_change"))
+    def _async_handle_state_event(self, event: Event) -> None:
+        event_data = getattr(event, "data", {}) or {}
+        trigger: dict[str, Any] = {"source": "state_change"}
+        entity_id = event_data.get("entity_id")
+        if isinstance(entity_id, str) and entity_id:
+            trigger["entity_id"] = entity_id
+        self.hass.async_create_task(self.async_recompute("state_change", trigger=trigger))
 
     @callback
     def _async_handle_periodic(self, _: datetime) -> None:
-        self.hass.async_create_task(self.async_recompute("periodic"))
+        self.hass.async_create_task(
+            self.async_recompute("periodic", trigger={"source": "periodic"})
+        )
 
     @callback
     def _async_handle_fallback_arm_timer(self, _: datetime) -> None:
         self._fallback_arm_timer_unsub = None
-        self.hass.async_create_task(self.async_recompute("fallback_arm_timer"))
+        self.hass.async_create_task(
+            self.async_recompute(
+                "fallback_arm_timer",
+                trigger={"source": "fallback_arm_timer"},
+            )
+        )
 
-    async def async_recompute(self, reason: str = "manual") -> dict[str, Any]:
+    async def async_recompute(
+        self,
+        reason: str = "manual",
+        *,
+        trigger: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Recompute full chain and write side-effects."""
         async with self._lock:
             now = dt_util.utcnow()
+            trigger_context = {"reason": reason}
+            if trigger:
+                trigger_context.update(trigger)
 
-            policy_result = await self._async_apply_policy(now)
+            policy_result = await self._async_apply_policy(now, trigger_context)
             policy_on_effective = policy_result["policy_on_effective"]
 
-            saving_target = await self._async_apply_saving_target()
-            comfort_target = await self._async_apply_comfort_target()
+            saving_target, saving_debug = await self._async_apply_saving_target()
+            comfort_target, comfort_debug = await self._async_apply_comfort_target()
 
             (
                 fallback_active_effective,
@@ -225,13 +250,15 @@ class BlockheatRuntime:
             ) = await self._async_apply_fallback(
                 now,
                 policy_on_effective,
+                trigger_context,
             )
 
-            final_target = await self._async_apply_final_target(
+            final_target, final_debug = await self._async_apply_final_target(
                 policy_on_effective=policy_on_effective,
                 fallback_active_effective=fallback_active_effective,
                 saving_target=saving_target,
                 comfort_target=comfort_target,
+                trigger_context=trigger_context,
             )
 
             daikin_result = await self._async_apply_daikin(policy_on_effective)
@@ -241,11 +268,15 @@ class BlockheatRuntime:
             snapshot = {
                 "reason": reason,
                 "at": now.isoformat(),
+                "trigger": trigger_context,
                 "policy": policy_result,
                 "saving_target": saving_target,
+                "saving_debug": saving_debug,
                 "comfort_target": comfort_target,
+                "comfort_debug": comfort_debug,
                 "fallback": fallback_debug,
                 "final_target": final_target,
+                "final_debug": final_debug,
                 "daikin": daikin_result,
                 "floor": floor_result,
                 "internal_state": internal_state,
@@ -255,7 +286,9 @@ class BlockheatRuntime:
             await self._async_save_state()
             return snapshot
 
-    async def _async_apply_policy(self, now: datetime) -> dict[str, Any]:
+    async def _async_apply_policy(
+        self, now: datetime, trigger_context: dict[str, Any]
+    ) -> dict[str, Any]:
         nordpool_price = self._cfg_str(CONF_NORDPOOL_PRICE)
 
         price_state = self.hass.states.get(nordpool_price)
@@ -307,7 +340,8 @@ class BlockheatRuntime:
                 "Energy Saving",
                 (
                     f"ON - price={computation.price:.3f} >= cutoff={computation.cutoff:.3f}, "
-                    f"PV={computation.pv_now:.0f} W, floor={computation.floor_temp:.1f}C"
+                    f"PV={computation.pv_now:.0f} W, floor={computation.floor_temp:.1f}C; "
+                    f"{self._trigger_summary(trigger_context)}"
                 ),
             )
         elif computation.should_turn_off:
@@ -329,7 +363,8 @@ class BlockheatRuntime:
                 (
                     f"OFF - {reason} "
                     f"(price={computation.price:.3f}, cutoff={computation.cutoff:.3f}, "
-                    f"PV={computation.pv_now:.0f} W, floor={computation.floor_temp:.1f}C)"
+                    f"PV={computation.pv_now:.0f} W, floor={computation.floor_temp:.1f}C); "
+                    f"{self._trigger_summary(trigger_context)}"
                 ),
             )
 
@@ -362,33 +397,55 @@ class BlockheatRuntime:
         self.hass.bus.async_fire(EVENT_ENERGY_SAVING_STATE_CHANGED, event_data)
         self.hass.bus.async_fire(EVENT_BLOCKHEAT_POLICY_CHANGED, event_data)
 
-    async def _async_apply_saving_target(self) -> float:
+    async def _async_apply_saving_target(self) -> tuple[float, dict[str, Any]]:
         target_current = self._state.target_saving
+        outdoor_temp = self._state_float(self._cfg_str(CONF_OUTDOOR_TEMPERATURE_SENSOR))
+        heatpump_setpoint = self._cfg_float(CONF_HEATPUMP_SETPOINT, 20.0)
+        saving_cold_offset_c = self._cfg_float(CONF_SAVING_COLD_OFFSET_C, 1.0)
+        virtual_temperature = self._cfg_float(CONF_VIRTUAL_TEMPERATURE, 20.0)
+        warm_shutdown_outdoor = self._cfg_float(
+            CONF_ENERGY_SAVING_WARM_SHUTDOWN_OUTDOOR,
+            7.0,
+        )
         target = compute_saving_target(
-            outdoor_temp=self._state_float(
-                self._cfg_str(CONF_OUTDOOR_TEMPERATURE_SENSOR)
-            ),
-            heatpump_setpoint=self._cfg_float(CONF_HEATPUMP_SETPOINT, 20.0),
-            saving_cold_offset_c=self._cfg_float(CONF_SAVING_COLD_OFFSET_C, 1.0),
-            virtual_temperature=self._cfg_float(CONF_VIRTUAL_TEMPERATURE, 20.0),
-            warm_shutdown_outdoor=self._cfg_float(
-                CONF_ENERGY_SAVING_WARM_SHUTDOWN_OUTDOOR,
-                7.0,
-            ),
+            outdoor_temp=outdoor_temp,
+            heatpump_setpoint=heatpump_setpoint,
+            saving_cold_offset_c=saving_cold_offset_c,
+            virtual_temperature=virtual_temperature,
+            warm_shutdown_outdoor=warm_shutdown_outdoor,
             control_min_c=self._cfg_float(CONF_CONTROL_MIN_C, 10.0),
             control_max_c=self._cfg_float(CONF_CONTROL_MAX_C, 26.0),
         )
 
-        if self._delta_ok(
+        write_delta_c = self._cfg_float(CONF_SAVING_HELPER_WRITE_DELTA_C, 0.05)
+        write_performed = self._delta_ok(
             target,
             target_current,
-            self._cfg_float(CONF_SAVING_HELPER_WRITE_DELTA_C, 0.05),
-        ):
+            write_delta_c,
+        )
+        if write_performed:
             self._state.target_saving = target
 
-        return target
+        debug = {
+            "source": (
+                "virtual_temperature"
+                if outdoor_temp is not None and outdoor_temp >= warm_shutdown_outdoor
+                else "setpoint_minus_offset"
+            ),
+            "outdoor_temp": outdoor_temp,
+            "warm_shutdown_outdoor": warm_shutdown_outdoor,
+            "target": target,
+            "target_current": target_current,
+            "delta": self._delta_abs(target, target_current),
+            "write_delta_c": write_delta_c,
+            "write_performed": write_performed,
+            "heatpump_setpoint": heatpump_setpoint,
+            "saving_cold_offset_c": saving_cold_offset_c,
+            "virtual_temperature": virtual_temperature,
+        }
+        return target, debug
 
-    async def _async_apply_comfort_target(self) -> float:
+    async def _async_apply_comfort_target(self) -> tuple[float, dict[str, Any]]:
         target_current = self._state.target_comfort
 
         computation = compute_comfort_target(
@@ -417,19 +474,42 @@ class BlockheatRuntime:
             control_max_c=self._cfg_float(CONF_CONTROL_MAX_C, 26.0),
         )
 
-        if self._delta_ok(
+        write_delta_c = self._cfg_float(CONF_COMFORT_HELPER_WRITE_DELTA_C, 0.05)
+        write_performed = self._delta_ok(
             computation.target,
             target_current,
-            self._cfg_float(CONF_COMFORT_HELPER_WRITE_DELTA_C, 0.05),
-        ):
+            write_delta_c,
+        )
+        if write_performed:
             self._state.target_comfort = computation.target
 
-        return computation.target
+        if computation.comfort_satisfied and computation.storage_needs_heat:
+            route = "storage_max"
+        elif computation.comfort_satisfied:
+            route = "maintenance"
+        else:
+            route = "comfort"
+
+        debug = {
+            "route": route,
+            "target": computation.target,
+            "target_current": target_current,
+            "delta": self._delta_abs(computation.target, target_current),
+            "write_delta_c": write_delta_c,
+            "write_performed": write_performed,
+            "comfort_satisfied": computation.comfort_satisfied,
+            "storage_needs_heat": computation.storage_needs_heat,
+            "boost_clamped": computation.boost_clamped,
+            "comfort_target_unclamped": computation.comfort_target_unclamped,
+            "storage_target_unclamped": computation.storage_target_unclamped,
+        }
+        return computation.target, debug
 
     async def _async_apply_fallback(
         self,
         now: datetime,
         policy_on: bool,
+        trigger_context: dict[str, Any],
     ) -> tuple[bool, dict[str, Any]]:
         fallback_active = self._state.fallback_active
 
@@ -470,10 +550,33 @@ class BlockheatRuntime:
             self._state.fallback_last_trigger = now
             self._fallback_arm_since = None
             self._clear_fallback_arm_timer()
+            await self._async_log(
+                "Blockheat Fallback",
+                (
+                    f"ARMED - comfort_min={conditions.comfort_min}, "
+                    f"trigger_threshold={conditions.trigger_threshold:.3f}, "
+                    f"cooldown_ok={conditions.cooldown_ok}; "
+                    f"{self._trigger_summary(trigger_context)}"
+                ),
+            )
         elif conditions.release_by_policy or conditions.release_by_recovery:
             self._state.fallback_active = False
             fallback_active_effective = False
             transition = "released"
+            release_reason = (
+                "policy_on"
+                if conditions.release_by_policy
+                else "comfort_recovered"
+            )
+            await self._async_log(
+                "Blockheat Fallback",
+                (
+                    f"RELEASED - reason={release_reason}, "
+                    f"comfort_min={conditions.comfort_min}, "
+                    f"release_threshold={conditions.release_threshold:.3f}; "
+                    f"{self._trigger_summary(trigger_context)}"
+                ),
+            )
 
         debug = {
             "active_before": fallback_active,
@@ -512,7 +615,8 @@ class BlockheatRuntime:
         fallback_active_effective: bool,
         saving_target: float,
         comfort_target: float,
-    ) -> float:
+        trigger_context: dict[str, Any],
+    ) -> tuple[float, dict[str, Any]]:
         control_number = self._cfg_str(CONF_CONTROL_NUMBER_ENTITY)
 
         final_current = self._state.target_final
@@ -528,18 +632,23 @@ class BlockheatRuntime:
             control_max_c=self._cfg_float(CONF_CONTROL_MAX_C, 26.0),
         )
 
-        if self._delta_ok(
+        final_helper_write_delta_c = self._cfg_float(CONF_FINAL_HELPER_WRITE_DELTA_C, 0.05)
+        control_write_delta_c = self._cfg_float(CONF_CONTROL_WRITE_DELTA_C, 0.2)
+
+        final_helper_write_performed = self._delta_ok(
             final.target,
             final_current,
-            self._cfg_float(CONF_FINAL_HELPER_WRITE_DELTA_C, 0.05),
-        ):
+            final_helper_write_delta_c,
+        )
+        if final_helper_write_performed:
             self._state.target_final = final.target
 
-        if self._delta_ok(
+        control_write_performed = self._delta_ok(
             final.target,
             control_current,
-            self._cfg_float(CONF_CONTROL_WRITE_DELTA_C, 0.2),
-        ):
+            control_write_delta_c,
+        )
+        if control_write_performed:
             await self._async_call_entity_service(
                 "number",
                 "set_value",
@@ -547,7 +656,34 @@ class BlockheatRuntime:
                 value=final.target,
             )
 
-        return final.target
+        if final_helper_write_performed or control_write_performed:
+            await self._async_log(
+                "Blockheat Final Target",
+                (
+                    f"source={final.source}, target={final.target:.3f}, "
+                    f"helper_write={final_helper_write_performed}, "
+                    f"helper_delta={self._delta_abs(final.target, final_current)}, "
+                    f"helper_threshold={final_helper_write_delta_c:.3f}, "
+                    f"control_write={control_write_performed}, "
+                    f"control_delta={self._delta_abs(final.target, control_current)}, "
+                    f"control_threshold={control_write_delta_c:.3f}; "
+                    f"{self._trigger_summary(trigger_context)}"
+                ),
+            )
+
+        debug = {
+            "source": final.source,
+            "target": final.target,
+            "final_helper_current": final_current,
+            "final_helper_delta": self._delta_abs(final.target, final_current),
+            "final_helper_write_delta_c": final_helper_write_delta_c,
+            "final_helper_write_performed": final_helper_write_performed,
+            "control_current": control_current,
+            "control_delta": self._delta_abs(final.target, control_current),
+            "control_write_delta_c": control_write_delta_c,
+            "control_write_performed": control_write_performed,
+        }
+        return final.target, debug
 
     async def _async_apply_daikin(self, policy_on_effective: bool) -> dict[str, Any]:
         if not self._cfg_bool(CONF_ENABLE_DAIKIN_CONSUMER, False):
@@ -684,6 +820,23 @@ class BlockheatRuntime:
         if current is None:
             return True
         return abs(target - current) >= delta
+
+    def _delta_abs(self, target: float, current: float | None) -> float | None:
+        if current is None:
+            return None
+        return abs(target - current)
+
+    def _trigger_summary(self, trigger_context: dict[str, Any] | None) -> str:
+        if not trigger_context:
+            return "trigger=unknown"
+        reason = str(trigger_context.get("reason", "unknown"))
+        entity_id = trigger_context.get("entity_id")
+        source = trigger_context.get("source")
+        if isinstance(entity_id, str) and entity_id:
+            return f"trigger={reason}, entity_id={entity_id}"
+        if isinstance(source, str) and source:
+            return f"trigger={reason}, source={source}"
+        return f"trigger={reason}"
 
     async def _async_call_entity_service(
         self,
