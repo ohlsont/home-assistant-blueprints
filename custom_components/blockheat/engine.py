@@ -5,12 +5,13 @@ from __future__ import annotations
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 
 DEFAULT_POLICY_CUTOFF = 9999.0
 DEFAULT_MISSING_OUTDOOR = 999.0
 
 
-def as_float(value: object, default: float | None = None) -> float | None:
+def as_float(value: Any, default: float | None = None) -> float | None:
     """Convert a value to float or return default."""
     if value is None:
         return default
@@ -22,7 +23,7 @@ def as_float(value: object, default: float | None = None) -> float | None:
         return default
 
 
-def as_int(value: object, default: int = 0) -> int:
+def as_int(value: Any, default: int = 0) -> int:
     """Convert a value to int or return default."""
     if value is None:
         return default
