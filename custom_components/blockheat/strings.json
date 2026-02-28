@@ -34,7 +34,10 @@
       }
     },
     "error": {
-      "invalid_required_entities": "Required entity id values cannot be empty."
+      "invalid_required_entities": "Required entity id values cannot be empty.",
+      "invalid_control_range": "Control minimum must be less than or equal to control maximum.",
+      "invalid_boost_slope": "Cold boost slope must be greater than zero.",
+      "invalid_non_negative": "Intervals and deltas must be non-negative."
     },
     "abort": {
       "single_instance_allowed": "Only one Blockheat config entry is supported."
@@ -50,7 +53,10 @@
       }
     },
     "error": {
-      "invalid_required_entities": "Required entity id values cannot be empty."
+      "invalid_required_entities": "Required entity id values cannot be empty.",
+      "invalid_control_range": "Control minimum must be less than or equal to control maximum.",
+      "invalid_boost_slope": "Cold boost slope must be greater than zero.",
+      "invalid_non_negative": "Intervals and deltas must be non-negative."
     }
   }
 }
