@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import Any
@@ -74,7 +75,7 @@ async def test_async_recompute_writes_expected_targets_then_skips_small_deltas(
         },
     )
 
-    await ctx.runtime.async_recompute("test_initial_write")
+    first_snapshot = await ctx.runtime.async_recompute("test_initial_write")
     first_calls = list(ctx.hass.services.calls)
     assert _service_calls_for(
         first_calls,
@@ -100,12 +101,59 @@ async def test_async_recompute_writes_expected_targets_then_skips_small_deltas(
         "set_value",
         entity_id=ctx.config[ctx.const.CONF_CONTROL_NUMBER_ENTITY],
     )
+    assert first_snapshot["trigger"]["reason"] == "test_initial_write"
+    assert "saving_debug" in first_snapshot
+    assert "comfort_debug" in first_snapshot
+    assert "final_debug" in first_snapshot
+    assert first_snapshot["final_debug"]["final_helper_write_performed"] is True
+    assert first_snapshot["final_debug"]["control_write_performed"] is True
 
     ctx.hass.services.calls.clear()
-    await ctx.runtime.async_recompute("test_no_delta_write")
+    second_snapshot = await ctx.runtime.async_recompute("test_no_delta_write")
     second_calls = list(ctx.hass.services.calls)
     assert _service_calls_for(second_calls, "input_number", "set_value") == []
     assert _service_calls_for(second_calls, "number", "set_value") == []
+    assert second_snapshot["trigger"]["reason"] == "test_no_delta_write"
+    assert second_snapshot["final_debug"]["final_helper_write_performed"] is False
+    assert second_snapshot["final_debug"]["control_write_performed"] is False
+
+
+@pytest.mark.asyncio
+async def test_snapshot_contains_causal_debug_payload(
+    blockheat_env: SimpleNamespace,
+    fake_hass: Any,
+    build_config: Any,
+    seed_runtime_states: Any,
+) -> None:
+    ctx = _make_runtime_context(
+        blockheat_env,
+        fake_hass,
+        build_config,
+        seed_runtime_states,
+        overrides={
+            blockheat_env.const.CONF_MIN_TOGGLE_INTERVAL_MIN: 0,
+            blockheat_env.const.CONF_MINUTES_TO_BLOCK: 30,
+        },
+        seed_kwargs={
+            "policy_state": "off",
+            "price": 9.0,
+            "prices_today": [1.0, 2.0, 9.0, 8.0],
+        },
+    )
+
+    snapshot = await ctx.runtime.async_recompute("snapshot_debug")
+    assert snapshot["trigger"] == {"reason": "snapshot_debug"}
+    assert snapshot["saving_debug"]["source"] in {
+        "virtual_temperature",
+        "setpoint_minus_offset",
+    }
+    assert snapshot["comfort_debug"]["route"] in {
+        "comfort",
+        "maintenance",
+        "storage_max",
+    }
+    assert snapshot["final_debug"]["source"] == "saving"
+    assert snapshot["final_debug"]["control_write_performed"] is True
 
 
 @pytest.mark.asyncio
@@ -364,6 +412,81 @@ async def test_optional_consumers_disabled_missing_and_write_paths(
     )
     assert daikin_calls
     assert floor_calls
+
+
+@pytest.mark.asyncio
+async def test_state_change_event_populates_trigger_context(
+    blockheat_env: SimpleNamespace,
+    fake_hass: Any,
+    build_config: Any,
+    seed_runtime_states: Any,
+) -> None:
+    ctx = _make_runtime_context(
+        blockheat_env,
+        fake_hass,
+        build_config,
+        seed_runtime_states,
+    )
+    await ctx.runtime.async_setup()
+
+    for task in list(ctx.hass.created_tasks):
+        await task
+    ctx.hass.created_tasks.clear()
+
+    tracker = ctx.hass.state_trackers[0]
+    tracker["callback"](
+        SimpleNamespace(
+            data={"entity_id": ctx.config[ctx.const.CONF_COMFORT_ROOM_1_SENSOR]}
+        )
+    )
+    await asyncio.gather(*ctx.hass.created_tasks)
+
+    snapshot = ctx.coordinator.data
+    assert snapshot is not None
+    assert snapshot["trigger"]["reason"] == "state_change"
+    assert snapshot["trigger"]["source"] == "state_change"
+    assert (
+        snapshot["trigger"]["entity_id"]
+        == ctx.config[ctx.const.CONF_COMFORT_ROOM_1_SENSOR]
+    )
+
+
+@pytest.mark.asyncio
+async def test_logbook_only_records_meaningful_changes(
+    blockheat_env: SimpleNamespace,
+    fake_hass: Any,
+    build_config: Any,
+    seed_runtime_states: Any,
+) -> None:
+    ctx = _make_runtime_context(
+        blockheat_env,
+        fake_hass,
+        build_config,
+        seed_runtime_states,
+        overrides={
+            blockheat_env.const.CONF_MIN_TOGGLE_INTERVAL_MIN: 0,
+            blockheat_env.const.CONF_MINUTES_TO_BLOCK: 30,
+        },
+        seed_kwargs={
+            "policy_state": "off",
+            "price": 9.0,
+            "prices_today": [1.0, 2.0, 9.0, 8.0],
+        },
+    )
+    ctx.hass.services.available.add(("logbook", "log"))
+
+    await ctx.runtime.async_recompute("change_pass")
+    first_logs = _service_calls_for(ctx.hass.services.calls, "logbook", "log")
+    assert first_logs
+    assert any(
+        "trigger=change_pass" in item["payload"].get("message", "")
+        for item in first_logs
+    )
+
+    ctx.hass.services.calls.clear()
+    await ctx.runtime.async_recompute("no_change_pass")
+    second_logs = _service_calls_for(ctx.hass.services.calls, "logbook", "log")
+    assert second_logs == []
 
 
 @pytest.mark.asyncio

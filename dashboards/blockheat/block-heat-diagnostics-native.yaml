@@ -1,0 +1,90 @@
+# Block Heat diagnostics card (integration runtime, native cards only)
+# Replace placeholder entities with your own mapped entity IDs.
+
+type: vertical-stack
+cards:
+  - type: markdown
+    title: Block Heat Diagnostics (Integration, Native)
+    content: |
+      {% set policy_entity = 'input_boolean.block_heat_energy_saving' %}
+      {% set fallback_entity = 'input_boolean.block_heat_fallback_active' %}
+      {% set saving_target_entity = 'input_number.block_heat_target_saving' %}
+      {% set comfort_target_entity = 'input_number.block_heat_target_comfort' %}
+      {% set final_target_entity = 'input_number.block_heat_target_final' %}
+      {% set control_entity = 'number.REPLACE_control_temperature' %}
+
+      {% set policy_on = is_state(policy_entity, 'on') %}
+      {% set fallback_on = is_state(fallback_entity, 'on') %}
+      {% if policy_on %}
+        {% set route = 'saving' %}
+      {% elif fallback_on %}
+        {% set route = 'fallback_min' %}
+      {% else %}
+        {% set route = 'comfort' %}
+      {% endif %}
+
+      {% set final_target = states(final_target_entity) | float(default=none) %}
+      {% set control_current = states(control_entity) | float(default=none) %}
+      {% if final_target is number and control_current is number %}
+        {% set control_delta = (final_target - control_current) | round(3) %}
+      {% else %}
+        {% set control_delta = none %}
+      {% endif %}
+
+      **Policy**: {{ 'ON' if policy_on else 'OFF' }}
+      **Fallback**: {{ 'ON' if fallback_on else 'OFF' }}
+      **Active route**: `{{ route }}`
+
+      **Target saving**: {{ states(saving_target_entity) }} °C
+      **Target comfort**: {{ states(comfort_target_entity) }} °C
+      **Target final**: {{ states(final_target_entity) }} °C
+      **Control value**: {{ states(control_entity) }} °C
+      **Final - control delta**: {{ control_delta if control_delta is not none else 'unknown' }} °C
+
+      Run `blockheat.dump_diagnostics` and listen for `blockheat_snapshot` in
+      Developer Tools -> Events for full causal payload details.
+
+  - type: history-graph
+    title: Block Heat Signals (24h)
+    hours_to_show: 24
+    entities:
+      - entity: input_boolean.block_heat_energy_saving
+        name: Policy saving
+      - entity: input_boolean.block_heat_fallback_active
+        name: Fallback active
+      - entity: input_number.block_heat_target_saving
+        name: Target saving
+      - entity: input_number.block_heat_target_comfort
+        name: Target comfort
+      - entity: input_number.block_heat_target_final
+        name: Target final
+      - entity: number.REPLACE_control_temperature
+        name: Control temperature
+
+  - type: logbook
+    title: Block Heat Decision Timeline (24h)
+    hours_to_show: 24
+    entities:
+      - input_boolean.block_heat_energy_saving
+      - input_boolean.block_heat_fallback_active
+      - input_number.block_heat_target_final
+      - number.REPLACE_control_temperature
+      - input_datetime.block_heat_fallback_last_trigger
+
+  - type: entities
+    title: Replace These Entities
+    entities:
+      - entity: input_boolean.block_heat_energy_saving
+        name: Policy boolean
+      - entity: input_boolean.block_heat_fallback_active
+        name: Fallback active
+      - entity: input_number.block_heat_target_saving
+        name: Saving helper
+      - entity: input_number.block_heat_target_comfort
+        name: Comfort helper
+      - entity: input_number.block_heat_target_final
+        name: Final helper
+      - entity: number.REPLACE_control_temperature
+        name: Control number
+      - entity: input_datetime.block_heat_fallback_last_trigger
+        name: Last fallback trigger

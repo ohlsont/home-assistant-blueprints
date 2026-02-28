@@ -68,6 +68,11 @@ Then in Home Assistant:
   - Any state change on mapped required/optional entities
   - A periodic 5-minute interval (`DEFAULT_RECOMPUTE_MINUTES = 5`)
 - Recompute always updates the diagnostics coordinator payload and fires `blockheat_snapshot`.
+- Recompute snapshots include causal metadata to explain why routing/writes happened:
+  - `trigger`
+  - `saving_debug`
+  - `comfort_debug`
+  - `final_debug`
 - Policy transitions also fire:
   - `energy_saving_state_changed`
   - `blockheat_policy_changed`
@@ -80,6 +85,12 @@ Services are exposed under the `blockheat` domain:
   - Forces recompute and emits a diagnostics snapshot payload.
 
 Both services accept optional `entry_id` (text). If omitted, all Blockheat entries are targeted.
+
+Root-cause workflow for integration mode:
+1. Call `blockheat.dump_diagnostics`.
+2. Listen for `blockheat_snapshot` in **Developer Tools -> Events**.
+3. Inspect `trigger`, `saving_debug`, `comfort_debug`, and `final_debug`.
+4. Cross-check with Logbook entries for policy/fallback/final write transitions.
 
 ### Testing
 Install dev dependencies once:
@@ -147,6 +158,11 @@ Compatibility events:
 - `energy_saving_state_changed` (legacy compatibility)
 - `blockheat_policy_changed` (namespaced event)
 - `blockheat_snapshot` (diagnostics snapshot event)
+  - Includes additive causal fields:
+    - `trigger`: recompute reason plus optional source/entity context
+    - `saving_debug`: saving route + helper write decision
+    - `comfort_debug`: comfort route + helper write decision
+    - `final_debug`: final route source + helper/control write decisions
 
 ### Migration / Cutover (Big-Bang)
 Pre-cutover:
@@ -303,8 +319,17 @@ Use these helper entity ids unless you have an existing naming convention:
 - Writes final helper target.
 - Writes control number only when delta >= configured write threshold.
 
-## Diagnostics Card
-A helper-driven diagnostics card is available at:
+## Diagnostics Cards
+For integration runtime (native cards only), use:
+- `dashboards/blockheat/block-heat-diagnostics-native.yaml`
+
+To use the native integration card:
+1. Copy YAML into a Lovelace manual card or view YAML editor.
+2. Replace `number.REPLACE_control_temperature` with your control number entity.
+3. Run `blockheat.dump_diagnostics`, then inspect `blockheat_snapshot` in Developer Tools -> Events.
+4. Use the built-in logbook card in the stack for change-only decision traces.
+
+For legacy blueprint setups, a helper-driven diagnostics card is available at:
 - `dashboards/blockheat/block-heat-diagnostics-card.yaml`
 
 The markdown card reads helper outputs and state routing directly from the final
