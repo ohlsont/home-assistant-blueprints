@@ -8,6 +8,7 @@ import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.core import callback
+from homeassistant.helpers import selector
 
 from .const import (
     CONF_BOOST_SLOPE_C,
@@ -80,29 +81,47 @@ def _cfg_value(data: dict[str, Any], key: str) -> Any:
     return DEFAULTS.get(key, "")
 
 
+def _required_marker(current: dict[str, Any], key: str) -> vol.Required:
+    default = _cfg_value(current, key)
+    if default in ("", None):
+        return vol.Required(key)
+    return vol.Required(key, default=default)
+
+
+def _optional_marker(current: dict[str, Any], key: str) -> vol.Optional:
+    default = _cfg_value(current, key)
+    if default in ("", None):
+        return vol.Optional(key)
+    return vol.Optional(key, default=default)
+
+
+def _entity_selector(domains: str | list[str]) -> selector.EntitySelector:
+    return selector.EntitySelector(selector.EntitySelectorConfig(domain=domains))
+
+
 def _user_schema(current: dict[str, Any]) -> vol.Schema:
     return vol.Schema(
         {
-            vol.Required(CONF_TARGET_BOOLEAN, default=_cfg_value(current, CONF_TARGET_BOOLEAN)): str,
-            vol.Required(CONF_NORDPOOL_PRICE, default=_cfg_value(current, CONF_NORDPOOL_PRICE)): str,
-            vol.Required(CONF_COMFORT_ROOM_1_SENSOR, default=_cfg_value(current, CONF_COMFORT_ROOM_1_SENSOR)): str,
-            vol.Required(CONF_COMFORT_ROOM_2_SENSOR, default=_cfg_value(current, CONF_COMFORT_ROOM_2_SENSOR)): str,
-            vol.Required(CONF_STORAGE_ROOM_SENSOR, default=_cfg_value(current, CONF_STORAGE_ROOM_SENSOR)): str,
-            vol.Required(CONF_OUTDOOR_TEMPERATURE_SENSOR, default=_cfg_value(current, CONF_OUTDOOR_TEMPERATURE_SENSOR)): str,
-            vol.Required(CONF_TARGET_SAVING_HELPER, default=_cfg_value(current, CONF_TARGET_SAVING_HELPER)): str,
-            vol.Required(CONF_TARGET_COMFORT_HELPER, default=_cfg_value(current, CONF_TARGET_COMFORT_HELPER)): str,
-            vol.Required(CONF_TARGET_FINAL_HELPER, default=_cfg_value(current, CONF_TARGET_FINAL_HELPER)): str,
-            vol.Required(CONF_FALLBACK_ACTIVE_BOOLEAN, default=_cfg_value(current, CONF_FALLBACK_ACTIVE_BOOLEAN)): str,
-            vol.Required(CONF_ELECTRIC_FALLBACK_LAST_TRIGGER, default=_cfg_value(current, CONF_ELECTRIC_FALLBACK_LAST_TRIGGER)): str,
-            vol.Required(CONF_CONTROL_NUMBER_ENTITY, default=_cfg_value(current, CONF_CONTROL_NUMBER_ENTITY)): str,
-            vol.Optional(CONF_PV_SENSOR, default=_cfg_value(current, CONF_PV_SENSOR)): str,
-            vol.Optional(CONF_FLOOR_TEMP_SENSOR, default=_cfg_value(current, CONF_FLOOR_TEMP_SENSOR)): str,
-            vol.Optional(CONF_ENABLE_DAIKIN_CONSUMER, default=_cfg_value(current, CONF_ENABLE_DAIKIN_CONSUMER)): bool,
-            vol.Optional(CONF_DAIKIN_CLIMATE_ENTITY, default=_cfg_value(current, CONF_DAIKIN_CLIMATE_ENTITY)): str,
-            vol.Optional(CONF_DAIKIN_OUTDOOR_TEMP_SENSOR, default=_cfg_value(current, CONF_DAIKIN_OUTDOOR_TEMP_SENSOR)): str,
-            vol.Optional(CONF_ENABLE_FLOOR_CONSUMER, default=_cfg_value(current, CONF_ENABLE_FLOOR_CONSUMER)): bool,
-            vol.Optional(CONF_FLOOR_CLIMATE_ENTITY, default=_cfg_value(current, CONF_FLOOR_CLIMATE_ENTITY)): str,
-            vol.Optional(CONF_FLOOR_COMFORT_SCHEDULE, default=_cfg_value(current, CONF_FLOOR_COMFORT_SCHEDULE)): str,
+            _required_marker(current, CONF_TARGET_BOOLEAN): _entity_selector("input_boolean"),
+            _required_marker(current, CONF_NORDPOOL_PRICE): _entity_selector("sensor"),
+            _required_marker(current, CONF_COMFORT_ROOM_1_SENSOR): _entity_selector("sensor"),
+            _required_marker(current, CONF_COMFORT_ROOM_2_SENSOR): _entity_selector("sensor"),
+            _required_marker(current, CONF_STORAGE_ROOM_SENSOR): _entity_selector("sensor"),
+            _required_marker(current, CONF_OUTDOOR_TEMPERATURE_SENSOR): _entity_selector("sensor"),
+            _required_marker(current, CONF_TARGET_SAVING_HELPER): _entity_selector("input_number"),
+            _required_marker(current, CONF_TARGET_COMFORT_HELPER): _entity_selector("input_number"),
+            _required_marker(current, CONF_TARGET_FINAL_HELPER): _entity_selector("input_number"),
+            _required_marker(current, CONF_FALLBACK_ACTIVE_BOOLEAN): _entity_selector("input_boolean"),
+            _required_marker(current, CONF_ELECTRIC_FALLBACK_LAST_TRIGGER): _entity_selector("input_datetime"),
+            _required_marker(current, CONF_CONTROL_NUMBER_ENTITY): _entity_selector("number"),
+            _optional_marker(current, CONF_PV_SENSOR): _entity_selector("sensor"),
+            _optional_marker(current, CONF_FLOOR_TEMP_SENSOR): _entity_selector("sensor"),
+            _optional_marker(current, CONF_ENABLE_DAIKIN_CONSUMER): bool,
+            _optional_marker(current, CONF_DAIKIN_CLIMATE_ENTITY): _entity_selector("climate"),
+            _optional_marker(current, CONF_DAIKIN_OUTDOOR_TEMP_SENSOR): _entity_selector("sensor"),
+            _optional_marker(current, CONF_ENABLE_FLOOR_CONSUMER): bool,
+            _optional_marker(current, CONF_FLOOR_CLIMATE_ENTITY): _entity_selector("climate"),
+            _optional_marker(current, CONF_FLOOR_COMFORT_SCHEDULE): _entity_selector(["schedule", "input_boolean"]),
         }
     )
 
