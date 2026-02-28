@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import importlib.util
-import sys
 from datetime import UTC, datetime, timedelta
+import importlib.util
 from pathlib import Path
+import sys
 
 import pytest
 
@@ -130,13 +130,7 @@ def test_saving_target_uses_virtual_at_warm_boundary() -> None:
 
 
 @pytest.mark.parametrize(
-    (
-        "outdoor_temp",
-        "heatpump_setpoint",
-        "saving_cold_offset_c",
-        "virtual_temperature",
-        "expected",
-    ),
+    ("outdoor_temp", "heatpump_setpoint", "saving_cold_offset_c", "virtual_temperature", "expected"),
     [
         (-30.0, 5.0, 10.0, 40.0, 10.0),
         (99.0, 30.0, 10.0, 40.0, 26.0),
@@ -202,7 +196,93 @@ def test_comfort_boost_saturates_at_max() -> None:
         control_max_c=26.0,
     )
     assert result.boost_clamped == 3.0
-    assert result.target == 17.0
+    assert result.target == 23.0
+
+
+def test_comfort_colder_outdoor_increases_target() -> None:
+    at_threshold = compute_comfort_target(
+        room1_temp=21.0,
+        room2_temp=21.0,
+        storage_temp=24.0,
+        outdoor_temp=0.0,
+        comfort_target_c=22.0,
+        comfort_to_heatpump_offset_c=2.0,
+        storage_target_c=25.0,
+        storage_to_heatpump_offset_c=2.0,
+        maintenance_target_c=20.0,
+        comfort_margin_c=0.2,
+        cold_threshold=0.0,
+        max_boost=3.0,
+        boost_slope_c=5.0,
+        control_min_c=10.0,
+        control_max_c=26.0,
+    )
+    colder = compute_comfort_target(
+        room1_temp=21.0,
+        room2_temp=21.0,
+        storage_temp=24.0,
+        outdoor_temp=-5.0,
+        comfort_target_c=22.0,
+        comfort_to_heatpump_offset_c=2.0,
+        storage_target_c=25.0,
+        storage_to_heatpump_offset_c=2.0,
+        maintenance_target_c=20.0,
+        comfort_margin_c=0.2,
+        cold_threshold=0.0,
+        max_boost=3.0,
+        boost_slope_c=5.0,
+        control_min_c=10.0,
+        control_max_c=26.0,
+    )
+    assert at_threshold.boost_clamped == 0.0
+    assert colder.boost_clamped == 1.0
+    assert colder.target == at_threshold.target + 1.0
+
+
+def test_comfort_storage_path_is_boosted_when_comfort_satisfied() -> None:
+    result = compute_comfort_target(
+        room1_temp=22.4,
+        room2_temp=22.3,
+        storage_temp=20.0,
+        outdoor_temp=-10.0,
+        comfort_target_c=22.0,
+        comfort_to_heatpump_offset_c=2.0,
+        storage_target_c=25.0,
+        storage_to_heatpump_offset_c=2.0,
+        maintenance_target_c=20.0,
+        comfort_margin_c=0.2,
+        cold_threshold=0.0,
+        max_boost=3.0,
+        boost_slope_c=5.0,
+        control_min_c=10.0,
+        control_max_c=26.0,
+    )
+    assert result.boost_clamped == 2.0
+    assert result.comfort_target_unclamped == 22.0
+    assert result.storage_target_unclamped == 25.0
+    assert result.target == 25.0
+
+
+def test_comfort_extreme_cold_clamps_to_control_max() -> None:
+    result = compute_comfort_target(
+        room1_temp=20.0,
+        room2_temp=20.0,
+        storage_temp=20.0,
+        outdoor_temp=-100.0,
+        comfort_target_c=22.0,
+        comfort_to_heatpump_offset_c=2.0,
+        storage_target_c=25.0,
+        storage_to_heatpump_offset_c=2.0,
+        maintenance_target_c=20.0,
+        comfort_margin_c=0.2,
+        cold_threshold=0.0,
+        max_boost=10.0,
+        boost_slope_c=1.0,
+        control_min_c=10.0,
+        control_max_c=26.0,
+    )
+    assert result.boost_clamped == 10.0
+    assert result.target == 26.0
 
 
 def test_comfort_missing_room_sensor_forces_unsatisfied_path() -> None:
