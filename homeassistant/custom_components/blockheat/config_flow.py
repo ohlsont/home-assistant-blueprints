@@ -72,6 +72,7 @@ from .const import (
     DOMAIN,
     REQUIRED_ENTITY_KEYS,
 )
+from .validation import validate_tuning_values
 
 
 def _cfg_value(data: dict[str, Any], key: str) -> Any:
@@ -96,6 +97,14 @@ def _optional_marker(current: dict[str, Any], key: str) -> vol.Optional:
 
 def _entity_selector(domains: str | list[str]) -> selector.EntitySelector:
     return selector.EntitySelector(selector.EntitySelectorConfig(domain=domains))
+
+
+def _bounded_float(min_value: float, max_value: float) -> Any:
+    return vol.All(vol.Coerce(float), vol.Range(min=min_value, max=max_value))
+
+
+def _bounded_int(min_value: int, max_value: int) -> Any:
+    return vol.All(vol.Coerce(int), vol.Range(min=min_value, max=max_value))
 
 
 def _user_schema(current: dict[str, Any]) -> vol.Schema:
@@ -163,128 +172,128 @@ def _tuning_schema(current: dict[str, Any]) -> vol.Schema:
             vol.Required(
                 CONF_MINUTES_TO_BLOCK,
                 default=_cfg_value(current, CONF_MINUTES_TO_BLOCK),
-            ): vol.Coerce(int),
+            ): _bounded_int(0, 1440),
             vol.Required(
                 CONF_PRICE_IGNORE_BELOW,
                 default=_cfg_value(current, CONF_PRICE_IGNORE_BELOW),
-            ): vol.Coerce(float),
+            ): _bounded_float(0, 100),
             vol.Required(
                 CONF_PV_IGNORE_ABOVE_W,
                 default=_cfg_value(current, CONF_PV_IGNORE_ABOVE_W),
-            ): vol.Coerce(float),
+            ): _bounded_float(0, 1_000_000),
             vol.Required(
                 CONF_MIN_FLOOR_TEMP, default=_cfg_value(current, CONF_MIN_FLOOR_TEMP)
-            ): vol.Coerce(float),
+            ): _bounded_float(-50, 50),
             vol.Required(
                 CONF_MIN_TOGGLE_INTERVAL_MIN,
                 default=_cfg_value(current, CONF_MIN_TOGGLE_INTERVAL_MIN),
-            ): vol.Coerce(int),
+            ): _bounded_int(0, 720),
             vol.Required(
                 CONF_HEATPUMP_SETPOINT,
                 default=_cfg_value(current, CONF_HEATPUMP_SETPOINT),
-            ): vol.Coerce(float),
+            ): _bounded_float(0, 50),
             vol.Required(
                 CONF_SAVING_COLD_OFFSET_C,
                 default=_cfg_value(current, CONF_SAVING_COLD_OFFSET_C),
-            ): vol.Coerce(float),
+            ): _bounded_float(0, 20),
             vol.Required(
                 CONF_VIRTUAL_TEMPERATURE,
                 default=_cfg_value(current, CONF_VIRTUAL_TEMPERATURE),
-            ): vol.Coerce(float),
+            ): _bounded_float(0, 50),
             vol.Required(
                 CONF_ENERGY_SAVING_WARM_SHUTDOWN_OUTDOOR,
                 default=_cfg_value(current, CONF_ENERGY_SAVING_WARM_SHUTDOWN_OUTDOOR),
-            ): vol.Coerce(float),
+            ): _bounded_float(-50, 50),
             vol.Required(
                 CONF_COMFORT_TARGET_C,
                 default=_cfg_value(current, CONF_COMFORT_TARGET_C),
-            ): vol.Coerce(float),
+            ): _bounded_float(0, 50),
             vol.Required(
                 CONF_COMFORT_TO_HEATPUMP_OFFSET_C,
                 default=_cfg_value(current, CONF_COMFORT_TO_HEATPUMP_OFFSET_C),
-            ): vol.Coerce(float),
+            ): _bounded_float(0, 20),
             vol.Required(
                 CONF_STORAGE_TARGET_C,
                 default=_cfg_value(current, CONF_STORAGE_TARGET_C),
-            ): vol.Coerce(float),
+            ): _bounded_float(0, 60),
             vol.Required(
                 CONF_STORAGE_TO_HEATPUMP_OFFSET_C,
                 default=_cfg_value(current, CONF_STORAGE_TO_HEATPUMP_OFFSET_C),
-            ): vol.Coerce(float),
+            ): _bounded_float(0, 20),
             vol.Required(
                 CONF_MAINTENANCE_TARGET_C,
                 default=_cfg_value(current, CONF_MAINTENANCE_TARGET_C),
-            ): vol.Coerce(float),
+            ): _bounded_float(0, 50),
             vol.Required(
                 CONF_COMFORT_MARGIN_C,
                 default=_cfg_value(current, CONF_COMFORT_MARGIN_C),
-            ): vol.Coerce(float),
+            ): _bounded_float(0, 5),
             vol.Required(
                 CONF_COLD_THRESHOLD, default=_cfg_value(current, CONF_COLD_THRESHOLD)
-            ): vol.Coerce(float),
+            ): _bounded_float(-50, 30),
             vol.Required(
                 CONF_MAX_BOOST, default=_cfg_value(current, CONF_MAX_BOOST)
-            ): vol.Coerce(float),
+            ): _bounded_float(0, 20),
             vol.Required(
                 CONF_BOOST_SLOPE_C, default=_cfg_value(current, CONF_BOOST_SLOPE_C)
-            ): vol.Coerce(float),
+            ): _bounded_float(0.01, 100),
             vol.Required(
                 CONF_CONTROL_MIN_C, default=_cfg_value(current, CONF_CONTROL_MIN_C)
-            ): vol.Coerce(float),
+            ): _bounded_float(0, 50),
             vol.Required(
                 CONF_CONTROL_MAX_C, default=_cfg_value(current, CONF_CONTROL_MAX_C)
-            ): vol.Coerce(float),
+            ): _bounded_float(0, 50),
             vol.Required(
                 CONF_SAVING_HELPER_WRITE_DELTA_C,
                 default=_cfg_value(current, CONF_SAVING_HELPER_WRITE_DELTA_C),
-            ): vol.Coerce(float),
+            ): _bounded_float(0, 5),
             vol.Required(
                 CONF_COMFORT_HELPER_WRITE_DELTA_C,
                 default=_cfg_value(current, CONF_COMFORT_HELPER_WRITE_DELTA_C),
-            ): vol.Coerce(float),
+            ): _bounded_float(0, 5),
             vol.Required(
                 CONF_FINAL_HELPER_WRITE_DELTA_C,
                 default=_cfg_value(current, CONF_FINAL_HELPER_WRITE_DELTA_C),
-            ): vol.Coerce(float),
+            ): _bounded_float(0, 5),
             vol.Required(
                 CONF_CONTROL_WRITE_DELTA_C,
                 default=_cfg_value(current, CONF_CONTROL_WRITE_DELTA_C),
-            ): vol.Coerce(float),
+            ): _bounded_float(0, 5),
             vol.Required(
                 CONF_ELECTRIC_FALLBACK_DELTA_C,
                 default=_cfg_value(current, CONF_ELECTRIC_FALLBACK_DELTA_C),
-            ): vol.Coerce(float),
+            ): _bounded_float(0, 20),
             vol.Required(
                 CONF_RELEASE_DELTA_C, default=_cfg_value(current, CONF_RELEASE_DELTA_C)
-            ): vol.Coerce(float),
+            ): _bounded_float(0, 20),
             vol.Required(
                 CONF_ELECTRIC_FALLBACK_MINUTES,
                 default=_cfg_value(current, CONF_ELECTRIC_FALLBACK_MINUTES),
-            ): vol.Coerce(int),
+            ): _bounded_int(0, 1440),
             vol.Required(
                 CONF_ELECTRIC_FALLBACK_COOLDOWN_MINUTES,
                 default=_cfg_value(current, CONF_ELECTRIC_FALLBACK_COOLDOWN_MINUTES),
-            ): vol.Coerce(int),
+            ): _bounded_int(0, 1440),
             vol.Required(
                 CONF_DAIKIN_NORMAL_TEMPERATURE,
                 default=_cfg_value(current, CONF_DAIKIN_NORMAL_TEMPERATURE),
-            ): vol.Coerce(float),
+            ): _bounded_float(0, 50),
             vol.Required(
                 CONF_DAIKIN_SAVING_TEMPERATURE,
                 default=_cfg_value(current, CONF_DAIKIN_SAVING_TEMPERATURE),
-            ): vol.Coerce(float),
+            ): _bounded_float(0, 50),
             vol.Required(
                 CONF_DAIKIN_OUTDOOR_TEMP_THRESHOLD,
                 default=_cfg_value(current, CONF_DAIKIN_OUTDOOR_TEMP_THRESHOLD),
-            ): vol.Coerce(float),
+            ): _bounded_float(-50, 50),
             vol.Required(
                 CONF_DAIKIN_MIN_TEMP_CHANGE,
                 default=_cfg_value(current, CONF_DAIKIN_MIN_TEMP_CHANGE),
-            ): vol.Coerce(float),
+            ): _bounded_float(0, 20),
             vol.Required(
                 CONF_FLOOR_COMFORT_TEMP_C,
                 default=_cfg_value(current, CONF_FLOOR_COMFORT_TEMP_C),
-            ): vol.Coerce(float),
+            ): _bounded_float(0, 50),
             vol.Required(
                 CONF_FLOOR_PREFER_PRESET_MANUAL,
                 default=_cfg_value(current, CONF_FLOOR_PREFER_PRESET_MANUAL),
@@ -304,7 +313,7 @@ def _tuning_schema(current: dict[str, Any]) -> vol.Schema:
             vol.Required(
                 CONF_FLOOR_MIN_SWITCH_INTERVAL_MIN,
                 default=_cfg_value(current, CONF_FLOOR_MIN_SWITCH_INTERVAL_MIN),
-            ): vol.Coerce(int),
+            ): _bounded_int(0, 720),
         }
     )
 
@@ -347,13 +356,21 @@ class BlockheatConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ig
     async def async_step_tuning(
         self, user_input: dict[str, Any] | None = None
     ) -> dict[str, Any]:
+        errors: dict[str, str] = {}
+        current = {**DEFAULTS, **self._entity_data}
+
         if user_input is not None:
             data = {**DEFAULTS, **self._entity_data, **user_input}
-            return self.async_create_entry(title="Blockheat", data=data)
+            validation_error = validate_tuning_values(data)
+            if validation_error:
+                errors["base"] = validation_error
+            else:
+                return self.async_create_entry(title="Blockheat", data=data)
 
         return self.async_show_form(
             step_id="tuning",
-            data_schema=_tuning_schema({**DEFAULTS, **self._entity_data}),
+            data_schema=_tuning_schema(current),
+            errors=errors,
         )
 
     @staticmethod
@@ -397,11 +414,18 @@ class BlockheatOptionsFlow(config_entries.OptionsFlow):
             **self._config_entry.options,
             **self._entity_data,
         }
+        errors: dict[str, str] = {}
 
         if user_input is not None:
             options = {**current, **user_input}
-            return self.async_create_entry(title="", data=options)
+            validation_error = validate_tuning_values(options)
+            if validation_error:
+                errors["base"] = validation_error
+            else:
+                return self.async_create_entry(title="", data=options)
 
         return self.async_show_form(
-            step_id="tuning", data_schema=_tuning_schema(current)
+            step_id="tuning",
+            data_schema=_tuning_schema(current),
+            errors=errors,
         )
