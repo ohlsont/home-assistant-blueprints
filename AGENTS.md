@@ -8,6 +8,8 @@
 - Start every thread in a dedicated git worktree and branch (branch prefix: `codex/`).
 - Do all edits, tests, and commits inside that worktree, not in the primary checkout.
 - When implementation is complete, open a pull request before marking the thread done.
+- After opening the PR, monitor CI/checks until they pass (or explicitly note that no checks are configured).
+- Before closing the thread, verify whether behavior/input changes require documentation updates and apply them.
 - Keep PRs focused to the thread scope and include verification results in the PR body.
 
 ## Editing preferences
