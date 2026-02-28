@@ -698,7 +698,7 @@ class BlockheatRuntime:
 
         parsed = dt_util.parse_datetime(state.state)
         if parsed is not None:
-            return parsed
+            return dt_util.as_utc(parsed)
 
         ts = as_float(state.state)
         if ts is not None:
