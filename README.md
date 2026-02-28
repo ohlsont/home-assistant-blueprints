@@ -113,6 +113,27 @@ Config tuning validation:
 - The config entry tuning step enforces bounded numeric ranges and rejects
   invalid cross-field combinations such as `control_min_c > control_max_c`.
 
+### Code Quality
+Install dev dependencies and hooks:
+
+```bash
+uv sync --group dev
+uv run pre-commit install
+```
+
+Run local quality checks:
+
+```bash
+uv run ruff format --check custom_components homeassistant tests
+uv run ruff check custom_components homeassistant tests
+uv run mypy
+uv run pre-commit run --all-files
+```
+
+CI workflow split:
+- `.github/workflows/tests.yml`: test suite + coverage gate.
+- `.github/workflows/quality.yml`: Ruff format/lint + mypy.
+
 ### Compatibility Contract (v1)
 The integration keeps these helper ids as the stable interface:
 
