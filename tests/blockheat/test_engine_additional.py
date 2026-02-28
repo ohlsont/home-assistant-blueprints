@@ -130,7 +130,13 @@ def test_saving_target_uses_virtual_at_warm_boundary() -> None:
 
 
 @pytest.mark.parametrize(
-    ("outdoor_temp", "heatpump_setpoint", "saving_cold_offset_c", "virtual_temperature", "expected"),
+    (
+        "outdoor_temp",
+        "heatpump_setpoint",
+        "saving_cold_offset_c",
+        "virtual_temperature",
+        "expected",
+    ),
     [
         (-30.0, 5.0, 10.0, 40.0, 10.0),
         (99.0, 30.0, 10.0, 40.0, 26.0),
