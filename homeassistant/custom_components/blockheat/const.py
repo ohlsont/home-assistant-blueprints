@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 DOMAIN = "blockheat"
-PLATFORMS: list[str] = []
+PLATFORMS: list[str] = ["sensor", "binary_sensor"]
 
 CONF_TARGET_BOOLEAN = "target_boolean"
 CONF_NORDPOOL_PRICE = "nordpool_price"
@@ -82,6 +82,7 @@ SERVICE_DUMP_DIAGNOSTICS = "dump_diagnostics"
 DEFAULT_RECOMPUTE_MINUTES = 5
 DEFAULT_HELPER_WRITE_DELTA_C = 0.05
 DEFAULT_CONTROL_WRITE_DELTA_C = 0.2
+SNAPSHOT_SCHEMA_VERSION = 1
 
 DEFAULTS: dict[str, object] = {
     CONF_MINUTES_TO_BLOCK: 240,

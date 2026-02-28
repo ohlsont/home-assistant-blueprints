@@ -212,6 +212,7 @@ class FakeHass:
         self.states = FakeStates()
         self.services = FakeServices(self, service_not_found_cls)
         self.bus = FakeBus()
+        self.config_entries = FakeConfigEntries()
         self.state_trackers: list[dict[str, Any]] = []
         self.interval_trackers: list[dict[str, Any]] = []
         self.later_calls: list[dict[str, Any]] = []
@@ -243,6 +244,23 @@ class FakeConfigEntry:
             self._listener_unsubscribed = True
 
         return _unsub
+
+
+class FakeConfigEntries:
+    def __init__(self) -> None:
+        self.forward_calls: list[tuple[str, tuple[str, ...]]] = []
+        self.unload_calls: list[tuple[str, tuple[str, ...]]] = []
+
+    async def async_forward_entry_setups(
+        self, entry: FakeConfigEntry, platforms: list[str]
+    ) -> None:
+        self.forward_calls.append((entry.entry_id, tuple(platforms)))
+
+    async def async_unload_platforms(
+        self, entry: FakeConfigEntry, platforms: list[str]
+    ) -> bool:
+        self.unload_calls.append((entry.entry_id, tuple(platforms)))
+        return True
 
 
 class FakeConfigFlow:
@@ -313,6 +331,27 @@ class FakeDataUpdateCoordinator:
         self.data = data
 
 
+class FakeCoordinatorEntity:
+    @classmethod
+    def __class_getitem__(cls, item: Any) -> type[FakeCoordinatorEntity]:
+        return cls
+
+    def __init__(self, coordinator: FakeDataUpdateCoordinator) -> None:
+        self.coordinator = coordinator
+
+
+class FakeEntityCategory:
+    DIAGNOSTIC = "diagnostic"
+
+
+class FakeSensorEntity:
+    pass
+
+
+class FakeBinarySensorEntity:
+    pass
+
+
 def _parse_datetime(value: Any) -> datetime | None:
     if value is None:
         return None
@@ -360,6 +399,15 @@ def blockheat_env(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
         "homeassistant.helpers.update_coordinator"
     )
     update_coordinator_module.DataUpdateCoordinator = FakeDataUpdateCoordinator
+    update_coordinator_module.CoordinatorEntity = FakeCoordinatorEntity
+    entity_module = types.ModuleType("homeassistant.helpers.entity")
+    entity_module.EntityCategory = FakeEntityCategory
+    components_module = types.ModuleType("homeassistant.components")
+    components_module.__path__ = []
+    sensor_module = types.ModuleType("homeassistant.components.sensor")
+    sensor_module.SensorEntity = FakeSensorEntity
+    binary_sensor_module = types.ModuleType("homeassistant.components.binary_sensor")
+    binary_sensor_module.BinarySensorEntity = FakeBinarySensorEntity
 
     class FakeEntitySelectorConfig:
         def __init__(self, *, domain: str | list[str] | None = None) -> None:
@@ -428,10 +476,16 @@ def blockheat_env(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
     monkeypatch.setitem(sys.modules, "homeassistant.helpers", helpers_module)
     monkeypatch.setitem(sys.modules, "homeassistant.helpers.event", event_module)
     monkeypatch.setitem(sys.modules, "homeassistant.helpers.selector", selector_module)
+    monkeypatch.setitem(sys.modules, "homeassistant.helpers.entity", entity_module)
     monkeypatch.setitem(
         sys.modules,
         "homeassistant.helpers.update_coordinator",
         update_coordinator_module,
+    )
+    monkeypatch.setitem(sys.modules, "homeassistant.components", components_module)
+    monkeypatch.setitem(sys.modules, "homeassistant.components.sensor", sensor_module)
+    monkeypatch.setitem(
+        sys.modules, "homeassistant.components.binary_sensor", binary_sensor_module
     )
     monkeypatch.setitem(sys.modules, "homeassistant.util", util_module)
     monkeypatch.setitem(sys.modules, "homeassistant.util.dt", dt_module)

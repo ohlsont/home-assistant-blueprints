@@ -50,6 +50,27 @@ cards:
       **Control number (current)**: {{ control_current | round(2) if control_current is number else 'unknown' }} °C
 
       **Final - control delta**: {{ control_delta if control_delta is not none else 'unknown' }} °C
+      ---
+      **Policy price / cutoff**: {{ states('sensor.blockheat_policy_price') }} / {{ states('sensor.blockheat_policy_cutoff') }}
+      **Policy transition**: {{ states('sensor.blockheat_policy_transition') }}
+      **Final source**: {{ states('sensor.blockheat_final_source') }}
+      **Fallback comfort min / trigger / release**:
+      {{ states('sensor.blockheat_fallback_comfort_min') }} /
+      {{ states('sensor.blockheat_fallback_trigger_threshold') }} /
+      {{ states('sensor.blockheat_fallback_release_threshold') }}
+      **Control write delta**: {{ states('sensor.blockheat_control_write_delta') }}
+      **Daikin action**: {{ states('sensor.blockheat_daikin_action') }}
+      **Floor action**: {{ states('sensor.blockheat_floor_action') }}
+      **Policy flags**:
+      blocked={{ states('binary_sensor.blockheat_policy_blocked_now') }},
+      ignore_price={{ states('binary_sensor.blockheat_policy_ignore_by_price') }},
+      ignore_pv={{ states('binary_sensor.blockheat_policy_ignore_by_pv') }},
+      below_min_floor={{ states('binary_sensor.blockheat_policy_below_min_floor') }},
+      enough_time={{ states('binary_sensor.blockheat_policy_enough_time_passed') }}
+      **Fallback flags**:
+      arm={{ states('binary_sensor.blockheat_fallback_arm_condition') }},
+      cooldown_ok={{ states('binary_sensor.blockheat_fallback_cooldown_ok') }}
+      **Control write applied**: {{ states('binary_sensor.blockheat_control_write_applied') }}
       {% endif %}
 
   - type: custom:apexcharts-card
@@ -134,3 +155,39 @@ cards:
         name: Control temperature
       - entity: input_datetime.block_heat_fallback_last_trigger
         name: Fallback last trigger
+      - entity: sensor.blockheat_policy_price
+        name: Diagnostics policy price
+      - entity: sensor.blockheat_policy_cutoff
+        name: Diagnostics policy cutoff
+      - entity: sensor.blockheat_policy_transition
+        name: Diagnostics policy transition
+      - entity: sensor.blockheat_final_source
+        name: Diagnostics final source
+      - entity: sensor.blockheat_fallback_comfort_min
+        name: Diagnostics fallback comfort min
+      - entity: sensor.blockheat_fallback_trigger_threshold
+        name: Diagnostics fallback trigger threshold
+      - entity: sensor.blockheat_fallback_release_threshold
+        name: Diagnostics fallback release threshold
+      - entity: sensor.blockheat_control_write_delta
+        name: Diagnostics control write delta
+      - entity: sensor.blockheat_daikin_action
+        name: Diagnostics daikin action
+      - entity: sensor.blockheat_floor_action
+        name: Diagnostics floor action
+      - entity: binary_sensor.blockheat_policy_blocked_now
+        name: Diagnostics policy blocked now
+      - entity: binary_sensor.blockheat_policy_ignore_by_price
+        name: Diagnostics policy ignore by price
+      - entity: binary_sensor.blockheat_policy_ignore_by_pv
+        name: Diagnostics policy ignore by pv
+      - entity: binary_sensor.blockheat_policy_below_min_floor
+        name: Diagnostics policy below min floor
+      - entity: binary_sensor.blockheat_policy_enough_time_passed
+        name: Diagnostics policy enough time passed
+      - entity: binary_sensor.blockheat_fallback_arm_condition
+        name: Diagnostics fallback arm condition
+      - entity: binary_sensor.blockheat_fallback_cooldown_ok
+        name: Diagnostics fallback cooldown ok
+      - entity: binary_sensor.blockheat_control_write_applied
+        name: Diagnostics control write applied
