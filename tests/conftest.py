@@ -206,12 +206,28 @@ class FakeBus:
         return _unsub
 
 
+class FakeConfigEntriesManager:
+    def __init__(self) -> None:
+        self.forward_calls: list[tuple[str, tuple[str, ...]]] = []
+        self.unload_calls: list[tuple[str, tuple[str, ...]]] = []
+
+    async def async_forward_entry_setups(
+        self, entry: Any, platforms: list[str]
+    ) -> None:
+        self.forward_calls.append((entry.entry_id, tuple(platforms)))
+
+    async def async_unload_platforms(self, entry: Any, platforms: list[str]) -> bool:
+        self.unload_calls.append((entry.entry_id, tuple(platforms)))
+        return True
+
+
 class FakeHass:
     def __init__(self, service_not_found_cls: type[Exception]) -> None:
         self.data: dict[str, Any] = {}
         self.states = FakeStates()
         self.services = FakeServices(self, service_not_found_cls)
         self.bus = FakeBus()
+        self.config_entries = FakeConfigEntriesManager()
         self.state_trackers: list[dict[str, Any]] = []
         self.interval_trackers: list[dict[str, Any]] = []
         self.later_calls: list[dict[str, Any]] = []
@@ -356,6 +372,7 @@ def blockheat_env(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
     helpers_module.__path__ = []
     event_module = types.ModuleType("homeassistant.helpers.event")
     selector_module = types.ModuleType("homeassistant.helpers.selector")
+    storage_module = types.ModuleType("homeassistant.helpers.storage")
     update_coordinator_module = types.ModuleType(
         "homeassistant.helpers.update_coordinator"
     )
@@ -374,6 +391,26 @@ def blockheat_env(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
 
     selector_module.EntitySelectorConfig = FakeEntitySelectorConfig
     selector_module.EntitySelector = FakeEntitySelector
+
+    class FakeStore:
+        @classmethod
+        def __class_getitem__(cls, item: Any) -> type[FakeStore]:
+            return cls
+
+        _items: dict[str, Any] = {}
+
+        def __init__(self, hass: FakeHass, version: int, key: str) -> None:
+            self.hass = hass
+            self.version = version
+            self.key = key
+
+        async def async_load(self) -> Any:
+            return self._items.get(self.key)
+
+        async def async_save(self, data: Any) -> None:
+            self._items[self.key] = data
+
+    storage_module.Store = FakeStore
 
     util_module = types.ModuleType("homeassistant.util")
     util_module.__path__ = []
@@ -428,6 +465,7 @@ def blockheat_env(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
     monkeypatch.setitem(sys.modules, "homeassistant.helpers", helpers_module)
     monkeypatch.setitem(sys.modules, "homeassistant.helpers.event", event_module)
     monkeypatch.setitem(sys.modules, "homeassistant.helpers.selector", selector_module)
+    monkeypatch.setitem(sys.modules, "homeassistant.helpers.storage", storage_module)
     monkeypatch.setitem(
         sys.modules,
         "homeassistant.helpers.update_coordinator",
@@ -490,17 +528,11 @@ def build_config(blockheat_env: SimpleNamespace) -> Any:
     const = blockheat_env.const
 
     required_entities = {
-        const.CONF_TARGET_BOOLEAN: "input_boolean.block_heat_energy_saving",
         const.CONF_NORDPOOL_PRICE: "sensor.nordpool_price",
         const.CONF_COMFORT_ROOM_1_SENSOR: "sensor.comfort_room_1",
         const.CONF_COMFORT_ROOM_2_SENSOR: "sensor.comfort_room_2",
         const.CONF_STORAGE_ROOM_SENSOR: "sensor.storage_room",
         const.CONF_OUTDOOR_TEMPERATURE_SENSOR: "sensor.outdoor_temp",
-        const.CONF_TARGET_SAVING_HELPER: "input_number.block_heat_target_saving",
-        const.CONF_TARGET_COMFORT_HELPER: "input_number.block_heat_target_comfort",
-        const.CONF_TARGET_FINAL_HELPER: "input_number.block_heat_target_final",
-        const.CONF_FALLBACK_ACTIVE_BOOLEAN: "input_boolean.block_heat_fallback_active",
-        const.CONF_ELECTRIC_FALLBACK_LAST_TRIGGER: "input_datetime.block_heat_fallback_last_trigger",
         const.CONF_CONTROL_NUMBER_ENTITY: "number.block_heat_control",
     }
 
@@ -537,9 +569,6 @@ def seed_runtime_states(blockheat_env: SimpleNamespace) -> Any:
     ) -> None:
         changed = datetime.now(UTC) - timedelta(hours=2)
         hass.states.set(
-            config[const.CONF_TARGET_BOOLEAN], policy_state, last_changed=changed
-        )
-        hass.states.set(
             config[const.CONF_NORDPOOL_PRICE],
             str(price),
             attributes={"today": prices_today or [1.0, 2.0, 3.0, 4.0]},
@@ -566,35 +595,60 @@ def seed_runtime_states(blockheat_env: SimpleNamespace) -> Any:
             last_changed=changed,
         )
         hass.states.set(
-            config[const.CONF_TARGET_SAVING_HELPER],
-            str(saving_target),
-            last_changed=changed,
-        )
-        hass.states.set(
-            config[const.CONF_TARGET_COMFORT_HELPER],
-            str(comfort_target),
-            last_changed=changed,
-        )
-        hass.states.set(
-            config[const.CONF_TARGET_FINAL_HELPER],
-            str(final_target),
-            last_changed=changed,
-        )
-        hass.states.set(
             config[const.CONF_CONTROL_NUMBER_ENTITY],
             str(control_value),
             last_changed=changed,
         )
-        hass.states.set(
-            config[const.CONF_FALLBACK_ACTIVE_BOOLEAN],
-            fallback_active,
-            last_changed=changed,
+
+        legacy_policy_entity = config.get(const.CONF_TARGET_BOOLEAN, "")
+        if legacy_policy_entity:
+            hass.states.set(
+                legacy_policy_entity,
+                policy_state,
+                last_changed=changed,
+            )
+
+        legacy_saving_entity = config.get(const.CONF_TARGET_SAVING_HELPER, "")
+        if legacy_saving_entity:
+            hass.states.set(
+                legacy_saving_entity,
+                str(saving_target),
+                last_changed=changed,
+            )
+
+        legacy_comfort_entity = config.get(const.CONF_TARGET_COMFORT_HELPER, "")
+        if legacy_comfort_entity:
+            hass.states.set(
+                legacy_comfort_entity,
+                str(comfort_target),
+                last_changed=changed,
+            )
+
+        legacy_final_entity = config.get(const.CONF_TARGET_FINAL_HELPER, "")
+        if legacy_final_entity:
+            hass.states.set(
+                legacy_final_entity,
+                str(final_target),
+                last_changed=changed,
+            )
+
+        legacy_fallback_entity = config.get(const.CONF_FALLBACK_ACTIVE_BOOLEAN, "")
+        if legacy_fallback_entity:
+            hass.states.set(
+                legacy_fallback_entity,
+                fallback_active,
+                last_changed=changed,
+            )
+
+        legacy_fallback_last_trigger = config.get(
+            const.CONF_ELECTRIC_FALLBACK_LAST_TRIGGER, ""
         )
-        hass.states.set(
-            config[const.CONF_ELECTRIC_FALLBACK_LAST_TRIGGER],
-            fallback_last_trigger,
-            last_changed=changed,
-        )
+        if legacy_fallback_last_trigger:
+            hass.states.set(
+                legacy_fallback_last_trigger,
+                fallback_last_trigger,
+                last_changed=changed,
+            )
 
         pv_sensor = config.get(const.CONF_PV_SENSOR, "")
         if pv_sensor:

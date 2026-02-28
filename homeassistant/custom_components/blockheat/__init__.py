@@ -10,6 +10,7 @@ from homeassistant.core import HomeAssistant, ServiceCall
 
 from .const import (
     DOMAIN,
+    PLATFORMS,
     SERVICE_DUMP_DIAGNOSTICS,
     SERVICE_RECOMPUTE,
 )
@@ -35,7 +36,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     coordinator = BlockheatCoordinator(hass)
     config = {**entry.data, **entry.options}
-    runtime = BlockheatRuntime(hass, config, coordinator)
+    runtime = BlockheatRuntime(hass, entry.entry_id, config, coordinator)
     await runtime.async_setup()
 
     unsub_reload = entry.add_update_listener(async_reload_entry)
@@ -46,12 +47,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ENTRY_UNSUB_RELOAD: unsub_reload,
     }
 
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     await _async_register_services(hass)
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a Blockheat entry."""
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if not unload_ok:
+        return False
+
     entry_data = hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
     if not entry_data:
         return True

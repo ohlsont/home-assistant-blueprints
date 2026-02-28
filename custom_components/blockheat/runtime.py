@@ -714,12 +714,16 @@ class BlockheatRuntime:
             return
 
         self._state.policy_on = bool(raw.get(STATE_POLICY_ON, False))
-        self._state.policy_last_changed = self._parse_datetime_value(raw.get(STATE_POLICY_LAST_CHANGED))
+        self._state.policy_last_changed = self._parse_datetime_value(
+            raw.get(STATE_POLICY_LAST_CHANGED)
+        )
         self._state.target_saving = as_float(raw.get(STATE_TARGET_SAVING))
         self._state.target_comfort = as_float(raw.get(STATE_TARGET_COMFORT))
         self._state.target_final = as_float(raw.get(STATE_TARGET_FINAL))
         self._state.fallback_active = bool(raw.get(STATE_FALLBACK_ACTIVE, False))
-        self._state.fallback_last_trigger = self._parse_datetime_value(raw.get(STATE_FALLBACK_LAST_TRIGGER))
+        self._state.fallback_last_trigger = self._parse_datetime_value(
+            raw.get(STATE_FALLBACK_LAST_TRIGGER)
+        )
         self._last_saved_state = self._serialize_state()
 
     async def _async_save_state(self, force: bool = False) -> None:
@@ -740,20 +744,32 @@ class BlockheatRuntime:
                 self._state.policy_last_changed = policy_state.last_changed
 
         if self._state.target_saving is None:
-            self._state.target_saving = self._state_float(self._cfg_str(CONF_TARGET_SAVING_HELPER))
+            self._state.target_saving = self._state_float(
+                self._cfg_str(CONF_TARGET_SAVING_HELPER)
+            )
 
         if self._state.target_comfort is None:
-            self._state.target_comfort = self._state_float(self._cfg_str(CONF_TARGET_COMFORT_HELPER))
+            self._state.target_comfort = self._state_float(
+                self._cfg_str(CONF_TARGET_COMFORT_HELPER)
+            )
 
         if self._state.target_final is None:
-            self._state.target_final = self._state_float(self._cfg_str(CONF_TARGET_FINAL_HELPER))
+            self._state.target_final = self._state_float(
+                self._cfg_str(CONF_TARGET_FINAL_HELPER)
+            )
 
         if self._state.fallback_last_trigger is None:
-            legacy_last_trigger = self.hass.states.get(self._cfg_str(CONF_ELECTRIC_FALLBACK_LAST_TRIGGER))
+            legacy_last_trigger = self.hass.states.get(
+                self._cfg_str(CONF_ELECTRIC_FALLBACK_LAST_TRIGGER)
+            )
             if legacy_last_trigger is not None:
-                self._state.fallback_last_trigger = self._parse_datetime_value(legacy_last_trigger.state)
+                self._state.fallback_last_trigger = self._parse_datetime_value(
+                    legacy_last_trigger.state
+                )
 
-        legacy_fallback = self.hass.states.get(self._cfg_str(CONF_FALLBACK_ACTIVE_BOOLEAN))
+        legacy_fallback = self.hass.states.get(
+            self._cfg_str(CONF_FALLBACK_ACTIVE_BOOLEAN)
+        )
         if legacy_fallback is not None:
             self._state.fallback_active = legacy_fallback.state == "on"
 
@@ -787,7 +803,9 @@ class BlockheatRuntime:
 
         return None
 
-    def _state_float(self, entity_id: str, default: float | None = None) -> float | None:
+    def _state_float(
+        self, entity_id: str, default: float | None = None
+    ) -> float | None:
         if not entity_id:
             return default
         state = self.hass.states.get(entity_id)
