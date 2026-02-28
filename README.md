@@ -69,6 +69,15 @@ Notes:
 - Existing `unittest` test modules under `tests/blockheat/` are collected and run by `pytest`.
 - Shared fake Home Assistant test fixtures are defined in `tests/conftest.py`.
 
+Mirror sync guard:
+- Run `python3 scripts/check_component_mirror_sync.py` to verify that
+  `custom_components/blockheat` and `homeassistant/custom_components/blockheat`
+  are byte-identical when the mirror directory exists.
+
+Config tuning validation:
+- The config entry tuning step enforces bounded numeric ranges and rejects
+  invalid cross-field combinations such as `control_min_c > control_max_c`.
+
 ### Compatibility Contract (v1)
 The integration keeps these helper ids as the stable interface:
 
