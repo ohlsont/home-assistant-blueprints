@@ -14,7 +14,7 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 HOMEASSISTANT_DIR = REPO_ROOT / "homeassistant"
-CUSTOM_COMPONENTS_DIR = HOMEASSISTANT_DIR / "custom_components"
+CUSTOM_COMPONENTS_DIR = REPO_ROOT / "custom_components"
 
 
 @dataclass
@@ -448,6 +448,13 @@ def blockheat_env(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
     package_module = importlib.import_module(
         "homeassistant.custom_components.blockheat"
     )
+    package_path = Path(package_module.__file__).resolve()
+    expected_package_dir = (CUSTOM_COMPONENTS_DIR / "blockheat").resolve()
+    if expected_package_dir not in package_path.parents:
+        raise AssertionError(
+            "blockheat tests must load from installable custom_components tree: "
+            f"expected under {expected_package_dir}, got {package_path}"
+        )
     const = importlib.import_module("homeassistant.custom_components.blockheat.const")
     coordinator = importlib.import_module(
         "homeassistant.custom_components.blockheat.coordinator"
