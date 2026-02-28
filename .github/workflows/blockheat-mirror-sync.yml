@@ -1,0 +1,27 @@
+name: Blockheat Mirror Sync
+
+on:
+  pull_request:
+    paths:
+      - "custom_components/blockheat/**"
+      - "homeassistant/custom_components/blockheat/**"
+      - "scripts/check_component_mirror_sync.py"
+      - ".github/workflows/blockheat-mirror-sync.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "custom_components/blockheat/**"
+      - "homeassistant/custom_components/blockheat/**"
+      - "scripts/check_component_mirror_sync.py"
+      - ".github/workflows/blockheat-mirror-sync.yml"
+
+jobs:
+  mirror-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check Blockheat mirror sync
+        run: python3 scripts/check_component_mirror_sync.py
