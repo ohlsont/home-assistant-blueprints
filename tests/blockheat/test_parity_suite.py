@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, UTC
 import importlib.util
-from pathlib import Path
 import sys
 import unittest
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 ENGINE_MODULE = "homeassistant.custom_components.blockheat.engine"
