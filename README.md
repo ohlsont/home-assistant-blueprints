@@ -42,7 +42,7 @@ Daikin/floor consumers.
 4. Restart Home Assistant.
 5. Go to **Settings -> Devices & Services -> Add Integration** and add **Blockheat**.
 6. Complete both config steps:
-   - Step 1: entity mapping with searchable, domain-filtered entity pickers (policy sensors/helpers/control + optional consumers)
+   - Step 1: entity mapping with searchable, domain-filtered pickers (external source/control entities + optional consumers)
    - Step 2: tuning values (policy windows, target/fallback thresholds, deadbands)
 
 ### Install Manually to Home Assistant
@@ -58,7 +58,7 @@ Then in Home Assistant:
 2. Go to **Settings -> Devices & Services -> Add Integration**.
 3. Add **Blockheat**.
 4. Complete both config steps:
-   - Step 1: entity mapping with searchable, domain-filtered entity pickers (policy sensors/helpers/control + optional consumers)
+   - Step 1: entity mapping with searchable, domain-filtered pickers (external source/control entities + optional consumers)
    - Step 2: tuning values (policy windows, target/fallback thresholds, deadbands)
 
 ### Runtime Behavior (Current Integration)
@@ -135,13 +135,15 @@ CI workflow split:
 - `.github/workflows/quality.yml`: Ruff format/lint + mypy.
 
 ### Compatibility Contract (v1)
-The integration keeps these helper ids as the stable interface:
+The integration now owns internal policy/target/fallback state and exposes
+read-only entities as the stable interface:
 
-- `input_number.block_heat_target_saving`
-- `input_number.block_heat_target_comfort`
-- `input_number.block_heat_target_final`
-- `input_boolean.block_heat_fallback_active`
-- `input_datetime.block_heat_fallback_last_trigger`
+- `binary_sensor.blockheat_energy_saving_active`
+- `binary_sensor.blockheat_fallback_active`
+- `sensor.blockheat_target_saving`
+- `sensor.blockheat_target_comfort`
+- `sensor.blockheat_target_final`
+- `sensor.blockheat_fallback_last_trigger`
 
 Compatibility events:
 - `energy_saving_state_changed` (legacy compatibility)
@@ -163,7 +165,7 @@ Behavior note (cold boost correction):
 Cutover:
 1. Disable all Blockheat blueprint automations at once.
 2. Enable the Blockheat config entry.
-3. Verify helper writes and control number writes for at least one full periodic cycle.
+3. Verify internal Blockheat entities update and control number writes occur for at least one full periodic cycle.
 
 Rollback:
 1. Disable the Blockheat config entry.
@@ -304,11 +306,11 @@ Use these helper entity ids unless you have an existing naming convention:
 - Writes control number only when delta >= configured write threshold.
 
 ## Diagnostics Card
-A helper-driven diagnostics card is available at:
+A runtime-entity diagnostics card is available at:
 - `dashboards/blockheat/block-heat-diagnostics-card.yaml`
 
-The markdown card reads helper outputs and state routing directly from the final
-arbiter inputs. It does not duplicate target formulas.
+The markdown card reads Blockheat integration-owned entities directly
+(`binary_sensor.blockheat_*` and `sensor.blockheat_*`).
 
 To use it:
 1. Copy YAML into a Lovelace manual card or view YAML editor.
@@ -360,5 +362,5 @@ Default assumptions in the workbook:
 - Added 4 Block Heat blueprints with isolated responsibilities.
 - Final writer (`block-heat.yaml`) is the only Block Heat blueprint that calls
   `number.set_value` for the control number.
-- Diagnostics card now reads helper/module outputs instead of re-implementing
-  full control math.
+- Diagnostics card now reads integration-owned runtime entities instead of
+  re-implementing full control math.
