@@ -9,8 +9,11 @@ import pytest
 
 
 class _FakeRuntime:
-    def __init__(self, hass: Any, config: dict[str, Any], coordinator: Any) -> None:
+    def __init__(
+        self, hass: Any, entry_id: str, config: dict[str, Any], coordinator: Any
+    ) -> None:
         self.hass = hass
+        self.entry_id = entry_id
         self.config = config
         self.coordinator = coordinator
         self.setup_calls = 0

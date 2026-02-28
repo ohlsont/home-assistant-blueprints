@@ -106,11 +106,21 @@ def _user_schema(current: dict[str, Any]) -> vol.Schema:
     return vol.Schema(
         {
             _required_marker(current, CONF_NORDPOOL_PRICE): _entity_selector("sensor"),
-            _required_marker(current, CONF_COMFORT_ROOM_1_SENSOR): _entity_selector("sensor"),
-            _required_marker(current, CONF_COMFORT_ROOM_2_SENSOR): _entity_selector("sensor"),
-            _required_marker(current, CONF_STORAGE_ROOM_SENSOR): _entity_selector("sensor"),
-            _required_marker(current, CONF_OUTDOOR_TEMPERATURE_SENSOR): _entity_selector("sensor"),
-            _required_marker(current, CONF_CONTROL_NUMBER_ENTITY): _entity_selector("number"),
+            _required_marker(current, CONF_COMFORT_ROOM_1_SENSOR): _entity_selector(
+                "sensor"
+            ),
+            _required_marker(current, CONF_COMFORT_ROOM_2_SENSOR): _entity_selector(
+                "sensor"
+            ),
+            _required_marker(current, CONF_STORAGE_ROOM_SENSOR): _entity_selector(
+                "sensor"
+            ),
+            _required_marker(
+                current, CONF_OUTDOOR_TEMPERATURE_SENSOR
+            ): _entity_selector("sensor"),
+            _required_marker(current, CONF_CONTROL_NUMBER_ENTITY): _entity_selector(
+                "number"
+            ),
             _optional_marker(current, CONF_PV_SENSOR): _entity_selector("sensor"),
             _optional_marker(current, CONF_FLOOR_TEMP_SENSOR): _entity_selector(
                 "sensor"

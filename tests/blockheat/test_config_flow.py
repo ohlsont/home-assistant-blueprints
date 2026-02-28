@@ -18,17 +18,11 @@ def _schema_value(data_schema: Any, key: str) -> Any:
 
 def _step1_user_input(const: Any) -> dict[str, Any]:
     return {
-        const.CONF_TARGET_BOOLEAN: "input_boolean.block_heat_energy_saving",
         const.CONF_NORDPOOL_PRICE: "sensor.nordpool_price",
         const.CONF_COMFORT_ROOM_1_SENSOR: "sensor.comfort_room_1",
         const.CONF_COMFORT_ROOM_2_SENSOR: "sensor.comfort_room_2",
         const.CONF_STORAGE_ROOM_SENSOR: "sensor.storage_room",
         const.CONF_OUTDOOR_TEMPERATURE_SENSOR: "sensor.outdoor_temp",
-        const.CONF_TARGET_SAVING_HELPER: "input_number.block_heat_target_saving",
-        const.CONF_TARGET_COMFORT_HELPER: "input_number.block_heat_target_comfort",
-        const.CONF_TARGET_FINAL_HELPER: "input_number.block_heat_target_final",
-        const.CONF_FALLBACK_ACTIVE_BOOLEAN: "input_boolean.block_heat_fallback_active",
-        const.CONF_ELECTRIC_FALLBACK_LAST_TRIGGER: "input_datetime.block_heat_fallback_last_trigger",
         const.CONF_CONTROL_NUMBER_ENTITY: "number.block_heat_control",
         const.CONF_PV_SENSOR: "",
         const.CONF_FLOOR_TEMP_SENSOR: "",
@@ -59,7 +53,7 @@ async def test_config_flow_rejects_invalid_required_entity(
     const = blockheat_env.const
     flow = blockheat_env.config_flow.BlockheatConfigFlow()
     invalid = _step1_user_input(const)
-    invalid[const.CONF_TARGET_BOOLEAN] = "   "
+    invalid[const.CONF_CONTROL_NUMBER_ENTITY] = "   "
 
     result = await flow.async_step_user(invalid)
     assert result["type"] == "form"
@@ -88,9 +82,10 @@ async def test_config_flow_creates_entry_with_merged_data(
     assert result_step_2["data"][const.CONF_MINUTES_TO_BLOCK] == 300
     assert result_step_2["data"][const.CONF_COMFORT_TARGET_C] == 23.0
     assert (
-        result_step_2["data"][const.CONF_TARGET_BOOLEAN]
-        == "input_boolean.block_heat_energy_saving"
+        result_step_2["data"][const.CONF_CONTROL_NUMBER_ENTITY]
+        == "number.block_heat_control"
     )
+    assert const.CONF_TARGET_BOOLEAN not in result_step_2["data"]
 
 
 @pytest.mark.asyncio
@@ -101,7 +96,7 @@ async def test_config_flow_uses_domain_filtered_entity_selectors(
     flow = blockheat_env.config_flow.BlockheatConfigFlow()
     result = await flow.async_step_user()
 
-    target_selector = _schema_value(result["data_schema"], const.CONF_TARGET_BOOLEAN)
+    nordpool_selector = _schema_value(result["data_schema"], const.CONF_NORDPOOL_PRICE)
     control_selector = _schema_value(
         result["data_schema"], const.CONF_CONTROL_NUMBER_ENTITY
     )
@@ -109,7 +104,7 @@ async def test_config_flow_uses_domain_filtered_entity_selectors(
         result["data_schema"], const.CONF_FLOOR_COMFORT_SCHEDULE
     )
 
-    assert target_selector.config.domain == "input_boolean"
+    assert nordpool_selector.config.domain == "sensor"
     assert control_selector.config.domain == "number"
     assert schedule_selector.config.domain == ["schedule", "input_boolean"]
 
@@ -148,6 +143,6 @@ async def test_options_flow_persists_updates(
     assert step_2["type"] == "create_entry"
     assert step_2["data"][const.CONF_COMFORT_TARGET_C] == 24.0
     assert (
-        step_2["data"][const.CONF_TARGET_COMFORT_HELPER]
-        == "input_number.block_heat_target_comfort"
+        step_2["data"][const.CONF_CONTROL_NUMBER_ENTITY] == "number.block_heat_control"
     )
+    assert const.CONF_TARGET_COMFORT_HELPER not in step_2["data"]

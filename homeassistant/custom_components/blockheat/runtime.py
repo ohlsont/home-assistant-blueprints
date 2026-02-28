@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -12,6 +13,7 @@ from homeassistant.const import EVENT_HOMEASSISTANT_START
 from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.exceptions import ServiceNotFound
 from homeassistant.helpers import event as event_helper
+from homeassistant.helpers import storage
 from homeassistant.util import dt as dt_util
 
 from .const import (
@@ -80,6 +82,15 @@ from .const import (
     EVENT_ENERGY_SAVING_STATE_CHANGED,
     OPTIONAL_ENTITY_KEYS,
     REQUIRED_ENTITY_KEYS,
+    STATE_FALLBACK_ACTIVE,
+    STATE_FALLBACK_LAST_TRIGGER,
+    STATE_POLICY_LAST_CHANGED,
+    STATE_POLICY_ON,
+    STATE_STORAGE_KEY_PREFIX,
+    STATE_STORAGE_VERSION,
+    STATE_TARGET_COMFORT,
+    STATE_TARGET_FINAL,
+    STATE_TARGET_SAVING,
 )
 from .coordinator import BlockheatCoordinator
 from .engine import (
@@ -97,25 +108,50 @@ from .engine import (
 _LOGGER = logging.getLogger(__name__)
 
 
+@dataclass
+class RuntimeState:
+    """Internal runtime state persisted by the integration."""
+
+    policy_on: bool = False
+    policy_last_changed: datetime | None = None
+    target_saving: float | None = None
+    target_comfort: float | None = None
+    target_final: float | None = None
+    fallback_active: bool = False
+    fallback_last_trigger: datetime | None = None
+
+
 class BlockheatRuntime:
     """Translate HA state/events to pure Blockheat engine operations."""
 
     def __init__(
         self,
         hass: HomeAssistant,
+        entry_id: str,
         config: dict[str, Any],
         coordinator: BlockheatCoordinator,
     ) -> None:
         self.hass = hass
+        self._entry_id = entry_id
         self._config = {**DEFAULTS, **config}
         self._coordinator = coordinator
         self._unsubscribers: list[Callable[[], None]] = []
         self._fallback_arm_since: datetime | None = None
         self._fallback_arm_timer_unsub: Callable[[], None] | None = None
         self._lock = asyncio.Lock()
+        self._state_store: storage.Store[dict[str, Any]] = storage.Store(
+            hass,
+            STATE_STORAGE_VERSION,
+            f"{STATE_STORAGE_KEY_PREFIX}.{entry_id}",
+        )
+        self._state = RuntimeState()
+        self._last_saved_state: dict[str, Any] | None = None
 
     async def async_setup(self) -> None:
         """Set up listeners and run initial compute."""
+        await self._async_load_state()
+        self._seed_state_from_legacy_entities()
+
         monitored_entities: list[str] = []
         for key in REQUIRED_ENTITY_KEYS + OPTIONAL_ENTITY_KEYS:
             entity_id = self._cfg_str(key)
@@ -149,6 +185,7 @@ class BlockheatRuntime:
 
     async def async_unload(self) -> None:
         """Tear down listeners."""
+        await self._async_save_state(force=True)
         self._clear_fallback_arm_timer()
         while self._unsubscribers:
             unsub = self._unsubscribers.pop()
@@ -200,6 +237,7 @@ class BlockheatRuntime:
             daikin_result = await self._async_apply_daikin(policy_on_effective)
             floor_result = await self._async_apply_floor(policy_on_effective, now)
 
+            internal_state = self._serialize_state()
             snapshot = {
                 "reason": reason,
                 "at": now.isoformat(),
@@ -210,13 +248,14 @@ class BlockheatRuntime:
                 "final_target": final_target,
                 "daikin": daikin_result,
                 "floor": floor_result,
+                "internal_state": internal_state,
             }
             self._coordinator.async_set_updated_data(snapshot)
             self.hass.bus.async_fire(EVENT_BLOCKHEAT_SNAPSHOT, snapshot)
+            await self._async_save_state()
             return snapshot
 
     async def _async_apply_policy(self, now: datetime) -> dict[str, Any]:
-        target_boolean = self._cfg_str(CONF_TARGET_BOOLEAN)
         nordpool_price = self._cfg_str(CONF_NORDPOOL_PRICE)
 
         price_state = self.hass.states.get(nordpool_price)
@@ -238,9 +277,8 @@ class BlockheatRuntime:
             else 0.0
         )
 
-        target_state = self.hass.states.get(target_boolean)
-        current_on = target_state is not None and target_state.state == "on"
-        last_changed = target_state.last_changed if target_state else None
+        current_on = self._state.policy_on
+        last_changed = self._state.policy_last_changed
 
         computation = compute_policy(
             price=price,
@@ -260,9 +298,8 @@ class BlockheatRuntime:
         policy_on_effective = current_on
         transition = "none"
         if computation.should_turn_on:
-            await self._async_call_entity_service(
-                "input_boolean", "turn_on", target_boolean
-            )
+            self._state.policy_on = True
+            self._state.policy_last_changed = now
             policy_on_effective = True
             transition = "on"
             self._fire_policy_events("on", computation)
@@ -274,9 +311,8 @@ class BlockheatRuntime:
                 ),
             )
         elif computation.should_turn_off:
-            await self._async_call_entity_service(
-                "input_boolean", "turn_off", target_boolean
-            )
+            self._state.policy_on = False
+            self._state.policy_last_changed = now
             policy_on_effective = False
             transition = "off"
             self._fire_policy_events("off", computation)
@@ -327,8 +363,7 @@ class BlockheatRuntime:
         self.hass.bus.async_fire(EVENT_BLOCKHEAT_POLICY_CHANGED, event_data)
 
     async def _async_apply_saving_target(self) -> float:
-        target_helper = self._cfg_str(CONF_TARGET_SAVING_HELPER)
-        target_current = self._state_float(target_helper)
+        target_current = self._state.target_saving
         target = compute_saving_target(
             outdoor_temp=self._state_float(
                 self._cfg_str(CONF_OUTDOOR_TEMPERATURE_SENSOR)
@@ -349,18 +384,12 @@ class BlockheatRuntime:
             target_current,
             self._cfg_float(CONF_SAVING_HELPER_WRITE_DELTA_C, 0.05),
         ):
-            await self._async_call_entity_service(
-                "input_number",
-                "set_value",
-                target_helper,
-                value=target,
-            )
+            self._state.target_saving = target
 
         return target
 
     async def _async_apply_comfort_target(self) -> float:
-        target_helper = self._cfg_str(CONF_TARGET_COMFORT_HELPER)
-        target_current = self._state_float(target_helper)
+        target_current = self._state.target_comfort
 
         computation = compute_comfort_target(
             room1_temp=self._state_float(self._cfg_str(CONF_COMFORT_ROOM_1_SENSOR)),
@@ -393,12 +422,7 @@ class BlockheatRuntime:
             target_current,
             self._cfg_float(CONF_COMFORT_HELPER_WRITE_DELTA_C, 0.05),
         ):
-            await self._async_call_entity_service(
-                "input_number",
-                "set_value",
-                target_helper,
-                value=computation.target,
-            )
+            self._state.target_comfort = computation.target
 
         return computation.target
 
@@ -407,8 +431,7 @@ class BlockheatRuntime:
         now: datetime,
         policy_on: bool,
     ) -> tuple[bool, dict[str, Any]]:
-        fallback_entity = self._cfg_str(CONF_FALLBACK_ACTIVE_BOOLEAN)
-        fallback_active = self._is_on(fallback_entity)
+        fallback_active = self._state.fallback_active
 
         conditions = compute_fallback_conditions(
             policy_on=policy_on,
@@ -419,7 +442,7 @@ class BlockheatRuntime:
             trigger_delta_c=self._cfg_float(CONF_ELECTRIC_FALLBACK_DELTA_C, 0.5),
             release_delta_c=self._cfg_float(CONF_RELEASE_DELTA_C, 0.1),
             cooldown_minutes=self._cfg_int(CONF_ELECTRIC_FALLBACK_COOLDOWN_MINUTES, 60),
-            last_trigger=self._last_trigger_datetime(),
+            last_trigger=self._state.fallback_last_trigger,
             now=now,
         )
 
@@ -443,26 +466,12 @@ class BlockheatRuntime:
         if should_arm:
             fallback_active_effective = True
             transition = "armed"
-            await self._async_call_entity_service(
-                "input_boolean",
-                "turn_on",
-                fallback_entity,
-            )
-            await self._async_call_entity_service(
-                "input_datetime",
-                "set_datetime",
-                self._cfg_str(CONF_ELECTRIC_FALLBACK_LAST_TRIGGER),
-                timestamp=int(now.timestamp()),
-            )
+            self._state.fallback_active = True
+            self._state.fallback_last_trigger = now
             self._fallback_arm_since = None
             self._clear_fallback_arm_timer()
         elif conditions.release_by_policy or conditions.release_by_recovery:
-            if fallback_active:
-                await self._async_call_entity_service(
-                    "input_boolean",
-                    "turn_off",
-                    fallback_entity,
-                )
+            self._state.fallback_active = False
             fallback_active_effective = False
             transition = "released"
 
@@ -475,6 +484,11 @@ class BlockheatRuntime:
             "release_threshold": conditions.release_threshold,
             "cooldown_ok": conditions.cooldown_ok,
             "arm_condition": conditions.arm_condition,
+            "last_trigger": (
+                self._state.fallback_last_trigger.isoformat()
+                if self._state.fallback_last_trigger is not None
+                else None
+            ),
         }
         return fallback_active_effective, debug
 
@@ -499,10 +513,9 @@ class BlockheatRuntime:
         saving_target: float,
         comfort_target: float,
     ) -> float:
-        final_helper = self._cfg_str(CONF_TARGET_FINAL_HELPER)
         control_number = self._cfg_str(CONF_CONTROL_NUMBER_ENTITY)
 
-        final_helper_current = self._state_float(final_helper)
+        final_current = self._state.target_final
         control_current = self._state_float(control_number)
 
         final = compute_final_target(
@@ -517,15 +530,10 @@ class BlockheatRuntime:
 
         if self._delta_ok(
             final.target,
-            final_helper_current,
+            final_current,
             self._cfg_float(CONF_FINAL_HELPER_WRITE_DELTA_C, 0.05),
         ):
-            await self._async_call_entity_service(
-                "input_number",
-                "set_value",
-                final_helper,
-                value=final.target,
-            )
+            self._state.target_final = final.target
 
         if self._delta_ok(
             final.target,
@@ -700,6 +708,101 @@ class BlockheatRuntime:
         except ServiceNotFound:
             _LOGGER.debug("logbook.log service not available")
 
+    async def _async_load_state(self) -> None:
+        raw = await self._state_store.async_load()
+        if not isinstance(raw, dict):
+            return
+
+        self._state.policy_on = bool(raw.get(STATE_POLICY_ON, False))
+        self._state.policy_last_changed = self._parse_datetime_value(
+            raw.get(STATE_POLICY_LAST_CHANGED)
+        )
+        self._state.target_saving = as_float(raw.get(STATE_TARGET_SAVING))
+        self._state.target_comfort = as_float(raw.get(STATE_TARGET_COMFORT))
+        self._state.target_final = as_float(raw.get(STATE_TARGET_FINAL))
+        self._state.fallback_active = bool(raw.get(STATE_FALLBACK_ACTIVE, False))
+        self._state.fallback_last_trigger = self._parse_datetime_value(
+            raw.get(STATE_FALLBACK_LAST_TRIGGER)
+        )
+        self._last_saved_state = self._serialize_state()
+
+    async def _async_save_state(self, force: bool = False) -> None:
+        serialized = self._serialize_state()
+        if not force and serialized == self._last_saved_state:
+            return
+        await self._state_store.async_save(serialized)
+        self._last_saved_state = serialized
+
+    def _seed_state_from_legacy_entities(self) -> None:
+        if self._last_saved_state is not None:
+            return
+
+        if self._state.policy_last_changed is None:
+            policy_state = self.hass.states.get(self._cfg_str(CONF_TARGET_BOOLEAN))
+            if policy_state is not None:
+                self._state.policy_on = policy_state.state == "on"
+                self._state.policy_last_changed = policy_state.last_changed
+
+        if self._state.target_saving is None:
+            self._state.target_saving = self._state_float(
+                self._cfg_str(CONF_TARGET_SAVING_HELPER)
+            )
+
+        if self._state.target_comfort is None:
+            self._state.target_comfort = self._state_float(
+                self._cfg_str(CONF_TARGET_COMFORT_HELPER)
+            )
+
+        if self._state.target_final is None:
+            self._state.target_final = self._state_float(
+                self._cfg_str(CONF_TARGET_FINAL_HELPER)
+            )
+
+        if self._state.fallback_last_trigger is None:
+            legacy_last_trigger = self.hass.states.get(
+                self._cfg_str(CONF_ELECTRIC_FALLBACK_LAST_TRIGGER)
+            )
+            if legacy_last_trigger is not None:
+                self._state.fallback_last_trigger = self._parse_datetime_value(
+                    legacy_last_trigger.state
+                )
+
+        legacy_fallback = self.hass.states.get(
+            self._cfg_str(CONF_FALLBACK_ACTIVE_BOOLEAN)
+        )
+        if legacy_fallback is not None:
+            self._state.fallback_active = legacy_fallback.state == "on"
+
+    def _serialize_state(self) -> dict[str, Any]:
+        return {
+            STATE_POLICY_ON: self._state.policy_on,
+            STATE_POLICY_LAST_CHANGED: (
+                self._state.policy_last_changed.isoformat()
+                if self._state.policy_last_changed is not None
+                else None
+            ),
+            STATE_TARGET_SAVING: self._state.target_saving,
+            STATE_TARGET_COMFORT: self._state.target_comfort,
+            STATE_TARGET_FINAL: self._state.target_final,
+            STATE_FALLBACK_ACTIVE: self._state.fallback_active,
+            STATE_FALLBACK_LAST_TRIGGER: (
+                self._state.fallback_last_trigger.isoformat()
+                if self._state.fallback_last_trigger is not None
+                else None
+            ),
+        }
+
+    def _parse_datetime_value(self, value: Any) -> datetime | None:
+        parsed = dt_util.parse_datetime(str(value)) if value is not None else None
+        if parsed is not None:
+            return parsed
+
+        ts = as_float(value)
+        if ts is not None:
+            return datetime.fromtimestamp(ts, tz=dt_util.UTC)
+
+        return None
+
     def _state_float(
         self, entity_id: str, default: float | None = None
     ) -> float | None:
@@ -709,25 +812,6 @@ class BlockheatRuntime:
         if state is None:
             return default
         return as_float(state.state, default)
-
-    def _last_trigger_datetime(self) -> datetime | None:
-        entity = self._cfg_str(CONF_ELECTRIC_FALLBACK_LAST_TRIGGER)
-        if not entity:
-            return None
-
-        state = self.hass.states.get(entity)
-        if state is None:
-            return None
-
-        parsed = dt_util.parse_datetime(state.state)
-        if parsed is not None:
-            return parsed
-
-        ts = as_float(state.state)
-        if ts is not None:
-            return datetime.fromtimestamp(ts, tz=dt_util.UTC)
-
-        return None
 
     def _is_on(self, entity_id: str) -> bool:
         if not entity_id:

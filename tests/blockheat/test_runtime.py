@@ -19,9 +19,37 @@ def _make_runtime_context(
     seed_kwargs: dict[str, Any] | None = None,
 ) -> SimpleNamespace:
     config = build_config(overrides or {})
-    seed_runtime_states(fake_hass, config, **(seed_kwargs or {}))
+    state_seed = seed_kwargs or {}
+    seed_runtime_states(fake_hass, config, **state_seed)
     coordinator = blockheat_env.coordinator.BlockheatCoordinator(fake_hass)
-    runtime = blockheat_env.runtime.BlockheatRuntime(fake_hass, config, coordinator)
+    runtime = blockheat_env.runtime.BlockheatRuntime(
+        fake_hass, "entry-test", config, coordinator
+    )
+
+    if "policy_state" in state_seed:
+        runtime._state.policy_on = str(state_seed["policy_state"]).lower() == "on"
+        if runtime._state.policy_on:
+            runtime._state.policy_last_changed = datetime.now(UTC) - timedelta(hours=2)
+
+    if "saving_target" in state_seed:
+        runtime._state.target_saving = float(state_seed["saving_target"])
+
+    if "comfort_target" in state_seed:
+        runtime._state.target_comfort = float(state_seed["comfort_target"])
+
+    if "final_target" in state_seed:
+        runtime._state.target_final = float(state_seed["final_target"])
+
+    if "fallback_active" in state_seed:
+        runtime._state.fallback_active = (
+            str(state_seed["fallback_active"]).lower() == "on"
+        )
+
+    if "fallback_last_trigger" in state_seed:
+        runtime._state.fallback_last_trigger = runtime._parse_datetime_value(
+            state_seed["fallback_last_trigger"]
+        )
+
     return SimpleNamespace(
         config=config,
         const=blockheat_env.const,
@@ -74,32 +102,18 @@ async def test_async_recompute_writes_expected_targets_then_skips_small_deltas(
         },
     )
 
-    await ctx.runtime.async_recompute("test_initial_write")
+    first_snapshot = await ctx.runtime.async_recompute("test_initial_write")
     first_calls = list(ctx.hass.services.calls)
-    assert _service_calls_for(
-        first_calls,
-        "input_number",
-        "set_value",
-        entity_id=ctx.config[ctx.const.CONF_TARGET_SAVING_HELPER],
-    )
-    assert _service_calls_for(
-        first_calls,
-        "input_number",
-        "set_value",
-        entity_id=ctx.config[ctx.const.CONF_TARGET_COMFORT_HELPER],
-    )
-    assert _service_calls_for(
-        first_calls,
-        "input_number",
-        "set_value",
-        entity_id=ctx.config[ctx.const.CONF_TARGET_FINAL_HELPER],
-    )
+    assert _service_calls_for(first_calls, "input_number", "set_value") == []
     assert _service_calls_for(
         first_calls,
         "number",
         "set_value",
         entity_id=ctx.config[ctx.const.CONF_CONTROL_NUMBER_ENTITY],
     )
+    assert first_snapshot["internal_state"][ctx.const.STATE_TARGET_SAVING] is not None
+    assert first_snapshot["internal_state"][ctx.const.STATE_TARGET_COMFORT] is not None
+    assert first_snapshot["internal_state"][ctx.const.STATE_TARGET_FINAL] is not None
 
     ctx.hass.services.calls.clear()
     await ctx.runtime.async_recompute("test_no_delta_write")
@@ -131,13 +145,10 @@ async def test_policy_transition_fires_events_and_toggles_boolean(
         },
     )
 
-    await ctx.runtime.async_recompute("policy_turn_on")
-    assert _service_calls_for(
-        ctx.hass.services.calls,
-        "input_boolean",
-        "turn_on",
-        entity_id=ctx.config[ctx.const.CONF_TARGET_BOOLEAN],
-    )
+    on_snapshot = await ctx.runtime.async_recompute("policy_turn_on")
+    assert _service_calls_for(ctx.hass.services.calls, "input_boolean", "turn_on") == []
+    assert on_snapshot["policy"]["transition"] == "on"
+    assert on_snapshot["internal_state"][ctx.const.STATE_POLICY_ON] is True
     fired_types = [item["event_type"] for item in ctx.hass.bus.fired]
     assert ctx.const.EVENT_ENERGY_SAVING_STATE_CHANGED in fired_types
     assert ctx.const.EVENT_BLOCKHEAT_POLICY_CHANGED in fired_types
@@ -149,13 +160,12 @@ async def test_policy_transition_fires_events_and_toggles_boolean(
         "0.0",
         attributes={"today": [1.0, 2.0, 9.0, 8.0]},
     )
-    await ctx.runtime.async_recompute("policy_turn_off")
-    assert _service_calls_for(
-        ctx.hass.services.calls,
-        "input_boolean",
-        "turn_off",
-        entity_id=ctx.config[ctx.const.CONF_TARGET_BOOLEAN],
+    off_snapshot = await ctx.runtime.async_recompute("policy_turn_off")
+    assert (
+        _service_calls_for(ctx.hass.services.calls, "input_boolean", "turn_off") == []
     )
+    assert off_snapshot["policy"]["transition"] == "off"
+    assert off_snapshot["internal_state"][ctx.const.STATE_POLICY_ON] is False
     off_events = [
         item
         for item in ctx.hass.bus.fired
@@ -193,30 +203,26 @@ async def test_fallback_arms_after_delay_and_writes_last_trigger(
 
     start_time = datetime(2026, 2, 19, 12, 0, tzinfo=UTC)
     monkeypatch.setattr(ctx.runtime_module.dt_util, "utcnow", lambda: start_time)
-    await ctx.runtime.async_recompute("fallback_wait_start")
+    first_snapshot = await ctx.runtime.async_recompute("fallback_wait_start")
 
     assert ctx.runtime._fallback_arm_since is not None
     assert any(item["active"] for item in ctx.hass.later_calls)
-    assert (
-        ctx.hass.states.get(ctx.config[ctx.const.CONF_FALLBACK_ACTIVE_BOOLEAN]).state
-        == "off"
-    )
+    assert first_snapshot["internal_state"][ctx.const.STATE_FALLBACK_ACTIVE] is False
 
     monkeypatch.setattr(
         ctx.runtime_module.dt_util,
         "utcnow",
         lambda: start_time + timedelta(minutes=31),
     )
-    await ctx.runtime.async_recompute("fallback_wait_elapsed")
+    second_snapshot = await ctx.runtime.async_recompute("fallback_wait_elapsed")
+    assert second_snapshot["internal_state"][ctx.const.STATE_FALLBACK_ACTIVE] is True
     assert (
-        ctx.hass.states.get(ctx.config[ctx.const.CONF_FALLBACK_ACTIVE_BOOLEAN]).state
-        == "on"
+        second_snapshot["internal_state"][ctx.const.STATE_FALLBACK_LAST_TRIGGER]
+        is not None
     )
-    assert _service_calls_for(
-        ctx.hass.services.calls,
-        "input_datetime",
-        "set_datetime",
-        entity_id=ctx.config[ctx.const.CONF_ELECTRIC_FALLBACK_LAST_TRIGGER],
+    assert (
+        _service_calls_for(ctx.hass.services.calls, "input_datetime", "set_datetime")
+        == []
     )
 
 
@@ -243,38 +249,47 @@ async def test_fallback_release_by_policy_and_recovery(
             "prices_today": [1.0, 2.0, 9.0, 8.0],
         },
     )
-    await policy_ctx.runtime.async_recompute("release_by_policy")
-    assert _service_calls_for(
-        policy_ctx.hass.services.calls,
-        "input_boolean",
-        "turn_off",
-        entity_id=policy_ctx.config[policy_ctx.const.CONF_FALLBACK_ACTIVE_BOOLEAN],
+    policy_snapshot = await policy_ctx.runtime.async_recompute("release_by_policy")
+    assert policy_snapshot["fallback"]["transition"] == "released"
+    assert (
+        policy_snapshot["internal_state"][policy_ctx.const.STATE_FALLBACK_ACTIVE]
+        is False
     )
 
-    policy_ctx.hass.services.calls.clear()
-    policy_ctx.hass.states.set(
-        policy_ctx.config[policy_ctx.const.CONF_TARGET_BOOLEAN], "off"
+    recovery_ctx = _make_runtime_context(
+        blockheat_env,
+        fake_hass,
+        build_config,
+        seed_runtime_states,
+        overrides={
+            blockheat_env.const.CONF_MIN_TOGGLE_INTERVAL_MIN: 0,
+            blockheat_env.const.CONF_MINUTES_TO_BLOCK: 30,
+        },
+        seed_kwargs={
+            "policy_state": "off",
+            "fallback_active": "on",
+            "price": 0.0,
+            "prices_today": [0.0, 0.0, 0.0, 0.0],
+        },
     )
-    policy_ctx.hass.states.set(
-        policy_ctx.config[policy_ctx.const.CONF_NORDPOOL_PRICE],
+    recovery_ctx.hass.states.set(
+        recovery_ctx.config[recovery_ctx.const.CONF_NORDPOOL_PRICE],
         "0.0",
         attributes={"today": [0.0, 0.0, 0.0, 0.0]},
     )
-    policy_ctx.hass.states.set(
-        policy_ctx.config[policy_ctx.const.CONF_FALLBACK_ACTIVE_BOOLEAN], "on"
+    recovery_ctx.hass.states.set(
+        recovery_ctx.config[recovery_ctx.const.CONF_COMFORT_ROOM_1_SENSOR], "22.0"
     )
-    policy_ctx.hass.states.set(
-        policy_ctx.config[policy_ctx.const.CONF_COMFORT_ROOM_1_SENSOR], "22.0"
+    recovery_ctx.hass.states.set(
+        recovery_ctx.config[recovery_ctx.const.CONF_COMFORT_ROOM_2_SENSOR], "22.0"
     )
-    policy_ctx.hass.states.set(
-        policy_ctx.config[policy_ctx.const.CONF_COMFORT_ROOM_2_SENSOR], "22.0"
+    recovery_snapshot = await recovery_ctx.runtime.async_recompute(
+        "release_by_recovery"
     )
-    await policy_ctx.runtime.async_recompute("release_by_recovery")
-    assert _service_calls_for(
-        policy_ctx.hass.services.calls,
-        "input_boolean",
-        "turn_off",
-        entity_id=policy_ctx.config[policy_ctx.const.CONF_FALLBACK_ACTIVE_BOOLEAN],
+    assert recovery_snapshot["fallback"]["transition"] == "released"
+    assert (
+        recovery_snapshot["internal_state"][recovery_ctx.const.STATE_FALLBACK_ACTIVE]
+        is False
     )
 
 
@@ -391,8 +406,8 @@ async def test_logbook_service_not_found_is_tolerated(
     ctx.hass.services.available.add(("logbook", "log"))
     ctx.hass.services.raise_not_found.add(("logbook", "log"))
 
-    await ctx.runtime.async_recompute("logbook_missing")
-    assert ctx.hass.states.get(ctx.config[ctx.const.CONF_TARGET_BOOLEAN]).state == "on"
+    snapshot = await ctx.runtime.async_recompute("logbook_missing")
+    assert snapshot["internal_state"][ctx.const.STATE_POLICY_ON] is True
 
 
 @pytest.mark.asyncio
