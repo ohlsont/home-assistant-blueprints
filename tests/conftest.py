@@ -354,9 +354,16 @@ def blockheat_env(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
     homeassistant_module.__path__ = [str(HOMEASSISTANT_DIR)]
     custom_components_module = types.ModuleType("homeassistant.custom_components")
     custom_components_module.__path__ = [str(CUSTOM_COMPONENTS_DIR)]
+    components_module = types.ModuleType("homeassistant.components")
+    components_module.__path__ = []
+    sensor_component_module = types.ModuleType("homeassistant.components.sensor")
+    binary_sensor_component_module = types.ModuleType(
+        "homeassistant.components.binary_sensor"
+    )
 
     const_module = types.ModuleType("homeassistant.const")
     const_module.EVENT_HOMEASSISTANT_START = "homeassistant_start"
+    const_module.UnitOfTemperature = type("UnitOfTemperature", (), {"CELSIUS": "C"})
 
     core_module = types.ModuleType("homeassistant.core")
     core_module.HomeAssistant = FakeHass
@@ -373,10 +380,36 @@ def blockheat_env(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
     event_module = types.ModuleType("homeassistant.helpers.event")
     selector_module = types.ModuleType("homeassistant.helpers.selector")
     storage_module = types.ModuleType("homeassistant.helpers.storage")
+    entity_platform_module = types.ModuleType("homeassistant.helpers.entity_platform")
     update_coordinator_module = types.ModuleType(
         "homeassistant.helpers.update_coordinator"
     )
     update_coordinator_module.DataUpdateCoordinator = FakeDataUpdateCoordinator
+
+    class FakeCoordinatorEntity:
+        @classmethod
+        def __class_getitem__(cls, item: Any) -> type[FakeCoordinatorEntity]:
+            return cls
+
+        def __init__(self, coordinator: Any) -> None:
+            self.coordinator = coordinator
+
+    update_coordinator_module.CoordinatorEntity = FakeCoordinatorEntity
+
+    class FakeSensorEntity:
+        pass
+
+    class FakeBinarySensorEntity:
+        pass
+
+    class FakeSensorDeviceClass:
+        TEMPERATURE = "temperature"
+        TIMESTAMP = "timestamp"
+
+    sensor_component_module.SensorDeviceClass = FakeSensorDeviceClass
+    sensor_component_module.SensorEntity = FakeSensorEntity
+    binary_sensor_component_module.BinarySensorEntity = FakeBinarySensorEntity
+    entity_platform_module.AddEntitiesCallback = Any
 
     class FakeEntitySelectorConfig:
         def __init__(self, *, domain: str | list[str] | None = None) -> None:
@@ -459,6 +492,15 @@ def blockheat_env(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
         "homeassistant.custom_components",
         custom_components_module,
     )
+    monkeypatch.setitem(sys.modules, "homeassistant.components", components_module)
+    monkeypatch.setitem(
+        sys.modules, "homeassistant.components.sensor", sensor_component_module
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "homeassistant.components.binary_sensor",
+        binary_sensor_component_module,
+    )
     monkeypatch.setitem(sys.modules, "homeassistant.const", const_module)
     monkeypatch.setitem(sys.modules, "homeassistant.core", core_module)
     monkeypatch.setitem(sys.modules, "homeassistant.exceptions", exceptions_module)
@@ -466,6 +508,9 @@ def blockheat_env(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
     monkeypatch.setitem(sys.modules, "homeassistant.helpers.event", event_module)
     monkeypatch.setitem(sys.modules, "homeassistant.helpers.selector", selector_module)
     monkeypatch.setitem(sys.modules, "homeassistant.helpers.storage", storage_module)
+    monkeypatch.setitem(
+        sys.modules, "homeassistant.helpers.entity_platform", entity_platform_module
+    )
     monkeypatch.setitem(
         sys.modules,
         "homeassistant.helpers.update_coordinator",
