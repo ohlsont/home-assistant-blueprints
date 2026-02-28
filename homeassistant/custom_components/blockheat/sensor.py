@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
@@ -28,6 +29,69 @@ from .const import (
 from .coordinator import BlockheatCoordinator
 
 
+@dataclass(frozen=True)
+class DiagnosticSensorSpec:
+    """Mapping from snapshot path to a diagnostic sensor."""
+
+    entity_id: str
+    name: str
+    path: tuple[str, ...]
+
+
+DIAGNOSTIC_SENSOR_SPECS: tuple[DiagnosticSensorSpec, ...] = (
+    DiagnosticSensorSpec(
+        "sensor.blockheat_policy_price",
+        "Policy price",
+        ("policy", "price"),
+    ),
+    DiagnosticSensorSpec(
+        "sensor.blockheat_policy_cutoff",
+        "Policy cutoff",
+        ("policy", "cutoff"),
+    ),
+    DiagnosticSensorSpec(
+        "sensor.blockheat_policy_transition",
+        "Policy transition",
+        ("policy", "transition"),
+    ),
+    DiagnosticSensorSpec(
+        "sensor.blockheat_final_source",
+        "Final source",
+        ("final_target_debug", "source"),
+    ),
+    DiagnosticSensorSpec(
+        "sensor.blockheat_fallback_comfort_min",
+        "Fallback comfort min",
+        ("fallback", "comfort_min"),
+    ),
+    DiagnosticSensorSpec(
+        "sensor.blockheat_fallback_trigger_threshold",
+        "Fallback trigger threshold",
+        ("fallback", "trigger_threshold"),
+    ),
+    DiagnosticSensorSpec(
+        "sensor.blockheat_fallback_release_threshold",
+        "Fallback release threshold",
+        ("fallback", "release_threshold"),
+    ),
+    DiagnosticSensorSpec(
+        "sensor.blockheat_control_write_delta",
+        "Control write delta",
+        ("final_target_debug", "control_write_delta"),
+    ),
+    DiagnosticSensorSpec(
+        "sensor.blockheat_daikin_action",
+        "Daikin action",
+        ("daikin", "debug", "action"),
+    ),
+    DiagnosticSensorSpec(
+        "sensor.blockheat_floor_action",
+        "Floor action",
+        ("floor", "debug", "action"),
+    ),
+)
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -37,40 +101,44 @@ async def async_setup_entry(
     coordinator: BlockheatCoordinator = hass.data[DOMAIN][entry.entry_id][
         ENTRY_COORDINATOR
     ]
-    async_add_entities(
-        [
-            BlockheatTemperatureSensor(
-                coordinator=coordinator,
-                entry_id=entry.entry_id,
-                entity_id=ENTITY_ID_TARGET_SAVING,
-                name="Target saving",
-                state_key=STATE_TARGET_SAVING,
-                icon="mdi:thermometer-minus",
-            ),
-            BlockheatTemperatureSensor(
-                coordinator=coordinator,
-                entry_id=entry.entry_id,
-                entity_id=ENTITY_ID_TARGET_COMFORT,
-                name="Target comfort",
-                state_key=STATE_TARGET_COMFORT,
-                icon="mdi:thermometer-plus",
-            ),
-            BlockheatTemperatureSensor(
-                coordinator=coordinator,
-                entry_id=entry.entry_id,
-                entity_id=ENTITY_ID_TARGET_FINAL,
-                name="Target final",
-                state_key=STATE_TARGET_FINAL,
-                icon="mdi:thermometer",
-            ),
-            BlockheatFallbackLastTriggerSensor(
-                coordinator=coordinator,
-                entry_id=entry.entry_id,
-                entity_id=ENTITY_ID_FALLBACK_LAST_TRIGGER,
-                state_key=STATE_FALLBACK_LAST_TRIGGER,
-            ),
-        ]
+
+    entities: list[SensorEntity] = [
+        BlockheatTemperatureSensor(
+            coordinator=coordinator,
+            entry_id=entry.entry_id,
+            entity_id=ENTITY_ID_TARGET_SAVING,
+            name="Target saving",
+            state_key=STATE_TARGET_SAVING,
+            icon="mdi:thermometer-minus",
+        ),
+        BlockheatTemperatureSensor(
+            coordinator=coordinator,
+            entry_id=entry.entry_id,
+            entity_id=ENTITY_ID_TARGET_COMFORT,
+            name="Target comfort",
+            state_key=STATE_TARGET_COMFORT,
+            icon="mdi:thermometer-plus",
+        ),
+        BlockheatTemperatureSensor(
+            coordinator=coordinator,
+            entry_id=entry.entry_id,
+            entity_id=ENTITY_ID_TARGET_FINAL,
+            name="Target final",
+            state_key=STATE_TARGET_FINAL,
+            icon="mdi:thermometer",
+        ),
+        BlockheatFallbackLastTriggerSensor(
+            coordinator=coordinator,
+            entry_id=entry.entry_id,
+            entity_id=ENTITY_ID_FALLBACK_LAST_TRIGGER,
+            state_key=STATE_FALLBACK_LAST_TRIGGER,
+        ),
+    ]
+    entities.extend(
+        BlockheatDiagnosticSensor(coordinator=coordinator, spec=spec)
+        for spec in DIAGNOSTIC_SENSOR_SPECS
     )
+    async_add_entities(entities)
 
 
 class BlockheatBaseSensor(CoordinatorEntity[BlockheatCoordinator], SensorEntity):
@@ -178,3 +246,46 @@ class BlockheatFallbackLastTriggerSensor(BlockheatBaseSensor):
         if value is None:
             return None
         return dt_util.parse_datetime(str(value))
+
+
+def _extract_path_value(data: dict[str, Any] | None, path: tuple[str, ...]) -> Any:
+    value: Any = data
+    for key in path:
+        if not isinstance(value, dict):
+            return None
+        value = value.get(key)
+        if value is None:
+            return None
+    return value
+
+
+class BlockheatDiagnosticSensor(CoordinatorEntity[BlockheatCoordinator], SensorEntity):
+    """Read-only diagnostic sensor based on snapshot values."""
+
+    _attr_should_poll = False
+    _attr_entity_category = "diagnostic"
+
+    def __init__(
+        self,
+        *,
+        coordinator: BlockheatCoordinator,
+        spec: DiagnosticSensorSpec,
+    ) -> None:
+        super().__init__(coordinator)
+        self._spec = spec
+        self._attr_name = spec.name
+        self._attr_unique_id = spec.entity_id.replace(".", "_")
+
+    @property
+    def entity_id(self) -> str:
+        return self._spec.entity_id
+
+    @property
+    def available(self) -> bool:
+        if self.coordinator.data is None:
+            return False
+        return _extract_path_value(self.coordinator.data, self._spec.path) is not None
+
+    @property
+    def native_value(self) -> Any:
+        return _extract_path_value(self.coordinator.data, self._spec.path)

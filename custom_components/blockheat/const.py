@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 DOMAIN = "blockheat"
-PLATFORMS: list[str] = ["binary_sensor", "sensor"]
+PLATFORMS: list[str] = ["sensor", "binary_sensor"]
 
 CONF_TARGET_BOOLEAN = "target_boolean"
 CONF_NORDPOOL_PRICE = "nordpool_price"
@@ -84,6 +84,7 @@ SERVICE_DUMP_DIAGNOSTICS = "dump_diagnostics"
 DEFAULT_RECOMPUTE_MINUTES = 5
 DEFAULT_HELPER_WRITE_DELTA_C = 0.05
 DEFAULT_CONTROL_WRITE_DELTA_C = 0.2
+SNAPSHOT_SCHEMA_VERSION = 1
 
 LEGACY_INTERNAL_ENTITY_KEYS: tuple[str, ...] = (
     CONF_TARGET_BOOLEAN,

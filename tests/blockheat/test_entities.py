@@ -20,6 +20,10 @@ def _setup_entry_data(
     return entry
 
 
+def _entity_id(entity: Any) -> str | None:
+    return getattr(entity, "_attr_entity_id", None) or getattr(entity, "entity_id", None)
+
+
 @pytest.mark.asyncio
 async def test_binary_sensor_entities_read_internal_state(
     blockheat_env: SimpleNamespace,
@@ -51,8 +55,8 @@ async def test_binary_sensor_entities_read_internal_state(
         lambda entities: added.extend(entities),
     )
 
-    assert len(added) == 2
-    by_entity_id = {entity._attr_entity_id: entity for entity in added}
+    assert len(added) >= 2
+    by_entity_id = {_entity_id(entity): entity for entity in added}
 
     policy = by_entity_id[const.ENTITY_ID_POLICY_ACTIVE]
     assert policy.available is True
@@ -99,8 +103,8 @@ async def test_sensor_entities_read_internal_state_and_handle_bad_values(
         lambda entities: added.extend(entities),
     )
 
-    assert len(added) == 4
-    by_entity_id = {entity._attr_entity_id: entity for entity in added}
+    assert len(added) >= 4
+    by_entity_id = {_entity_id(entity): entity for entity in added}
 
     saving = by_entity_id[const.ENTITY_ID_TARGET_SAVING]
     comfort = by_entity_id[const.ENTITY_ID_TARGET_COMFORT]

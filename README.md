@@ -69,13 +69,21 @@ Then in Home Assistant:
   - A periodic 5-minute interval (`DEFAULT_RECOMPUTE_MINUTES = 5`)
 - Recompute always updates the diagnostics coordinator payload and fires `blockheat_snapshot`.
 - Recompute snapshots include causal metadata:
+  - `snapshot_schema_version`
   - `trigger`
   - `saving_debug`
   - `comfort_debug`
   - `final_debug`
+  - `comfort_target_debug`
+  - `final_target_debug`
+  - `daikin.debug`
+  - `floor.debug`
 - Policy transitions also fire:
   - `energy_saving_state_changed`
   - `blockheat_policy_changed`
+- Dedicated diagnostic entities update on each recompute:
+  - Sensors: `sensor.blockheat_policy_price`, `sensor.blockheat_policy_cutoff`, `sensor.blockheat_policy_transition`, `sensor.blockheat_final_source`, `sensor.blockheat_fallback_comfort_min`, `sensor.blockheat_fallback_trigger_threshold`, `sensor.blockheat_fallback_release_threshold`, `sensor.blockheat_control_write_delta`, `sensor.blockheat_daikin_action`, `sensor.blockheat_floor_action`
+  - Binary sensors: `binary_sensor.blockheat_policy_blocked_now`, `binary_sensor.blockheat_policy_ignore_by_price`, `binary_sensor.blockheat_policy_ignore_by_pv`, `binary_sensor.blockheat_policy_below_min_floor`, `binary_sensor.blockheat_policy_enough_time_passed`, `binary_sensor.blockheat_fallback_arm_condition`, `binary_sensor.blockheat_fallback_cooldown_ok`, `binary_sensor.blockheat_control_write_applied`
 
 ### Integration Services
 Services are exposed under the `blockheat` domain:
@@ -89,7 +97,7 @@ Both services accept optional `entry_id` (text). If omitted, all Blockheat entri
 Root-cause workflow for integration mode:
 1. Call `blockheat.dump_diagnostics`.
 2. Listen for `blockheat_snapshot` in **Developer Tools -> Events**.
-3. Inspect `trigger`, `saving_debug`, `comfort_debug`, and `final_debug`.
+3. Inspect `trigger`, `saving_debug`, `comfort_debug`, `comfort_target_debug`, `final_debug`, `final_target_debug`, `daikin.debug`, and `floor.debug`.
 4. Cross-check with Logbook entries for policy/fallback/final write transitions.
 
 ### Testing
@@ -161,10 +169,14 @@ Compatibility events:
 - `blockheat_policy_changed` (namespaced event)
 - `blockheat_snapshot` (diagnostics snapshot event)
   - Includes additive causal fields:
+    - `snapshot_schema_version`: snapshot payload version
     - `trigger`: recompute reason plus optional source/entity context
     - `saving_debug`: saving path + write decision
     - `comfort_debug`: comfort path + write decision
     - `final_debug`: final source + write/no-write rationale
+    - `comfort_target_debug`: comfort routing primitives (comfort/storage/boost inputs)
+    - `final_target_debug`: write-applied flags, deltas, and thresholds
+    - `daikin.debug` and `floor.debug`: consumer action/skip-reason details
 
 ### Migration / Cutover (Big-Bang)
 Pre-cutover:
