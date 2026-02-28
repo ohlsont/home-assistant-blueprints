@@ -1,7 +1,7 @@
 import importlib.util
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "check_component_mirror_sync.py"
@@ -14,7 +14,10 @@ compare_trees = MODULE.compare_trees
 
 class MirrorSyncTests(unittest.TestCase):
     def test_compare_trees_detects_identical_content(self):
-        with tempfile.TemporaryDirectory() as left_tmp, tempfile.TemporaryDirectory() as right_tmp:
+        with (
+            tempfile.TemporaryDirectory() as left_tmp,
+            tempfile.TemporaryDirectory() as right_tmp,
+        ):
             left = Path(left_tmp)
             right = Path(right_tmp)
             (left / "a.txt").write_text("same", encoding="utf-8")
@@ -24,7 +27,10 @@ class MirrorSyncTests(unittest.TestCase):
             self.assertTrue(ok)
 
     def test_compare_trees_detects_missing_and_changed_files(self):
-        with tempfile.TemporaryDirectory() as left_tmp, tempfile.TemporaryDirectory() as right_tmp:
+        with (
+            tempfile.TemporaryDirectory() as left_tmp,
+            tempfile.TemporaryDirectory() as right_tmp,
+        ):
             left = Path(left_tmp)
             right = Path(right_tmp)
             (left / "a.txt").write_text("left", encoding="utf-8")

@@ -37,7 +37,11 @@ def validate_tuning_values(values: dict[str, Any]) -> str | None:
     """Return an error key when cross-field tuning values are invalid."""
     control_min = _as_float(values.get("control_min_c"))
     control_max = _as_float(values.get("control_max_c"))
-    if control_min is not None and control_max is not None and control_min > control_max:
+    if (
+        control_min is not None
+        and control_max is not None
+        and control_min > control_max
+    ):
         return "invalid_control_range"
 
     boost_slope = _as_float(values.get("boost_slope_c"))

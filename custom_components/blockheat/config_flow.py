@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Any
 
 import voluptuous as vol
-
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers import selector
@@ -111,26 +110,58 @@ def _bounded_int(min_value: int, max_value: int) -> Any:
 def _user_schema(current: dict[str, Any]) -> vol.Schema:
     return vol.Schema(
         {
-            _required_marker(current, CONF_TARGET_BOOLEAN): _entity_selector("input_boolean"),
+            _required_marker(current, CONF_TARGET_BOOLEAN): _entity_selector(
+                "input_boolean"
+            ),
             _required_marker(current, CONF_NORDPOOL_PRICE): _entity_selector("sensor"),
-            _required_marker(current, CONF_COMFORT_ROOM_1_SENSOR): _entity_selector("sensor"),
-            _required_marker(current, CONF_COMFORT_ROOM_2_SENSOR): _entity_selector("sensor"),
-            _required_marker(current, CONF_STORAGE_ROOM_SENSOR): _entity_selector("sensor"),
-            _required_marker(current, CONF_OUTDOOR_TEMPERATURE_SENSOR): _entity_selector("sensor"),
-            _required_marker(current, CONF_TARGET_SAVING_HELPER): _entity_selector("input_number"),
-            _required_marker(current, CONF_TARGET_COMFORT_HELPER): _entity_selector("input_number"),
-            _required_marker(current, CONF_TARGET_FINAL_HELPER): _entity_selector("input_number"),
-            _required_marker(current, CONF_FALLBACK_ACTIVE_BOOLEAN): _entity_selector("input_boolean"),
-            _required_marker(current, CONF_ELECTRIC_FALLBACK_LAST_TRIGGER): _entity_selector("input_datetime"),
-            _required_marker(current, CONF_CONTROL_NUMBER_ENTITY): _entity_selector("number"),
+            _required_marker(current, CONF_COMFORT_ROOM_1_SENSOR): _entity_selector(
+                "sensor"
+            ),
+            _required_marker(current, CONF_COMFORT_ROOM_2_SENSOR): _entity_selector(
+                "sensor"
+            ),
+            _required_marker(current, CONF_STORAGE_ROOM_SENSOR): _entity_selector(
+                "sensor"
+            ),
+            _required_marker(
+                current, CONF_OUTDOOR_TEMPERATURE_SENSOR
+            ): _entity_selector("sensor"),
+            _required_marker(current, CONF_TARGET_SAVING_HELPER): _entity_selector(
+                "input_number"
+            ),
+            _required_marker(current, CONF_TARGET_COMFORT_HELPER): _entity_selector(
+                "input_number"
+            ),
+            _required_marker(current, CONF_TARGET_FINAL_HELPER): _entity_selector(
+                "input_number"
+            ),
+            _required_marker(current, CONF_FALLBACK_ACTIVE_BOOLEAN): _entity_selector(
+                "input_boolean"
+            ),
+            _required_marker(
+                current, CONF_ELECTRIC_FALLBACK_LAST_TRIGGER
+            ): _entity_selector("input_datetime"),
+            _required_marker(current, CONF_CONTROL_NUMBER_ENTITY): _entity_selector(
+                "number"
+            ),
             _optional_marker(current, CONF_PV_SENSOR): _entity_selector("sensor"),
-            _optional_marker(current, CONF_FLOOR_TEMP_SENSOR): _entity_selector("sensor"),
+            _optional_marker(current, CONF_FLOOR_TEMP_SENSOR): _entity_selector(
+                "sensor"
+            ),
             _optional_marker(current, CONF_ENABLE_DAIKIN_CONSUMER): bool,
-            _optional_marker(current, CONF_DAIKIN_CLIMATE_ENTITY): _entity_selector("climate"),
-            _optional_marker(current, CONF_DAIKIN_OUTDOOR_TEMP_SENSOR): _entity_selector("sensor"),
+            _optional_marker(current, CONF_DAIKIN_CLIMATE_ENTITY): _entity_selector(
+                "climate"
+            ),
+            _optional_marker(
+                current, CONF_DAIKIN_OUTDOOR_TEMP_SENSOR
+            ): _entity_selector("sensor"),
             _optional_marker(current, CONF_ENABLE_FLOOR_CONSUMER): bool,
-            _optional_marker(current, CONF_FLOOR_CLIMATE_ENTITY): _entity_selector("climate"),
-            _optional_marker(current, CONF_FLOOR_COMFORT_SCHEDULE): _entity_selector(["schedule", "input_boolean"]),
+            _optional_marker(current, CONF_FLOOR_CLIMATE_ENTITY): _entity_selector(
+                "climate"
+            ),
+            _optional_marker(current, CONF_FLOOR_COMFORT_SCHEDULE): _entity_selector(
+                ["schedule", "input_boolean"]
+            ),
         }
     )
 
@@ -138,35 +169,80 @@ def _user_schema(current: dict[str, Any]) -> vol.Schema:
 def _tuning_schema(current: dict[str, Any]) -> vol.Schema:
     return vol.Schema(
         {
-            vol.Required(CONF_MINUTES_TO_BLOCK, default=_cfg_value(current, CONF_MINUTES_TO_BLOCK)): _bounded_int(0, 1440),
-            vol.Required(CONF_PRICE_IGNORE_BELOW, default=_cfg_value(current, CONF_PRICE_IGNORE_BELOW)): _bounded_float(0, 100),
-            vol.Required(CONF_PV_IGNORE_ABOVE_W, default=_cfg_value(current, CONF_PV_IGNORE_ABOVE_W)): _bounded_float(0, 1_000_000),
-            vol.Required(CONF_MIN_FLOOR_TEMP, default=_cfg_value(current, CONF_MIN_FLOOR_TEMP)): _bounded_float(-50, 50),
-            vol.Required(CONF_MIN_TOGGLE_INTERVAL_MIN, default=_cfg_value(current, CONF_MIN_TOGGLE_INTERVAL_MIN)): _bounded_int(0, 720),
-            vol.Required(CONF_HEATPUMP_SETPOINT, default=_cfg_value(current, CONF_HEATPUMP_SETPOINT)): _bounded_float(0, 50),
-            vol.Required(CONF_SAVING_COLD_OFFSET_C, default=_cfg_value(current, CONF_SAVING_COLD_OFFSET_C)): _bounded_float(0, 20),
-            vol.Required(CONF_VIRTUAL_TEMPERATURE, default=_cfg_value(current, CONF_VIRTUAL_TEMPERATURE)): _bounded_float(0, 50),
+            vol.Required(
+                CONF_MINUTES_TO_BLOCK,
+                default=_cfg_value(current, CONF_MINUTES_TO_BLOCK),
+            ): _bounded_int(0, 1440),
+            vol.Required(
+                CONF_PRICE_IGNORE_BELOW,
+                default=_cfg_value(current, CONF_PRICE_IGNORE_BELOW),
+            ): _bounded_float(0, 100),
+            vol.Required(
+                CONF_PV_IGNORE_ABOVE_W,
+                default=_cfg_value(current, CONF_PV_IGNORE_ABOVE_W),
+            ): _bounded_float(0, 1_000_000),
+            vol.Required(
+                CONF_MIN_FLOOR_TEMP, default=_cfg_value(current, CONF_MIN_FLOOR_TEMP)
+            ): _bounded_float(-50, 50),
+            vol.Required(
+                CONF_MIN_TOGGLE_INTERVAL_MIN,
+                default=_cfg_value(current, CONF_MIN_TOGGLE_INTERVAL_MIN),
+            ): _bounded_int(0, 720),
+            vol.Required(
+                CONF_HEATPUMP_SETPOINT,
+                default=_cfg_value(current, CONF_HEATPUMP_SETPOINT),
+            ): _bounded_float(0, 50),
+            vol.Required(
+                CONF_SAVING_COLD_OFFSET_C,
+                default=_cfg_value(current, CONF_SAVING_COLD_OFFSET_C),
+            ): _bounded_float(0, 20),
+            vol.Required(
+                CONF_VIRTUAL_TEMPERATURE,
+                default=_cfg_value(current, CONF_VIRTUAL_TEMPERATURE),
+            ): _bounded_float(0, 50),
             vol.Required(
                 CONF_ENERGY_SAVING_WARM_SHUTDOWN_OUTDOOR,
                 default=_cfg_value(current, CONF_ENERGY_SAVING_WARM_SHUTDOWN_OUTDOOR),
             ): _bounded_float(-50, 50),
-            vol.Required(CONF_COMFORT_TARGET_C, default=_cfg_value(current, CONF_COMFORT_TARGET_C)): _bounded_float(0, 50),
+            vol.Required(
+                CONF_COMFORT_TARGET_C,
+                default=_cfg_value(current, CONF_COMFORT_TARGET_C),
+            ): _bounded_float(0, 50),
             vol.Required(
                 CONF_COMFORT_TO_HEATPUMP_OFFSET_C,
                 default=_cfg_value(current, CONF_COMFORT_TO_HEATPUMP_OFFSET_C),
             ): _bounded_float(0, 20),
-            vol.Required(CONF_STORAGE_TARGET_C, default=_cfg_value(current, CONF_STORAGE_TARGET_C)): _bounded_float(0, 60),
+            vol.Required(
+                CONF_STORAGE_TARGET_C,
+                default=_cfg_value(current, CONF_STORAGE_TARGET_C),
+            ): _bounded_float(0, 60),
             vol.Required(
                 CONF_STORAGE_TO_HEATPUMP_OFFSET_C,
                 default=_cfg_value(current, CONF_STORAGE_TO_HEATPUMP_OFFSET_C),
             ): _bounded_float(0, 20),
-            vol.Required(CONF_MAINTENANCE_TARGET_C, default=_cfg_value(current, CONF_MAINTENANCE_TARGET_C)): _bounded_float(0, 50),
-            vol.Required(CONF_COMFORT_MARGIN_C, default=_cfg_value(current, CONF_COMFORT_MARGIN_C)): _bounded_float(0, 5),
-            vol.Required(CONF_COLD_THRESHOLD, default=_cfg_value(current, CONF_COLD_THRESHOLD)): _bounded_float(-50, 30),
-            vol.Required(CONF_MAX_BOOST, default=_cfg_value(current, CONF_MAX_BOOST)): _bounded_float(0, 20),
-            vol.Required(CONF_BOOST_SLOPE_C, default=_cfg_value(current, CONF_BOOST_SLOPE_C)): _bounded_float(0.01, 100),
-            vol.Required(CONF_CONTROL_MIN_C, default=_cfg_value(current, CONF_CONTROL_MIN_C)): _bounded_float(0, 50),
-            vol.Required(CONF_CONTROL_MAX_C, default=_cfg_value(current, CONF_CONTROL_MAX_C)): _bounded_float(0, 50),
+            vol.Required(
+                CONF_MAINTENANCE_TARGET_C,
+                default=_cfg_value(current, CONF_MAINTENANCE_TARGET_C),
+            ): _bounded_float(0, 50),
+            vol.Required(
+                CONF_COMFORT_MARGIN_C,
+                default=_cfg_value(current, CONF_COMFORT_MARGIN_C),
+            ): _bounded_float(0, 5),
+            vol.Required(
+                CONF_COLD_THRESHOLD, default=_cfg_value(current, CONF_COLD_THRESHOLD)
+            ): _bounded_float(-50, 30),
+            vol.Required(
+                CONF_MAX_BOOST, default=_cfg_value(current, CONF_MAX_BOOST)
+            ): _bounded_float(0, 20),
+            vol.Required(
+                CONF_BOOST_SLOPE_C, default=_cfg_value(current, CONF_BOOST_SLOPE_C)
+            ): _bounded_float(0.01, 100),
+            vol.Required(
+                CONF_CONTROL_MIN_C, default=_cfg_value(current, CONF_CONTROL_MIN_C)
+            ): _bounded_float(0, 50),
+            vol.Required(
+                CONF_CONTROL_MAX_C, default=_cfg_value(current, CONF_CONTROL_MAX_C)
+            ): _bounded_float(0, 50),
             vol.Required(
                 CONF_SAVING_HELPER_WRITE_DELTA_C,
                 default=_cfg_value(current, CONF_SAVING_HELPER_WRITE_DELTA_C),
@@ -179,12 +255,17 @@ def _tuning_schema(current: dict[str, Any]) -> vol.Schema:
                 CONF_FINAL_HELPER_WRITE_DELTA_C,
                 default=_cfg_value(current, CONF_FINAL_HELPER_WRITE_DELTA_C),
             ): _bounded_float(0, 5),
-            vol.Required(CONF_CONTROL_WRITE_DELTA_C, default=_cfg_value(current, CONF_CONTROL_WRITE_DELTA_C)): _bounded_float(0, 5),
+            vol.Required(
+                CONF_CONTROL_WRITE_DELTA_C,
+                default=_cfg_value(current, CONF_CONTROL_WRITE_DELTA_C),
+            ): _bounded_float(0, 5),
             vol.Required(
                 CONF_ELECTRIC_FALLBACK_DELTA_C,
                 default=_cfg_value(current, CONF_ELECTRIC_FALLBACK_DELTA_C),
             ): _bounded_float(0, 20),
-            vol.Required(CONF_RELEASE_DELTA_C, default=_cfg_value(current, CONF_RELEASE_DELTA_C)): _bounded_float(0, 20),
+            vol.Required(
+                CONF_RELEASE_DELTA_C, default=_cfg_value(current, CONF_RELEASE_DELTA_C)
+            ): _bounded_float(0, 20),
             vol.Required(
                 CONF_ELECTRIC_FALLBACK_MINUTES,
                 default=_cfg_value(current, CONF_ELECTRIC_FALLBACK_MINUTES),
@@ -209,12 +290,18 @@ def _tuning_schema(current: dict[str, Any]) -> vol.Schema:
                 CONF_DAIKIN_MIN_TEMP_CHANGE,
                 default=_cfg_value(current, CONF_DAIKIN_MIN_TEMP_CHANGE),
             ): _bounded_float(0, 20),
-            vol.Required(CONF_FLOOR_COMFORT_TEMP_C, default=_cfg_value(current, CONF_FLOOR_COMFORT_TEMP_C)): _bounded_float(0, 50),
+            vol.Required(
+                CONF_FLOOR_COMFORT_TEMP_C,
+                default=_cfg_value(current, CONF_FLOOR_COMFORT_TEMP_C),
+            ): _bounded_float(0, 50),
             vol.Required(
                 CONF_FLOOR_PREFER_PRESET_MANUAL,
                 default=_cfg_value(current, CONF_FLOOR_PREFER_PRESET_MANUAL),
             ): bool,
-            vol.Required(CONF_FLOOR_HVAC_MODE_WHEN_ON, default=_cfg_value(current, CONF_FLOOR_HVAC_MODE_WHEN_ON)): str,
+            vol.Required(
+                CONF_FLOOR_HVAC_MODE_WHEN_ON,
+                default=_cfg_value(current, CONF_FLOOR_HVAC_MODE_WHEN_ON),
+            ): str,
             vol.Optional(
                 CONF_FLOOR_SOFT_OFF_TEMP_OVERRIDE_C,
                 default=_cfg_value(current, CONF_FLOOR_SOFT_OFF_TEMP_OVERRIDE_C),
@@ -243,7 +330,9 @@ class BlockheatConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ig
     def __init__(self) -> None:
         self._entity_data: dict[str, Any] = {}
 
-    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         errors: dict[str, str] = {}
 
         if self._async_current_entries():
@@ -264,7 +353,9 @@ class BlockheatConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ig
             errors=errors,
         )
 
-    async def async_step_tuning(self, user_input: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def async_step_tuning(
+        self, user_input: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         errors: dict[str, str] = {}
         current = {**DEFAULTS, **self._entity_data}
 
@@ -284,7 +375,9 @@ class BlockheatConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ig
 
     @staticmethod
     @callback
-    def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> "BlockheatOptionsFlow":
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> BlockheatOptionsFlow:
         return BlockheatOptionsFlow(config_entry)
 
 
@@ -295,7 +388,9 @@ class BlockheatOptionsFlow(config_entries.OptionsFlow):
         self._config_entry = config_entry
         self._entity_data: dict[str, Any] = {}
 
-    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         current = {**DEFAULTS, **self._config_entry.data, **self._config_entry.options}
 
         if user_input is not None:
@@ -310,7 +405,9 @@ class BlockheatOptionsFlow(config_entries.OptionsFlow):
 
         return self.async_show_form(step_id="init", data_schema=_user_schema(current))
 
-    async def async_step_tuning(self, user_input: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def async_step_tuning(
+        self, user_input: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         current = {
             **DEFAULTS,
             **self._config_entry.data,

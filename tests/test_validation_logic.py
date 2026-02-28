@@ -1,6 +1,6 @@
 import importlib.util
-from pathlib import Path
 import unittest
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 VALIDATION_PATH = ROOT / "custom_components" / "blockheat" / "validation.py"
