@@ -9,6 +9,8 @@ To keep agent work isolated and fast, use this workflow for every thread:
 2. Use branch names with the `codex/` prefix.
 3. Complete implementation and verification in that worktree.
 4. Commit and open a PR before considering the thread complete.
+5. Monitor PR CI/checks until they pass (or explicitly note if no checks are configured).
+6. Before closing the thread, check whether behavior/input changes require documentation updates and apply them.
 
 Example setup:
 ```bash
@@ -103,7 +105,7 @@ Notes:
 - Shared fake Home Assistant test fixtures are defined in `tests/conftest.py`.
 
 Mirror sync guard:
-- Run `python3 scripts/check_component_mirror_sync.py` to verify that
+- Run `uv run python scripts/check_component_mirror_sync.py` to verify that
   `custom_components/blockheat` and `homeassistant/custom_components/blockheat`
   are byte-identical when the mirror directory exists.
 
