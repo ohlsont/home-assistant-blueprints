@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Iterable, Sequence
-
 
 DEFAULT_POLICY_CUTOFF = 9999.0
 DEFAULT_MISSING_OUTDOOR = 999.0
