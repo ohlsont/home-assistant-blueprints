@@ -27,7 +27,7 @@ Daikin/floor consumers.
 4. Restart Home Assistant.
 5. Go to **Settings -> Devices & Services -> Add Integration** and add **Blockheat**.
 6. Complete both config steps:
-   - Step 1: entity mapping (policy sensors/helpers/control + optional consumers)
+   - Step 1: entity mapping with searchable, domain-filtered entity pickers (policy sensors/helpers/control + optional consumers)
    - Step 2: tuning values (policy windows, target/fallback thresholds, deadbands)
 
 ### Install Manually to Home Assistant
@@ -43,7 +43,7 @@ Then in Home Assistant:
 2. Go to **Settings -> Devices & Services -> Add Integration**.
 3. Add **Blockheat**.
 4. Complete both config steps:
-   - Step 1: entity mapping (policy sensors/helpers/control + optional consumers)
+   - Step 1: entity mapping with searchable, domain-filtered entity pickers (policy sensors/helpers/control + optional consumers)
    - Step 2: tuning values (policy windows, target/fallback thresholds, deadbands)
 
 ### Testing
