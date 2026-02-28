@@ -6,6 +6,7 @@ blueprint:
 
     Rules:
     - Compute cold boost from outdoor temperature
+    - Colder outdoor weather increases control targets by up to max boost
     - If comfort rooms unsatisfied: follow comfort target path
     - If comfort rooms satisfied and storage needs heat: follow storage path
     - If comfort rooms satisfied and storage is fine: use maintenance target
@@ -143,6 +144,7 @@ blueprint:
 
     cold_threshold:
       name: Cold boost — Threshold (°C)
+      description: Outdoor temperature below which additive cold boost starts
       default: 0
       selector:
         number:
@@ -153,6 +155,7 @@ blueprint:
 
     max_boost:
       name: Cold boost — Max boost (°C)
+      description: Maximum boost added to comfort and storage control paths
       default: 3
       selector:
         number:
@@ -163,6 +166,7 @@ blueprint:
 
     boost_slope_c:
       name: Cold boost — Slope (°C per +1°C boost)
+      description: Outdoor degrees colder required for each +1°C added boost
       default: 5
       selector:
         number:
