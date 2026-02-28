@@ -203,6 +203,8 @@ def test_comfort_boost_saturates_at_max() -> None:
     )
     assert result.boost_clamped == 3.0
     assert result.target == 23.0
+
+
 def test_comfort_colder_outdoor_increases_target() -> None:
     at_threshold = compute_comfort_target(
         room1_temp=21.0,
