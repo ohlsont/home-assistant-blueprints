@@ -3,6 +3,19 @@
 This repo now ships a custom Home Assistant integration for policy-driven heating,
 plus legacy blueprint references.
 
+## Codex Thread Workflow (Required)
+To keep agent work isolated and fast, use this workflow for every thread:
+1. Create a dedicated worktree and branch before changing files.
+2. Use branch names with the `codex/` prefix.
+3. Complete implementation and verification in that worktree.
+4. Commit and open a PR before considering the thread complete.
+
+Example setup:
+```bash
+git worktree add .worktrees/codex/<topic> -b codex/<topic>
+cd .worktrees/codex/<topic>
+```
+
 ## Folder Layout
 - `custom_components/blockheat/`
   - HACS-compatible integration path (`config_flow`, runtime adapter, pure Python engine).
@@ -45,6 +58,26 @@ Then in Home Assistant:
 4. Complete both config steps:
    - Step 1: entity mapping with searchable, domain-filtered entity pickers (policy sensors/helpers/control + optional consumers)
    - Step 2: tuning values (policy windows, target/fallback thresholds, deadbands)
+
+### Runtime Behavior (Current Integration)
+- The config flow is single-instance: only one `blockheat` config entry is supported.
+- Recompute runs on:
+  - Home Assistant startup
+  - Any state change on mapped required/optional entities
+  - A periodic 5-minute interval (`DEFAULT_RECOMPUTE_MINUTES = 5`)
+- Recompute always updates the diagnostics coordinator payload and fires `blockheat_snapshot`.
+- Policy transitions also fire:
+  - `energy_saving_state_changed`
+  - `blockheat_policy_changed`
+
+### Integration Services
+Services are exposed under the `blockheat` domain:
+- `blockheat.recompute`
+  - Forces an immediate full compute/write pass.
+- `blockheat.dump_diagnostics`
+  - Forces recompute and emits a diagnostics snapshot payload.
+
+Both services accept optional `entry_id` (text). If omitted, all Blockheat entries are targeted.
 
 ### Testing
 Install dev dependencies once:
@@ -262,7 +295,7 @@ Assistant Developer Tools by forcing helper/sensor states.
 |---|---|---|---|
 | Policy ON + outdoor >= warm threshold | `target_saving = virtual_temperature`, `target_final` matches | Pending manual run | Requires HA runtime |
 | Policy ON + outdoor < warm threshold | `target_saving = setpoint - saving_cold_offset_c` | Pending manual run | Requires HA runtime |
-| Policy OFF + comfort unsatisfied | `target_comfort = comfort path + boost` | Pending manual run | Requires HA runtime |
+| Policy OFF + comfort unsatisfied | `target_comfort = comfort path` | Pending manual run | Requires HA runtime |
 | Policy OFF + comfort satisfied + storage needs heat | `target_comfort = max(storage path, comfort path)` | Pending manual run | Requires HA runtime |
 | Policy OFF + comfort satisfied + storage OK | `target_comfort = maintenance_target` | Pending manual run | Requires HA runtime |
 | Extreme cold boost | `target_comfort` clamps at max | Pending manual run | Requires HA runtime |
