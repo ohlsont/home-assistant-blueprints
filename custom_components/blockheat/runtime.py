@@ -950,7 +950,7 @@ class BlockheatRuntime:
     def _parse_datetime_value(self, value: Any) -> datetime | None:
         parsed = dt_util.parse_datetime(str(value)) if value is not None else None
         if parsed is not None:
-            return parsed
+            return dt_util.as_utc(parsed)
 
         ts = as_float(value)
         if ts is not None:
