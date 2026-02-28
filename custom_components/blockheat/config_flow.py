@@ -30,12 +30,10 @@ from .const import (
     CONF_DAIKIN_SAVING_TEMPERATURE,
     CONF_ELECTRIC_FALLBACK_COOLDOWN_MINUTES,
     CONF_ELECTRIC_FALLBACK_DELTA_C,
-    CONF_ELECTRIC_FALLBACK_LAST_TRIGGER,
     CONF_ELECTRIC_FALLBACK_MINUTES,
     CONF_ENABLE_DAIKIN_CONSUMER,
     CONF_ENABLE_FLOOR_CONSUMER,
     CONF_ENERGY_SAVING_WARM_SHUTDOWN_OUTDOOR,
-    CONF_FALLBACK_ACTIVE_BOOLEAN,
     CONF_FINAL_HELPER_WRITE_DELTA_C,
     CONF_FLOOR_CLIMATE_ENTITY,
     CONF_FLOOR_COMFORT_SCHEDULE,
@@ -63,14 +61,11 @@ from .const import (
     CONF_STORAGE_ROOM_SENSOR,
     CONF_STORAGE_TARGET_C,
     CONF_STORAGE_TO_HEATPUMP_OFFSET_C,
-    CONF_TARGET_BOOLEAN,
-    CONF_TARGET_COMFORT_HELPER,
-    CONF_TARGET_FINAL_HELPER,
-    CONF_TARGET_SAVING_HELPER,
     CONF_VIRTUAL_TEMPERATURE,
     DEFAULTS,
     DOMAIN,
     REQUIRED_ENTITY_KEYS,
+    normalize_entry_data,
 )
 from .validation import validate_tuning_values
 
@@ -110,40 +105,12 @@ def _bounded_int(min_value: int, max_value: int) -> Any:
 def _user_schema(current: dict[str, Any]) -> vol.Schema:
     return vol.Schema(
         {
-            _required_marker(current, CONF_TARGET_BOOLEAN): _entity_selector(
-                "input_boolean"
-            ),
             _required_marker(current, CONF_NORDPOOL_PRICE): _entity_selector("sensor"),
-            _required_marker(current, CONF_COMFORT_ROOM_1_SENSOR): _entity_selector(
-                "sensor"
-            ),
-            _required_marker(current, CONF_COMFORT_ROOM_2_SENSOR): _entity_selector(
-                "sensor"
-            ),
-            _required_marker(current, CONF_STORAGE_ROOM_SENSOR): _entity_selector(
-                "sensor"
-            ),
-            _required_marker(
-                current, CONF_OUTDOOR_TEMPERATURE_SENSOR
-            ): _entity_selector("sensor"),
-            _required_marker(current, CONF_TARGET_SAVING_HELPER): _entity_selector(
-                "input_number"
-            ),
-            _required_marker(current, CONF_TARGET_COMFORT_HELPER): _entity_selector(
-                "input_number"
-            ),
-            _required_marker(current, CONF_TARGET_FINAL_HELPER): _entity_selector(
-                "input_number"
-            ),
-            _required_marker(current, CONF_FALLBACK_ACTIVE_BOOLEAN): _entity_selector(
-                "input_boolean"
-            ),
-            _required_marker(
-                current, CONF_ELECTRIC_FALLBACK_LAST_TRIGGER
-            ): _entity_selector("input_datetime"),
-            _required_marker(current, CONF_CONTROL_NUMBER_ENTITY): _entity_selector(
-                "number"
-            ),
+            _required_marker(current, CONF_COMFORT_ROOM_1_SENSOR): _entity_selector("sensor"),
+            _required_marker(current, CONF_COMFORT_ROOM_2_SENSOR): _entity_selector("sensor"),
+            _required_marker(current, CONF_STORAGE_ROOM_SENSOR): _entity_selector("sensor"),
+            _required_marker(current, CONF_OUTDOOR_TEMPERATURE_SENSOR): _entity_selector("sensor"),
+            _required_marker(current, CONF_CONTROL_NUMBER_ENTITY): _entity_selector("number"),
             _optional_marker(current, CONF_PV_SENSOR): _entity_selector("sensor"),
             _optional_marker(current, CONF_FLOOR_TEMP_SENSOR): _entity_selector(
                 "sensor"
@@ -357,10 +324,10 @@ class BlockheatConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ig
         self, user_input: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         errors: dict[str, str] = {}
-        current = {**DEFAULTS, **self._entity_data}
+        current = normalize_entry_data({**DEFAULTS, **self._entity_data})
 
         if user_input is not None:
-            data = {**DEFAULTS, **self._entity_data, **user_input}
+            data = normalize_entry_data({**DEFAULTS, **self._entity_data, **user_input})
             validation_error = validate_tuning_values(data)
             if validation_error:
                 errors["base"] = validation_error
@@ -391,7 +358,9 @@ class BlockheatOptionsFlow(config_entries.OptionsFlow):
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> dict[str, Any]:
-        current = {**DEFAULTS, **self._config_entry.data, **self._config_entry.options}
+        current = normalize_entry_data(
+            {**DEFAULTS, **self._config_entry.data, **self._config_entry.options}
+        )
 
         if user_input is not None:
             if not _validate_required_entities(user_input):
@@ -408,12 +377,14 @@ class BlockheatOptionsFlow(config_entries.OptionsFlow):
     async def async_step_tuning(
         self, user_input: dict[str, Any] | None = None
     ) -> dict[str, Any]:
-        current = {
-            **DEFAULTS,
-            **self._config_entry.data,
-            **self._config_entry.options,
-            **self._entity_data,
-        }
+        current = normalize_entry_data(
+            {
+                **DEFAULTS,
+                **self._config_entry.data,
+                **self._config_entry.options,
+                **self._entity_data,
+            }
+        )
         errors: dict[str, str] = {}
 
         if user_input is not None:
@@ -422,7 +393,9 @@ class BlockheatOptionsFlow(config_entries.OptionsFlow):
             if validation_error:
                 errors["base"] = validation_error
             else:
-                return self.async_create_entry(title="", data=options)
+                return self.async_create_entry(
+                    title="", data=normalize_entry_data(options)
+                )
 
         return self.async_show_form(
             step_id="tuning",
