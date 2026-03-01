@@ -580,6 +580,34 @@ async def test_logbook_service_not_found_is_tolerated(
 
 
 @pytest.mark.asyncio
+async def test_fallback_last_trigger_naive_datetime_is_normalized(
+    blockheat_env: SimpleNamespace,
+    fake_hass: Any,
+    build_config: Any,
+    seed_runtime_states: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ctx = _make_runtime_context(
+        blockheat_env,
+        fake_hass,
+        build_config,
+        seed_runtime_states,
+        overrides={
+            blockheat_env.const.CONF_MIN_TOGGLE_INTERVAL_MIN: 0,
+            blockheat_env.const.CONF_MINUTES_TO_BLOCK: 0,
+        },
+    )
+    monkeypatch.setattr(
+        ctx.runtime_module.dt_util,
+        "parse_datetime",
+        lambda _value: datetime(2026, 2, 18, 12, 0),
+    )
+
+    snapshot = await ctx.runtime.async_recompute("naive_last_trigger")
+    assert snapshot["fallback"]["cooldown_ok"] is True
+
+
+@pytest.mark.asyncio
 async def test_async_unload_clears_timers_and_subscriptions(
     blockheat_env: SimpleNamespace,
     fake_hass: Any,

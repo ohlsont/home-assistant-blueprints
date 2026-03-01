@@ -40,6 +40,21 @@ class _FakeCoordinator:
         self.data = data
 
 
+class _FailingUnloadConfigEntries:
+    def __init__(self) -> None:
+        self.forward_calls: list[tuple[str, tuple[str, ...]]] = []
+        self.unload_calls: list[tuple[str, tuple[str, ...]]] = []
+
+    async def async_forward_entry_setups(
+        self, entry: Any, platforms: list[str]
+    ) -> None:
+        self.forward_calls.append((entry.entry_id, tuple(platforms)))
+
+    async def async_unload_platforms(self, entry: Any, platforms: list[str]) -> bool:
+        self.unload_calls.append((entry.entry_id, tuple(platforms)))
+        return False
+
+
 @pytest.mark.asyncio
 async def test_setup_entry_registers_services_once_and_resolves_runtimes(
     blockheat_env: SimpleNamespace,
@@ -152,3 +167,27 @@ async def test_recompute_service_invokes_selected_runtime(
     runtime_2 = fake_hass.data[const.DOMAIN]["entry-2"][package.ENTRY_RUNTIME]
     assert runtime_1.recompute_calls == []
     assert runtime_2.recompute_calls == ["service_recompute"]
+
+
+@pytest.mark.asyncio
+async def test_reload_entry_aborts_when_unload_fails(
+    blockheat_env: SimpleNamespace,
+    fake_hass: Any,
+    build_config: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    package = blockheat_env.package
+    monkeypatch.setattr(package, "BlockheatRuntime", _FakeRuntime)
+    monkeypatch.setattr(package, "BlockheatCoordinator", _FakeCoordinator)
+    fake_hass.config_entries = _FailingUnloadConfigEntries()
+
+    await package.async_setup(fake_hass, {})
+
+    entry = blockheat_env.FakeConfigEntry("entry-1", data=build_config())
+    await package.async_setup_entry(fake_hass, entry)
+    existing_runtime = fake_hass.data[package.DOMAIN]["entry-1"][package.ENTRY_RUNTIME]
+
+    await package.async_reload_entry(fake_hass, entry)
+
+    assert fake_hass.data[package.DOMAIN] == {}
+    assert existing_runtime.setup_calls == 1
