@@ -25,7 +25,6 @@ compute_comfort_target = engine.compute_comfort_target
 compute_daikin = engine.compute_daikin
 compute_fallback_conditions = engine.compute_fallback_conditions
 compute_final_target = engine.compute_final_target
-compute_floor = engine.compute_floor
 compute_policy = engine.compute_policy
 compute_saving_target = engine.compute_saving_target
 
@@ -40,8 +39,6 @@ class PolicyTests(unittest.TestCase):
             price_ignore_below=0.0,
             pv_now=0.0,
             pv_ignore_above_w=0.0,
-            floor_temp=21.0,
-            min_floor_temp=0.0,
             current_on=False,
             last_changed=now - timedelta(minutes=60),
             now=now,
@@ -59,8 +56,6 @@ class PolicyTests(unittest.TestCase):
             price_ignore_below=0.0,
             pv_now=0.0,
             pv_ignore_above_w=0.0,
-            floor_temp=21.0,
-            min_floor_temp=0.0,
             current_on=False,
             last_changed=now - timedelta(minutes=5),
             now=now,
@@ -234,27 +229,6 @@ class ConsumerTests(unittest.TestCase):
         )
         self.assertFalse(result.should_write)
         self.assertIsNone(result.target_temp)
-
-    def test_floor_soft_off_in_policy_saving(self) -> None:
-        now = datetime(2026, 2, 18, 10, 0, tzinfo=UTC)
-        result = compute_floor(
-            policy_on=True,
-            cur_temp=22.0,
-            dev_min=5.0,
-            comfort_temp_c=22.0,
-            prefer_preset_manual=True,
-            hvac_mode_when_on="heat",
-            supported_hvac_modes=["heat", "auto"],
-            preset_modes=["manual"],
-            soft_off_temp_override_c="",
-            min_keep_temp_c="",
-            schedule_defined=False,
-            schedule_on=True,
-            last_changed=now - timedelta(minutes=20),
-            min_switch_interval_min=15,
-            now=now,
-        )
-        self.assertEqual(result.action, "set_soft_off")
 
 
 if __name__ == "__main__":

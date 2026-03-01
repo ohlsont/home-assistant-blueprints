@@ -356,7 +356,6 @@ async def test_optional_consumers_disabled_missing_and_write_paths(
     )
     disabled_snapshot = await disabled_ctx.runtime.async_recompute("consumers_disabled")
     assert disabled_snapshot["daikin"]["enabled"] is False
-    assert disabled_snapshot["floor"]["enabled"] is False
 
     missing_ctx = _make_runtime_context(
         blockheat_env,
@@ -366,15 +365,12 @@ async def test_optional_consumers_disabled_missing_and_write_paths(
         overrides={
             blockheat_env.const.CONF_ENABLE_DAIKIN_CONSUMER: True,
             blockheat_env.const.CONF_DAIKIN_CLIMATE_ENTITY: "",
-            blockheat_env.const.CONF_ENABLE_FLOOR_CONSUMER: True,
-            blockheat_env.const.CONF_FLOOR_CLIMATE_ENTITY: "",
         },
     )
     missing_snapshot = await missing_ctx.runtime.async_recompute(
         "consumers_missing_entity"
     )
     assert missing_snapshot["daikin"]["skipped"] == "missing_climate_entity"
-    assert missing_snapshot["floor"]["skipped"] == "missing_climate_entity"
 
     write_ctx = _make_runtime_context(
         blockheat_env,
@@ -384,11 +380,8 @@ async def test_optional_consumers_disabled_missing_and_write_paths(
         overrides={
             blockheat_env.const.CONF_ENABLE_DAIKIN_CONSUMER: True,
             blockheat_env.const.CONF_DAIKIN_CLIMATE_ENTITY: "climate.daikin_upstairs",
-            blockheat_env.const.CONF_ENABLE_FLOOR_CONSUMER: True,
-            blockheat_env.const.CONF_FLOOR_CLIMATE_ENTITY: "climate.floor_heat",
             blockheat_env.const.CONF_MIN_TOGGLE_INTERVAL_MIN: 0,
             blockheat_env.const.CONF_MINUTES_TO_BLOCK: 30,
-            blockheat_env.const.CONF_FLOOR_MIN_SWITCH_INTERVAL_MIN: 0,
         },
         seed_kwargs={
             "policy_state": "off",
@@ -401,16 +394,6 @@ async def test_optional_consumers_disabled_missing_and_write_paths(
         "heat",
         attributes={"temperature": 22.0},
     )
-    write_ctx.hass.states.set(
-        "climate.floor_heat",
-        "heat",
-        attributes={
-            "temperature": 22.5,
-            "min_temp": 5.0,
-            "hvac_modes": ["heat", "auto"],
-            "preset_modes": ["manual"],
-        },
-    )
     await write_ctx.runtime.async_recompute("consumers_write")
 
     daikin_calls = _service_calls_for(
@@ -419,14 +402,7 @@ async def test_optional_consumers_disabled_missing_and_write_paths(
         "set_temperature",
         entity_id="climate.daikin_upstairs",
     )
-    floor_calls = _service_calls_for(
-        write_ctx.hass.services.calls,
-        "climate",
-        "set_temperature",
-        entity_id="climate.floor_heat",
-    )
     assert daikin_calls
-    assert floor_calls
 
 
 @pytest.mark.asyncio
@@ -441,6 +417,10 @@ async def test_state_change_event_populates_trigger_context(
         fake_hass,
         build_config,
         seed_runtime_states,
+        overrides={
+            blockheat_env.const.CONF_ENABLE_DAIKIN_CONSUMER: True,
+            blockheat_env.const.CONF_DAIKIN_CLIMATE_ENTITY: "climate.daikin_upstairs",
+        },
     )
     await ctx.runtime.async_setup()
 
@@ -449,6 +429,9 @@ async def test_state_change_event_populates_trigger_context(
     ctx.hass.created_tasks.clear()
 
     tracker = ctx.hass.state_trackers[0]
+    tracked_entities = set(tracker["entity_ids"])
+    assert ctx.config[ctx.const.CONF_CONTROL_NUMBER_ENTITY] not in tracked_entities
+    assert "climate.daikin_upstairs" not in tracked_entities
     tracker["callback"](
         SimpleNamespace(
             data={"entity_id": ctx.config[ctx.const.CONF_COMFORT_ROOM_1_SENSOR]}

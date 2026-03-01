@@ -200,7 +200,10 @@ def compute_comfort_target(
     )
 
     if outdoor_temp is not None and outdoor_temp < cold_threshold:
-        boost_raw = (cold_threshold - outdoor_temp) / boost_slope_c
+        if boost_slope_c > 0:
+            boost_raw = (cold_threshold - outdoor_temp) / boost_slope_c
+        else:
+            boost_raw = max_boost
     else:
         boost_raw = 0.0
     boost_clamped = clamp(boost_raw, 0.0, max_boost)

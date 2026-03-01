@@ -699,10 +699,6 @@ def seed_runtime_states(blockheat_env: SimpleNamespace) -> Any:
         if pv_sensor:
             hass.states.set(pv_sensor, "0", last_changed=changed)
 
-        floor_sensor = config.get(const.CONF_FLOOR_TEMP_SENSOR, "")
-        if floor_sensor:
-            hass.states.set(floor_sensor, "21", last_changed=changed)
-
     return _seed
 
 

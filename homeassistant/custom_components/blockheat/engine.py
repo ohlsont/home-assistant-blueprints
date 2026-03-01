@@ -46,18 +46,6 @@ def min_numeric(values: Iterable[float | None]) -> float | None:
     return min(candidates) if candidates else None
 
 
-def to_lower_list(values: Sequence[object] | None) -> list[str]:
-    """Normalize list values to lower-case strings."""
-    if not values:
-        return []
-    result: list[str] = []
-    for value in values:
-        if value is None:
-            continue
-        result.append(str(value).lower())
-    return result
-
-
 @dataclass(slots=True)
 class PolicyComputation:
     target_on: bool
@@ -69,10 +57,8 @@ class PolicyComputation:
     cutoff: float
     price: float
     pv_now: float
-    floor_temp: float
     ignore_by_price: bool
     ignore_by_pv: bool
-    below_min_floor: bool
 
 
 @dataclass(slots=True)
@@ -110,17 +96,6 @@ class DaikinComputation:
     current_temp: float
 
 
-@dataclass(slots=True)
-class FloorComputation:
-    action: str | None
-    desired_temp: float
-    soft_off_target: float
-    use_manual_preset: bool
-    hvac_mode_final: str
-    schedule_on: bool
-    policy_saving: bool
-
-
 def compute_policy(
     *,
     price: float | None,
@@ -129,8 +104,6 @@ def compute_policy(
     price_ignore_below: float,
     pv_now: float | None,
     pv_ignore_above_w: float,
-    floor_temp: float | None,
-    min_floor_temp: float,
     current_on: bool,
     last_changed: datetime | None,
     now: datetime,
@@ -139,7 +112,6 @@ def compute_policy(
     """Compute policy ON/OFF decision matching blueprint behavior."""
     current_price = as_float(price, 0.0) or 0.0
     current_pv = as_float(pv_now, 0.0) or 0.0
-    current_floor = as_float(floor_temp, 0.0) or 0.0
 
     normalized_prices: list[float] = []
     for raw in prices_today or []:
@@ -157,10 +129,7 @@ def compute_policy(
     blocked_now = current_price >= cutoff
     ignore_by_price = price_ignore_below > 0 and current_price < price_ignore_below
     ignore_by_pv = pv_ignore_above_w > 0 and current_pv >= pv_ignore_above_w
-    below_min_floor = min_floor_temp > 0 and current_floor < min_floor_temp
-    target_on = (
-        not (ignore_by_price or ignore_by_pv or below_min_floor)
-    ) and blocked_now
+    target_on = (not (ignore_by_price or ignore_by_pv)) and blocked_now
 
     if last_changed is None:
         enough_time_passed = True
@@ -181,10 +150,8 @@ def compute_policy(
         cutoff=cutoff,
         price=current_price,
         pv_now=current_pv,
-        floor_temp=current_floor,
         ignore_by_price=ignore_by_price,
         ignore_by_pv=ignore_by_pv,
-        below_min_floor=below_min_floor,
     )
 
 
@@ -233,7 +200,10 @@ def compute_comfort_target(
     )
 
     if outdoor_temp is not None and outdoor_temp < cold_threshold:
-        boost_raw = (cold_threshold - outdoor_temp) / boost_slope_c
+        if boost_slope_c > 0:
+            boost_raw = (cold_threshold - outdoor_temp) / boost_slope_c
+        else:
+            boost_raw = max_boost
     else:
         boost_raw = 0.0
     boost_clamped = clamp(boost_raw, 0.0, max_boost)
@@ -398,100 +368,4 @@ def compute_daikin(
         should_write=should_write,
         outdoor_ok=outdoor_ok,
         current_temp=cur_temp,
-    )
-
-
-def compute_floor(
-    *,
-    policy_on: bool,
-    cur_temp: float | None,
-    dev_min: float,
-    comfort_temp_c: float,
-    prefer_preset_manual: bool,
-    hvac_mode_when_on: str,
-    supported_hvac_modes: Sequence[object] | None,
-    preset_modes: Sequence[object] | None,
-    soft_off_temp_override_c: object,
-    min_keep_temp_c: object,
-    schedule_defined: bool,
-    schedule_on: bool,
-    last_changed: datetime | None,
-    min_switch_interval_min: int,
-    now: datetime,
-) -> FloorComputation:
-    """Compute optional floor consumer action."""
-    override_raw = (
-        "" if soft_off_temp_override_c is None else str(soft_off_temp_override_c)
-    )
-    if override_raw.strip() != "":
-        soft_off_target = as_float(soft_off_temp_override_c, dev_min) or dev_min
-    else:
-        soft_off_target = dev_min
-
-    cur = as_float(cur_temp, 999.0) or 999.0
-
-    min_keep_raw = "" if min_keep_temp_c is None else str(min_keep_temp_c)
-    min_keep_defined = min_keep_raw.strip() != ""
-    if min_keep_defined:
-        min_keep_temp = as_float(min_keep_temp_c, soft_off_target) or soft_off_target
-    else:
-        min_keep_temp = soft_off_target
-
-    if policy_on:
-        desired_temp = soft_off_target
-    elif schedule_on:
-        desired_temp = comfort_temp_c
-    elif min_keep_defined:
-        desired_temp = min_keep_temp
-    else:
-        desired_temp = soft_off_target
-
-    if last_changed is None:
-        enough_time_passed = True
-    else:
-        enough_time_passed = (now - last_changed).total_seconds() >= (
-            min_switch_interval_min * 60
-        )
-
-    target_on = desired_temp > (soft_off_target + 0.2)
-    currently_soft_off = cur <= (soft_off_target + 0.2)
-    need_temp_change = abs(cur - desired_temp) > 0.05
-
-    supported_hvac = to_lower_list(supported_hvac_modes)
-    hvac_candidate = (hvac_mode_when_on or "").lower()
-    if hvac_candidate and hvac_candidate in supported_hvac:
-        hvac_mode_final = hvac_candidate
-    elif "heat" in supported_hvac:
-        hvac_mode_final = "heat"
-    elif "auto" in supported_hvac:
-        hvac_mode_final = "auto"
-    elif "heat_cool" in supported_hvac:
-        hvac_mode_final = "heat_cool"
-    elif supported_hvac:
-        hvac_mode_final = supported_hvac[0]
-    else:
-        hvac_mode_final = "heat"
-
-    preset_values = to_lower_list(preset_modes)
-    manual_supported = "manual" in preset_values
-
-    action: str | None
-    if target_on and (currently_soft_off or need_temp_change) and enough_time_passed:
-        action = "set_on"
-        use_manual_preset = prefer_preset_manual and manual_supported
-    elif (not target_on) and (not currently_soft_off) and enough_time_passed:
-        action = "set_soft_off"
-        use_manual_preset = manual_supported
-    else:
-        action = None
-        use_manual_preset = False
-
-    return FloorComputation(
-        action=action,
-        desired_temp=desired_temp,
-        soft_off_target=soft_off_target,
-        use_manual_preset=use_manual_preset,
-        hvac_mode_final=hvac_mode_final,
-        schedule_on=schedule_on if schedule_defined else True,
-        policy_saving=policy_on,
     )

@@ -11,8 +11,6 @@ CONF_TARGET_BOOLEAN = "target_boolean"
 CONF_NORDPOOL_PRICE = "nordpool_price"
 CONF_PV_SENSOR = "pv_sensor"
 CONF_PV_IGNORE_ABOVE_W = "pv_ignore_above_w"
-CONF_FLOOR_TEMP_SENSOR = "floor_temp_sensor"
-CONF_MIN_FLOOR_TEMP = "min_floor_temp"
 CONF_MINUTES_TO_BLOCK = "minutes_to_block"
 CONF_PRICE_IGNORE_BELOW = "price_ignore_below"
 CONF_MIN_TOGGLE_INTERVAL_MIN = "min_toggle_interval_min"
@@ -64,16 +62,6 @@ CONF_DAIKIN_OUTDOOR_TEMP_SENSOR = "daikin_outdoor_temp_sensor"
 CONF_DAIKIN_OUTDOOR_TEMP_THRESHOLD = "daikin_outdoor_temp_threshold"
 CONF_DAIKIN_MIN_TEMP_CHANGE = "daikin_min_temp_change"
 
-CONF_ENABLE_FLOOR_CONSUMER = "enable_floor_consumer"
-CONF_FLOOR_CLIMATE_ENTITY = "floor_climate_entity"
-CONF_FLOOR_COMFORT_TEMP_C = "floor_comfort_temp_c"
-CONF_FLOOR_PREFER_PRESET_MANUAL = "floor_prefer_preset_manual"
-CONF_FLOOR_HVAC_MODE_WHEN_ON = "floor_hvac_mode_when_on"
-CONF_FLOOR_SOFT_OFF_TEMP_OVERRIDE_C = "floor_soft_off_temp_override_c"
-CONF_FLOOR_MIN_KEEP_TEMP_C = "floor_min_keep_temp_c"
-CONF_FLOOR_COMFORT_SCHEDULE = "floor_comfort_schedule"
-CONF_FLOOR_MIN_SWITCH_INTERVAL_MIN = "floor_min_switch_interval_min"
-
 EVENT_ENERGY_SAVING_STATE_CHANGED = "energy_saving_state_changed"
 EVENT_BLOCKHEAT_POLICY_CHANGED = "blockheat_policy_changed"
 EVENT_BLOCKHEAT_SNAPSHOT = "blockheat_snapshot"
@@ -117,8 +105,6 @@ DEFAULTS: dict[str, object] = {
     CONF_PRICE_IGNORE_BELOW: 0.0,
     CONF_PV_SENSOR: "",
     CONF_PV_IGNORE_ABOVE_W: 0.0,
-    CONF_FLOOR_TEMP_SENSOR: "",
-    CONF_MIN_FLOOR_TEMP: 0.0,
     CONF_MIN_TOGGLE_INTERVAL_MIN: 15,
     CONF_HEATPUMP_SETPOINT: 20.0,
     CONF_SAVING_COLD_OFFSET_C: 1.0,
@@ -150,15 +136,6 @@ DEFAULTS: dict[str, object] = {
     CONF_DAIKIN_OUTDOOR_TEMP_SENSOR: "",
     CONF_DAIKIN_OUTDOOR_TEMP_THRESHOLD: -10.0,
     CONF_DAIKIN_MIN_TEMP_CHANGE: 0.5,
-    CONF_ENABLE_FLOOR_CONSUMER: False,
-    CONF_FLOOR_CLIMATE_ENTITY: "",
-    CONF_FLOOR_COMFORT_TEMP_C: 22.0,
-    CONF_FLOOR_PREFER_PRESET_MANUAL: True,
-    CONF_FLOOR_HVAC_MODE_WHEN_ON: "heat",
-    CONF_FLOOR_SOFT_OFF_TEMP_OVERRIDE_C: "",
-    CONF_FLOOR_MIN_KEEP_TEMP_C: "",
-    CONF_FLOOR_COMFORT_SCHEDULE: "",
-    CONF_FLOOR_MIN_SWITCH_INTERVAL_MIN: 15,
 }
 
 REQUIRED_ENTITY_KEYS: tuple[str, ...] = (
@@ -172,11 +149,8 @@ REQUIRED_ENTITY_KEYS: tuple[str, ...] = (
 
 OPTIONAL_ENTITY_KEYS: tuple[str, ...] = (
     CONF_PV_SENSOR,
-    CONF_FLOOR_TEMP_SENSOR,
     CONF_DAIKIN_CLIMATE_ENTITY,
     CONF_DAIKIN_OUTDOOR_TEMP_SENSOR,
-    CONF_FLOOR_CLIMATE_ENTITY,
-    CONF_FLOOR_COMFORT_SCHEDULE,
 )
 
 

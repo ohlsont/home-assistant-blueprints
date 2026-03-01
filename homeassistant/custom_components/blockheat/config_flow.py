@@ -32,22 +32,11 @@ from .const import (
     CONF_ELECTRIC_FALLBACK_DELTA_C,
     CONF_ELECTRIC_FALLBACK_MINUTES,
     CONF_ENABLE_DAIKIN_CONSUMER,
-    CONF_ENABLE_FLOOR_CONSUMER,
     CONF_ENERGY_SAVING_WARM_SHUTDOWN_OUTDOOR,
     CONF_FINAL_HELPER_WRITE_DELTA_C,
-    CONF_FLOOR_CLIMATE_ENTITY,
-    CONF_FLOOR_COMFORT_SCHEDULE,
-    CONF_FLOOR_COMFORT_TEMP_C,
-    CONF_FLOOR_HVAC_MODE_WHEN_ON,
-    CONF_FLOOR_MIN_KEEP_TEMP_C,
-    CONF_FLOOR_MIN_SWITCH_INTERVAL_MIN,
-    CONF_FLOOR_PREFER_PRESET_MANUAL,
-    CONF_FLOOR_SOFT_OFF_TEMP_OVERRIDE_C,
-    CONF_FLOOR_TEMP_SENSOR,
     CONF_HEATPUMP_SETPOINT,
     CONF_MAINTENANCE_TARGET_C,
     CONF_MAX_BOOST,
-    CONF_MIN_FLOOR_TEMP,
     CONF_MIN_TOGGLE_INTERVAL_MIN,
     CONF_MINUTES_TO_BLOCK,
     CONF_NORDPOOL_PRICE,
@@ -122,9 +111,6 @@ def _user_schema(current: dict[str, Any]) -> vol.Schema:
                 "number"
             ),
             _optional_marker(current, CONF_PV_SENSOR): _entity_selector("sensor"),
-            _optional_marker(current, CONF_FLOOR_TEMP_SENSOR): _entity_selector(
-                "sensor"
-            ),
             _optional_marker(current, CONF_ENABLE_DAIKIN_CONSUMER): bool,
             _optional_marker(current, CONF_DAIKIN_CLIMATE_ENTITY): _entity_selector(
                 "climate"
@@ -132,13 +118,6 @@ def _user_schema(current: dict[str, Any]) -> vol.Schema:
             _optional_marker(
                 current, CONF_DAIKIN_OUTDOOR_TEMP_SENSOR
             ): _entity_selector("sensor"),
-            _optional_marker(current, CONF_ENABLE_FLOOR_CONSUMER): bool,
-            _optional_marker(current, CONF_FLOOR_CLIMATE_ENTITY): _entity_selector(
-                "climate"
-            ),
-            _optional_marker(current, CONF_FLOOR_COMFORT_SCHEDULE): _entity_selector(
-                ["schedule", "input_boolean"]
-            ),
         }
     )
 
@@ -158,9 +137,6 @@ def _tuning_schema(current: dict[str, Any]) -> vol.Schema:
                 CONF_PV_IGNORE_ABOVE_W,
                 default=_cfg_value(current, CONF_PV_IGNORE_ABOVE_W),
             ): _bounded_float(0, 1_000_000),
-            vol.Required(
-                CONF_MIN_FLOOR_TEMP, default=_cfg_value(current, CONF_MIN_FLOOR_TEMP)
-            ): _bounded_float(-50, 50),
             vol.Required(
                 CONF_MIN_TOGGLE_INTERVAL_MIN,
                 default=_cfg_value(current, CONF_MIN_TOGGLE_INTERVAL_MIN),
@@ -267,30 +243,6 @@ def _tuning_schema(current: dict[str, Any]) -> vol.Schema:
                 CONF_DAIKIN_MIN_TEMP_CHANGE,
                 default=_cfg_value(current, CONF_DAIKIN_MIN_TEMP_CHANGE),
             ): _bounded_float(0, 20),
-            vol.Required(
-                CONF_FLOOR_COMFORT_TEMP_C,
-                default=_cfg_value(current, CONF_FLOOR_COMFORT_TEMP_C),
-            ): _bounded_float(0, 50),
-            vol.Required(
-                CONF_FLOOR_PREFER_PRESET_MANUAL,
-                default=_cfg_value(current, CONF_FLOOR_PREFER_PRESET_MANUAL),
-            ): bool,
-            vol.Required(
-                CONF_FLOOR_HVAC_MODE_WHEN_ON,
-                default=_cfg_value(current, CONF_FLOOR_HVAC_MODE_WHEN_ON),
-            ): str,
-            vol.Optional(
-                CONF_FLOOR_SOFT_OFF_TEMP_OVERRIDE_C,
-                default=_cfg_value(current, CONF_FLOOR_SOFT_OFF_TEMP_OVERRIDE_C),
-            ): str,
-            vol.Optional(
-                CONF_FLOOR_MIN_KEEP_TEMP_C,
-                default=_cfg_value(current, CONF_FLOOR_MIN_KEEP_TEMP_C),
-            ): str,
-            vol.Required(
-                CONF_FLOOR_MIN_SWITCH_INTERVAL_MIN,
-                default=_cfg_value(current, CONF_FLOOR_MIN_SWITCH_INTERVAL_MIN),
-            ): _bounded_int(0, 720),
         }
     )
 
