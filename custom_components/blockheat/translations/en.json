@@ -13,13 +13,9 @@
           "outdoor_temperature_sensor": "Outdoor temperature sensor",
           "control_number_entity": "Control number entity",
           "pv_sensor": "PV sensor (optional)",
-          "floor_temp_sensor": "Floor temp sensor (optional)",
           "enable_daikin_consumer": "Enable Daikin consumer",
           "daikin_climate_entity": "Daikin climate entity (optional)",
-          "daikin_outdoor_temp_sensor": "Daikin outdoor sensor (optional)",
-          "enable_floor_consumer": "Enable floor consumer",
-          "floor_climate_entity": "Floor climate entity (optional)",
-          "floor_comfort_schedule": "Floor comfort schedule (optional)"
+          "daikin_outdoor_temp_sensor": "Daikin outdoor sensor (optional)"
         }
       },
       "tuning": {

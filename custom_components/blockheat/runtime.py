@@ -40,23 +40,12 @@ from .const import (
     CONF_ELECTRIC_FALLBACK_LAST_TRIGGER,
     CONF_ELECTRIC_FALLBACK_MINUTES,
     CONF_ENABLE_DAIKIN_CONSUMER,
-    CONF_ENABLE_FLOOR_CONSUMER,
     CONF_ENERGY_SAVING_WARM_SHUTDOWN_OUTDOOR,
     CONF_FALLBACK_ACTIVE_BOOLEAN,
     CONF_FINAL_HELPER_WRITE_DELTA_C,
-    CONF_FLOOR_CLIMATE_ENTITY,
-    CONF_FLOOR_COMFORT_SCHEDULE,
-    CONF_FLOOR_COMFORT_TEMP_C,
-    CONF_FLOOR_HVAC_MODE_WHEN_ON,
-    CONF_FLOOR_MIN_KEEP_TEMP_C,
-    CONF_FLOOR_MIN_SWITCH_INTERVAL_MIN,
-    CONF_FLOOR_PREFER_PRESET_MANUAL,
-    CONF_FLOOR_SOFT_OFF_TEMP_OVERRIDE_C,
-    CONF_FLOOR_TEMP_SENSOR,
     CONF_HEATPUMP_SETPOINT,
     CONF_MAINTENANCE_TARGET_C,
     CONF_MAX_BOOST,
-    CONF_MIN_FLOOR_TEMP,
     CONF_MIN_TOGGLE_INTERVAL_MIN,
     CONF_MINUTES_TO_BLOCK,
     CONF_NORDPOOL_PRICE,
@@ -100,7 +89,6 @@ from .engine import (
     compute_daikin,
     compute_fallback_conditions,
     compute_final_target,
-    compute_floor,
     compute_policy,
     compute_saving_target,
 )
@@ -264,7 +252,6 @@ class BlockheatRuntime:
             )
 
             daikin_result = await self._async_apply_daikin(policy_on_effective)
-            floor_result = await self._async_apply_floor(policy_on_effective, now)
 
             internal_state = self._serialize_state()
             snapshot = {
@@ -280,7 +267,6 @@ class BlockheatRuntime:
                 "final_target": final_target,
                 "final_debug": final_debug,
                 "daikin": daikin_result,
-                "floor": floor_result,
                 "internal_state": internal_state,
             }
             self._coordinator.async_set_updated_data(snapshot)
@@ -304,13 +290,7 @@ class BlockheatRuntime:
                 ]
 
         pv_sensor = self._cfg_str(CONF_PV_SENSOR)
-        floor_temp_sensor = self._cfg_str(CONF_FLOOR_TEMP_SENSOR)
         pv_now = self._state_float(pv_sensor, default=0.0) if pv_sensor else 0.0
-        floor_temp = (
-            self._state_float(floor_temp_sensor, default=0.0)
-            if floor_temp_sensor
-            else 0.0
-        )
 
         current_on = self._state.policy_on
         last_changed = self._state.policy_last_changed
@@ -322,8 +302,6 @@ class BlockheatRuntime:
             price_ignore_below=self._cfg_float(CONF_PRICE_IGNORE_BELOW, 0.0),
             pv_now=pv_now,
             pv_ignore_above_w=self._cfg_float(CONF_PV_IGNORE_ABOVE_W, 0.0),
-            floor_temp=floor_temp,
-            min_floor_temp=self._cfg_float(CONF_MIN_FLOOR_TEMP, 0.0),
             current_on=current_on,
             last_changed=last_changed,
             now=now,
@@ -342,7 +320,7 @@ class BlockheatRuntime:
                 "Energy Saving",
                 (
                     f"ON - price={computation.price:.3f} >= cutoff={computation.cutoff:.3f}, "
-                    f"PV={computation.pv_now:.0f} W, floor={computation.floor_temp:.1f}C; "
+                    f"PV={computation.pv_now:.0f} W; "
                     f"{self._trigger_summary(trigger_context)}"
                 ),
             )
@@ -352,12 +330,8 @@ class BlockheatRuntime:
             policy_on_effective = False
             transition = "off"
             self._fire_policy_events("off", computation)
-            if (
-                computation.ignore_by_price
-                or computation.ignore_by_pv
-                or computation.below_min_floor
-            ):
-                reason = "ignored by price/PV/floor"
+            if computation.ignore_by_price or computation.ignore_by_pv:
+                reason = "ignored by price/PV"
             else:
                 reason = "price below cutoff"
             await self._async_log(
@@ -365,7 +339,7 @@ class BlockheatRuntime:
                 (
                     f"OFF - {reason} "
                     f"(price={computation.price:.3f}, cutoff={computation.cutoff:.3f}, "
-                    f"PV={computation.pv_now:.0f} W, floor={computation.floor_temp:.1f}C); "
+                    f"PV={computation.pv_now:.0f} W); "
                     f"{self._trigger_summary(trigger_context)}"
                 ),
             )
@@ -379,10 +353,8 @@ class BlockheatRuntime:
             "cutoff": computation.cutoff,
             "price": computation.price,
             "pv_now": computation.pv_now,
-            "floor_temp": computation.floor_temp,
             "ignore_by_price": computation.ignore_by_price,
             "ignore_by_pv": computation.ignore_by_pv,
-            "below_min_floor": computation.below_min_floor,
             "enough_time_passed": computation.enough_time_passed,
         }
 
@@ -393,7 +365,6 @@ class BlockheatRuntime:
             "price": computation.price,
             "cutoff": computation.cutoff,
             "pv_now": computation.pv_now,
-            "floor_temp": computation.floor_temp,
             "reason": reason,
         }
         self.hass.bus.async_fire(EVENT_ENERGY_SAVING_STATE_CHANGED, event_data)
@@ -729,95 +700,6 @@ class BlockheatRuntime:
             "outdoor_ok": computation.outdoor_ok,
         }
 
-    async def _async_apply_floor(
-        self, policy_on_effective: bool, now: datetime
-    ) -> dict[str, Any]:
-        if not self._cfg_bool(CONF_ENABLE_FLOOR_CONSUMER, False):
-            return {"enabled": False}
-
-        climate_entity = self._cfg_str(CONF_FLOOR_CLIMATE_ENTITY)
-        if not climate_entity:
-            return {"enabled": True, "skipped": "missing_climate_entity"}
-
-        climate_state = self.hass.states.get(climate_entity)
-        if climate_state is None:
-            return {"enabled": True, "skipped": "climate_state_missing"}
-
-        schedule_entity = self._cfg_str(CONF_FLOOR_COMFORT_SCHEDULE)
-        schedule_defined = bool(schedule_entity)
-        schedule_on = True
-        if schedule_defined:
-            schedule_on = self._is_on(schedule_entity)
-        dev_min = as_float(climate_state.attributes.get("min_temp"))
-
-        computation = compute_floor(
-            policy_on=policy_on_effective,
-            cur_temp=as_float(climate_state.attributes.get("temperature")),
-            dev_min=dev_min if dev_min is not None else 5.0,
-            comfort_temp_c=self._cfg_float(CONF_FLOOR_COMFORT_TEMP_C, 22.0),
-            prefer_preset_manual=self._cfg_bool(CONF_FLOOR_PREFER_PRESET_MANUAL, True),
-            hvac_mode_when_on=self._cfg_str(CONF_FLOOR_HVAC_MODE_WHEN_ON) or "heat",
-            supported_hvac_modes=climate_state.attributes.get("hvac_modes"),
-            preset_modes=climate_state.attributes.get("preset_modes"),
-            soft_off_temp_override_c=self._cfg_raw(CONF_FLOOR_SOFT_OFF_TEMP_OVERRIDE_C),
-            min_keep_temp_c=self._cfg_raw(CONF_FLOOR_MIN_KEEP_TEMP_C),
-            schedule_defined=schedule_defined,
-            schedule_on=schedule_on,
-            last_changed=climate_state.last_changed,
-            min_switch_interval_min=self._cfg_int(
-                CONF_FLOOR_MIN_SWITCH_INTERVAL_MIN, 15
-            ),
-            now=now,
-        )
-
-        if computation.action == "set_on":
-            if computation.use_manual_preset:
-                await self._async_call_entity_service(
-                    "climate",
-                    "set_preset_mode",
-                    climate_entity,
-                    preset_mode="manual",
-                )
-            else:
-                await self._async_call_entity_service(
-                    "climate",
-                    "set_hvac_mode",
-                    climate_entity,
-                    hvac_mode=computation.hvac_mode_final,
-                )
-
-            await asyncio.sleep(1)
-            await self._async_call_entity_service(
-                "climate",
-                "set_temperature",
-                climate_entity,
-                temperature=computation.desired_temp,
-            )
-
-        elif computation.action == "set_soft_off":
-            if computation.use_manual_preset:
-                await self._async_call_entity_service(
-                    "climate",
-                    "set_preset_mode",
-                    climate_entity,
-                    preset_mode="manual",
-                )
-
-            await asyncio.sleep(1)
-            await self._async_call_entity_service(
-                "climate",
-                "set_temperature",
-                climate_entity,
-                temperature=computation.soft_off_target,
-            )
-
-        return {
-            "enabled": True,
-            "action": computation.action,
-            "desired_temp": computation.desired_temp,
-            "soft_off_target": computation.soft_off_target,
-        }
-
     def _delta_ok(self, target: float, current: float | None, delta: float) -> bool:
         if current is None:
             return True
@@ -973,9 +855,6 @@ class BlockheatRuntime:
             return False
         state = self.hass.states.get(entity_id)
         return state is not None and state.state == "on"
-
-    def _cfg_raw(self, key: str) -> Any:
-        return self._config.get(key)
 
     def _cfg_bool(self, key: str, default: bool) -> bool:
         value = self._config.get(key, default)
