@@ -28,7 +28,9 @@ async def test_diagnostic_sensors_expose_snapshot_values(
     blockheat_env: SimpleNamespace,
     fake_hass: Any,
 ) -> None:
-    sensor_module = importlib.import_module("homeassistant.custom_components.blockheat.sensor")
+    sensor_module = importlib.import_module(
+        "homeassistant.custom_components.blockheat.sensor"
+    )
     entry = blockheat_env.FakeConfigEntry("entry-1")
     _seed_domain_data(
         blockheat_env,
@@ -93,4 +95,3 @@ async def test_diagnostic_binary_sensors_expose_flags(
     assert by_entity_id["binary_sensor.blockheat_policy_ignore_by_pv"].is_on is True
     assert by_entity_id["binary_sensor.blockheat_fallback_arm_condition"].is_on is True
     assert by_entity_id["binary_sensor.blockheat_control_write_applied"].is_on is True
-

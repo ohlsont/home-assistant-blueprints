@@ -181,7 +181,10 @@ class BlockheatRuntime:
             policy_on_effective = policy_result["policy_on_effective"]
 
             saving_target = await self._async_apply_saving_target()
-            comfort_target, comfort_target_debug = await self._async_apply_comfort_target()
+            (
+                comfort_target,
+                comfort_target_debug,
+            ) = await self._async_apply_comfort_target()
 
             (
                 fallback_active_effective,
@@ -774,7 +777,9 @@ class BlockheatRuntime:
             )
 
         debug_action = computation.action if computation.action is not None else "none"
-        debug_skip_reason = None if computation.action is not None else "no_action_needed"
+        debug_skip_reason = (
+            None if computation.action is not None else "no_action_needed"
+        )
         return {
             "enabled": True,
             "action": computation.action,
@@ -838,7 +843,9 @@ class BlockheatRuntime:
 
         parsed = dt_util.parse_datetime(state.state)
         if parsed is not None:
-            return parsed
+            if parsed.tzinfo is None:
+                return parsed.replace(tzinfo=dt_util.UTC)
+            return parsed.astimezone(dt_util.UTC)
 
         ts = as_float(state.state)
         if ts is not None:

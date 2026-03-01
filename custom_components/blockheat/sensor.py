@@ -25,8 +25,14 @@ class SensorSpec:
 
 
 SENSOR_SPECS: tuple[SensorSpec, ...] = (
-    SensorSpec("sensor.blockheat_policy_price", "Blockheat Policy Price", ("policy", "price")),
-    SensorSpec("sensor.blockheat_policy_cutoff", "Blockheat Policy Cutoff", ("policy", "cutoff")),
+    SensorSpec(
+        "sensor.blockheat_policy_price", "Blockheat Policy Price", ("policy", "price")
+    ),
+    SensorSpec(
+        "sensor.blockheat_policy_cutoff",
+        "Blockheat Policy Cutoff",
+        ("policy", "cutoff"),
+    ),
     SensorSpec(
         "sensor.blockheat_policy_transition",
         "Blockheat Policy Transition",

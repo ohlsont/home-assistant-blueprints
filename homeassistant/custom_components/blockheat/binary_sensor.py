@@ -87,7 +87,9 @@ class BlockheatDiagnosticBinarySensor(
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_should_poll = False
 
-    def __init__(self, coordinator: BlockheatCoordinator, spec: BinarySensorSpec) -> None:
+    def __init__(
+        self, coordinator: BlockheatCoordinator, spec: BinarySensorSpec
+    ) -> None:
         super().__init__(coordinator)
         self._spec = spec
         self._attr_name = spec.name
@@ -113,5 +115,8 @@ async def async_setup_entry(
     """Set up Blockheat diagnostic binary sensors for one config entry."""
     coordinator: BlockheatCoordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
     async_add_entities(
-        [BlockheatDiagnosticBinarySensor(coordinator, spec) for spec in BINARY_SENSOR_SPECS]
+        [
+            BlockheatDiagnosticBinarySensor(coordinator, spec)
+            for spec in BINARY_SENSOR_SPECS
+        ]
     )

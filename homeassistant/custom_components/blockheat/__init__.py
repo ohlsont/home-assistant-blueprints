@@ -74,7 +74,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Reload an entry when options change."""
-    await async_unload_entry(hass, entry)
+    if not await async_unload_entry(hass, entry):
+        return
     await async_setup_entry(hass, entry)
 
 

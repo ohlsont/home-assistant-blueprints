@@ -350,7 +350,9 @@ async def test_optional_consumers_disabled_missing_and_write_paths(
     )
     assert missing_snapshot["daikin"]["skipped"] == "missing_climate_entity"
     assert missing_snapshot["floor"]["skipped"] == "missing_climate_entity"
-    assert missing_snapshot["daikin"]["debug"]["skip_reason"] == "missing_climate_entity"
+    assert (
+        missing_snapshot["daikin"]["debug"]["skip_reason"] == "missing_climate_entity"
+    )
     assert missing_snapshot["floor"]["debug"]["skip_reason"] == "missing_climate_entity"
 
     write_ctx = _make_runtime_context(
@@ -437,6 +439,34 @@ async def test_logbook_service_not_found_is_tolerated(
 
     await ctx.runtime.async_recompute("logbook_missing")
     assert ctx.hass.states.get(ctx.config[ctx.const.CONF_TARGET_BOOLEAN]).state == "on"
+
+
+@pytest.mark.asyncio
+async def test_fallback_last_trigger_naive_datetime_is_normalized(
+    blockheat_env: SimpleNamespace,
+    fake_hass: Any,
+    build_config: Any,
+    seed_runtime_states: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ctx = _make_runtime_context(
+        blockheat_env,
+        fake_hass,
+        build_config,
+        seed_runtime_states,
+        overrides={
+            blockheat_env.const.CONF_MIN_TOGGLE_INTERVAL_MIN: 0,
+            blockheat_env.const.CONF_MINUTES_TO_BLOCK: 0,
+        },
+    )
+    monkeypatch.setattr(
+        ctx.runtime_module.dt_util,
+        "parse_datetime",
+        lambda _value: datetime(2026, 2, 18, 12, 0),
+    )
+
+    snapshot = await ctx.runtime.async_recompute("naive_last_trigger")
+    assert snapshot["fallback"]["cooldown_ok"] is True
 
 
 @pytest.mark.asyncio
