@@ -6,7 +6,6 @@ from collections.abc import Callable
 from typing import Any
 
 import voluptuous as vol
-
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers import selector
@@ -73,7 +72,6 @@ from .const import (
     DEFAULTS,
     DOMAIN,
 )
-
 
 TUNING_POLICY_STEP = "tuning_policy"
 TUNING_SAVING_STEP = "tuning_saving"
@@ -521,7 +519,9 @@ class BlockheatConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     @staticmethod
     @callback
-    def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> "BlockheatOptionsFlow":
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> BlockheatOptionsFlow:
         return BlockheatOptionsFlow(config_entry)
 
 
