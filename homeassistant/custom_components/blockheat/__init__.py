@@ -54,18 +54,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a Blockheat entry."""
+    entry_data = hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
+    if entry_data:
+        runtime: BlockheatRuntime = entry_data[ENTRY_RUNTIME]
+        unsub_reload = entry_data[ENTRY_UNSUB_RELOAD]
+        await runtime.async_unload()
+        unsub_reload()
+
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if not unload_ok:
         return False
-
-    entry_data = hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
-    if not entry_data:
-        return True
-
-    runtime: BlockheatRuntime = entry_data[ENTRY_RUNTIME]
-    unsub_reload = entry_data[ENTRY_UNSUB_RELOAD]
-    await runtime.async_unload()
-    unsub_reload()
 
     if not hass.data.get(DOMAIN):
         await _async_unregister_services(hass)
