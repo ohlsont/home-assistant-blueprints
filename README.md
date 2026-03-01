@@ -33,7 +33,7 @@ cd .worktrees/codex/<topic>
 ## Primary Path: Custom Integration (Config Entry UI)
 The recommended runtime is now `custom_components/blockheat` with one config
 entry that owns policy, target calculators, fallback, final writer, and optional
-Daikin/floor consumers.
+Daikin consumer control.
 
 ### Install via HACS (GitHub)
 1. Open HACS -> Integrations -> three-dot menu -> Custom repositories.
@@ -231,7 +231,7 @@ especially:
 - `sensor.REPLACE_storage_room`
 - `number.REPLACE_control_temperature`
 
-Optional consumer placeholders are in commented blocks for Daikin and floor heat.
+Optional consumer placeholders are in commented blocks for Daikin.
 
 ## Legacy Blueprints (Reference)
 - `blueprints/automation/blockheat/core/block-heat-target-saving.yaml`
@@ -249,9 +249,7 @@ Optional consumer placeholders are in commented blocks for Daikin and floor heat
 - `blueprints/automation/blockheat/consumers/daikin-energy-saver.yaml`
   - Direct Daikin climate control driven by the policy boolean.
 - `blueprints/automation/blockheat/policy/energy_saving_policy_bool.yaml`
-  - Produces shared energy-saving policy boolean from price/PV/floor inputs.
-- `blueprints/automation/blockheat/consumers/floor_heat_top_minutes_with_schedule.yaml`
-  - Floor heat control driven by policy boolean and optional comfort schedule.
+  - Produces shared energy-saving policy boolean from price/PV inputs.
 
 ## Block Heat Architecture (Modular)
 Block Heat is now split into four independent automations:
