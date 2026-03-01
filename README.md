@@ -35,7 +35,6 @@ Daikin consumer control.
      - Cold boost
      - Limits and deadbands
      - Optional Daikin section (only when enabled)
-     - Optional floor section (only when enabled)
 
 ### Install Manually to Home Assistant
 From this repo:
@@ -58,7 +57,6 @@ Then in Home Assistant:
      - Cold boost
      - Limits and deadbands
      - Optional Daikin section (only when enabled)
-     - Optional floor section (only when enabled)
 
 ### Sectioned Tuning Baseline (Integration Defaults)
 The integration defaults are a balanced profile tuned for Swedish price-driven
@@ -66,13 +64,12 @@ operation, `22°C` comfort target, and reduced risk of auxiliary electric heat.
 
 | Section | Defaults |
 |---|---|
-| Policy window and guards | `minutes_to_block=180`, `price_ignore_below=0.6`, `pv_ignore_above_w=0.0`, `min_floor_temp=0.0`, `min_toggle_interval_min=15` |
+| Policy window and guards | `minutes_to_block=180`, `price_ignore_below=0.6`, `pv_ignore_above_w=0.0`, `min_toggle_interval_min=15` |
 | Saving target | `heatpump_setpoint=20.0`, `saving_cold_offset_c=1.0`, `virtual_temperature=20.0`, `energy_saving_warm_shutdown_outdoor=8.0` |
 | Comfort target | `comfort_target_c=22.0`, `comfort_to_heatpump_offset_c=2.0`, `storage_target_c=24.5`, `storage_to_heatpump_offset_c=2.0`, `maintenance_target_c=20.0`, `comfort_margin_c=0.25` |
 | Cold boost | `cold_threshold=1.0`, `max_boost=3.0`, `boost_slope_c=4.0` |
 | Limits and deadbands | `control_min_c=10.0`, `control_max_c=26.0`, `saving_helper_write_delta_c=0.05`, `comfort_helper_write_delta_c=0.05`, `final_helper_write_delta_c=0.05`, `control_write_delta_c=0.2` |
 | Optional Daikin | `daikin_normal_temperature=22.0`, `daikin_saving_temperature=20.0`, `daikin_outdoor_temp_threshold=-10.0`, `daikin_min_temp_change=0.5` |
-| Optional floor (standby) | `floor_comfort_temp_c=22.0`, `floor_prefer_preset_manual=true`, `floor_hvac_mode_when_on=\"heat\"`, `floor_soft_off_temp_override_c=\"\"`, `floor_min_keep_temp_c=\"\"`, `floor_min_switch_interval_min=15` |
 
 Quick adjustment rails:
 - Policy strength: raise `minutes_to_block` to `210-240` for stronger savings, or lower to `120-150` for comfort-first behavior.
