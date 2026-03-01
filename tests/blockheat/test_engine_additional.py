@@ -443,4 +443,3 @@ def test_daikin_without_outdoor_sensor_uses_default_allow_path() -> None:
     assert result.outdoor_ok is True
     assert result.target_temp == 19.0
     assert result.should_write is True
-
