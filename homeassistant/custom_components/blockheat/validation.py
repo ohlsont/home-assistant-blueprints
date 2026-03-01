@@ -14,7 +14,6 @@ _NON_NEGATIVE_KEYS: tuple[str, ...] = (
     "final_helper_write_delta_c",
     "control_write_delta_c",
     "daikin_min_temp_change",
-    "floor_min_switch_interval_min",
 )
 
 

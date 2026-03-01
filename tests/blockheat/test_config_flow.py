@@ -33,7 +33,6 @@ def _step1_user_input(
     const: Any,
     *,
     enable_daikin: bool = False,
-    enable_floor: bool = False,
 ) -> dict[str, Any]:
     return {
         const.CONF_NORDPOOL_PRICE: "sensor.nordpool_price",
@@ -43,16 +42,10 @@ def _step1_user_input(
         const.CONF_OUTDOOR_TEMPERATURE_SENSOR: "sensor.outdoor_temp",
         const.CONF_CONTROL_NUMBER_ENTITY: "number.block_heat_control",
         const.CONF_PV_SENSOR: "",
-        const.CONF_FLOOR_TEMP_SENSOR: "",
         const.CONF_ENABLE_DAIKIN_CONSUMER: enable_daikin,
         const.CONF_DAIKIN_CLIMATE_ENTITY: "climate.daikin" if enable_daikin else "",
         const.CONF_DAIKIN_OUTDOOR_TEMP_SENSOR: "sensor.daikin_outdoor"
         if enable_daikin
-        else "",
-        const.CONF_ENABLE_FLOOR_CONSUMER: enable_floor,
-        const.CONF_FLOOR_CLIMATE_ENTITY: "climate.floor_heat" if enable_floor else "",
-        const.CONF_FLOOR_COMFORT_SCHEDULE: "schedule.floor_comfort"
-        if enable_floor
         else "",
     }
 
@@ -63,7 +56,6 @@ def _tuning_input(const: Any, step_id: str) -> dict[str, Any]:
             const.CONF_MINUTES_TO_BLOCK: 210,
             const.CONF_PRICE_IGNORE_BELOW: 0.6,
             const.CONF_PV_IGNORE_ABOVE_W: 0.0,
-            const.CONF_MIN_FLOOR_TEMP: 0.0,
             const.CONF_MIN_TOGGLE_INTERVAL_MIN: 15,
         },
         "tuning_saving": {
@@ -98,14 +90,6 @@ def _tuning_input(const: Any, step_id: str) -> dict[str, Any]:
             const.CONF_DAIKIN_SAVING_TEMPERATURE: 20.0,
             const.CONF_DAIKIN_OUTDOOR_TEMP_THRESHOLD: -10.0,
             const.CONF_DAIKIN_MIN_TEMP_CHANGE: 0.5,
-        },
-        "tuning_floor": {
-            const.CONF_FLOOR_COMFORT_TEMP_C: 22.0,
-            const.CONF_FLOOR_PREFER_PRESET_MANUAL: True,
-            const.CONF_FLOOR_HVAC_MODE_WHEN_ON: "heat",
-            const.CONF_FLOOR_SOFT_OFF_TEMP_OVERRIDE_C: "",
-            const.CONF_FLOOR_MIN_KEEP_TEMP_C: "",
-            const.CONF_FLOOR_MIN_SWITCH_INTERVAL_MIN: 15,
         },
     }
     return by_step[step_id]
@@ -151,27 +135,16 @@ async def test_config_flow_rejects_invalid_required_entity(
     assert result["errors"]["base"] == "invalid_required_entities"
 
 
-@pytest.mark.parametrize(
-    ("enable_daikin", "enable_floor", "expected_optional_steps"),
-    [
-        (False, False, []),
-        (True, False, ["tuning_daikin"]),
-        (False, True, ["tuning_floor"]),
-        (True, True, ["tuning_daikin", "tuning_floor"]),
-    ],
-)
+@pytest.mark.parametrize(("enable_daikin", "expected_optional_steps"), [(False, []), (True, ["tuning_daikin"])])
 @pytest.mark.asyncio
 async def test_config_flow_routes_through_expected_steps(
     blockheat_env: SimpleNamespace,
     enable_daikin: bool,
-    enable_floor: bool,
     expected_optional_steps: list[str],
 ) -> None:
     const = blockheat_env.const
     flow = blockheat_env.config_flow.BlockheatConfigFlow()
-    first = await flow.async_step_user(
-        _step1_user_input(const, enable_daikin=enable_daikin, enable_floor=enable_floor)
-    )
+    first = await flow.async_step_user(_step1_user_input(const, enable_daikin=enable_daikin))
     assert first["type"] == "form"
     assert first["step_id"] == "tuning_policy"
 
@@ -211,14 +184,10 @@ async def test_config_flow_uses_domain_filtered_entity_selectors(
     daikin_outdoor_selector = _schema_value(
         result["data_schema"], const.CONF_DAIKIN_OUTDOOR_TEMP_SENSOR
     )
-    schedule_selector = _schema_value(
-        result["data_schema"], const.CONF_FLOOR_COMFORT_SCHEDULE
-    )
 
     assert nordpool_selector.config.domain == "sensor"
     assert control_selector.config.domain == "number"
     assert daikin_outdoor_selector.config.domain == "sensor"
-    assert schedule_selector.config.domain == ["schedule", "input_boolean"]
 
     schema_keys = _schema_keys(result["data_schema"])
     assert const.CONF_TARGET_BOOLEAN not in schema_keys
@@ -305,30 +274,19 @@ async def test_options_flow_rejects_invalid_required_entities(
     assert result["errors"]["base"] == "invalid_required_entities"
 
 
-@pytest.mark.parametrize(
-    ("enable_daikin", "enable_floor", "expected_optional_steps"),
-    [
-        (False, False, []),
-        (True, False, ["tuning_daikin"]),
-        (False, True, ["tuning_floor"]),
-        (True, True, ["tuning_daikin", "tuning_floor"]),
-    ],
-)
+@pytest.mark.parametrize(("enable_daikin", "expected_optional_steps"), [(False, []), (True, ["tuning_daikin"])])
 @pytest.mark.asyncio
 async def test_options_flow_routes_through_expected_steps(
     blockheat_env: SimpleNamespace,
     build_config: Any,
     enable_daikin: bool,
-    enable_floor: bool,
     expected_optional_steps: list[str],
 ) -> None:
     const = blockheat_env.const
     entry = blockheat_env.FakeConfigEntry("entry-1", data=build_config())
     flow = blockheat_env.config_flow.BlockheatOptionsFlow(entry)
 
-    first = await flow.async_step_init(
-        _step1_user_input(const, enable_daikin=enable_daikin, enable_floor=enable_floor)
-    )
+    first = await flow.async_step_init(_step1_user_input(const, enable_daikin=enable_daikin))
     assert first["type"] == "form"
     assert first["step_id"] == "tuning_policy"
 

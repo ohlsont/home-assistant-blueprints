@@ -23,7 +23,6 @@ class ValidateTuningValuesTests(unittest.TestCase):
             "control_write_delta_c": 0.2,
             "min_toggle_interval_min": 15,
             "minutes_to_block": 240,
-            "floor_min_switch_interval_min": 15,
         }
 
     def test_accepts_valid_values(self):

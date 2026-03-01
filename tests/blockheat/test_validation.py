@@ -48,7 +48,6 @@ def test_validate_tuning_values_accepts_valid_and_blank_values(
                 "control_max_c": 24,
                 "boost_slope_c": 5,
                 "control_write_delta_c": "",
-                "floor_min_switch_interval_min": None,
             },
         )
         is None
