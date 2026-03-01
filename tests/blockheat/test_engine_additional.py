@@ -27,7 +27,6 @@ compute_comfort_target = engine.compute_comfort_target
 compute_daikin = engine.compute_daikin
 compute_fallback_conditions = engine.compute_fallback_conditions
 compute_final_target = engine.compute_final_target
-compute_floor = engine.compute_floor
 compute_policy = engine.compute_policy
 compute_saving_target = engine.compute_saving_target
 
@@ -41,8 +40,6 @@ def test_policy_minutes_to_block_zero_never_blocks() -> None:
         price_ignore_below=0.0,
         pv_now=0.0,
         pv_ignore_above_w=0.0,
-        floor_temp=21.0,
-        min_floor_temp=0.0,
         current_on=False,
         last_changed=now - timedelta(minutes=30),
         now=now,
@@ -62,8 +59,6 @@ def test_policy_minutes_to_block_exceeds_slots_uses_default_cutoff() -> None:
         price_ignore_below=0.0,
         pv_now=0.0,
         pv_ignore_above_w=0.0,
-        floor_temp=21.0,
-        min_floor_temp=0.0,
         current_on=False,
         last_changed=now - timedelta(minutes=30),
         now=now,
@@ -82,8 +77,6 @@ def test_policy_ignores_non_numeric_prices() -> None:
         price_ignore_below=0.0,
         pv_now=0.0,
         pv_ignore_above_w=0.0,
-        floor_temp=21.0,
-        min_floor_temp=0.0,
         current_on=False,
         last_changed=now - timedelta(minutes=30),
         now=now,
@@ -102,8 +95,6 @@ def test_policy_ignore_overrides_precedence() -> None:
         price_ignore_below=10.0,
         pv_now=5000.0,
         pv_ignore_above_w=1000.0,
-        floor_temp=17.0,
-        min_floor_temp=18.0,
         current_on=False,
         last_changed=now - timedelta(minutes=30),
         now=now,
@@ -113,7 +104,6 @@ def test_policy_ignore_overrides_precedence() -> None:
     assert result.target_on is False
     assert result.ignore_by_price is True
     assert result.ignore_by_pv is True
-    assert result.below_min_floor is True
 
 
 def test_saving_target_uses_virtual_at_warm_boundary() -> None:
@@ -198,6 +188,28 @@ def test_comfort_boost_saturates_at_max() -> None:
         cold_threshold=0.0,
         max_boost=3.0,
         boost_slope_c=5.0,
+        control_min_c=10.0,
+        control_max_c=26.0,
+    )
+    assert result.boost_clamped == 3.0
+    assert result.target == 23.0
+
+
+def test_comfort_zero_boost_slope_uses_max_boost_without_crash() -> None:
+    result = compute_comfort_target(
+        room1_temp=21.0,
+        room2_temp=21.0,
+        storage_temp=24.0,
+        outdoor_temp=-5.0,
+        comfort_target_c=22.0,
+        comfort_to_heatpump_offset_c=2.0,
+        storage_target_c=25.0,
+        storage_to_heatpump_offset_c=2.0,
+        maintenance_target_c=20.0,
+        comfort_margin_c=0.2,
+        cold_threshold=0.0,
+        max_boost=3.0,
+        boost_slope_c=0.0,
         control_min_c=10.0,
         control_max_c=26.0,
     )
@@ -432,69 +444,3 @@ def test_daikin_without_outdoor_sensor_uses_default_allow_path() -> None:
     assert result.target_temp == 19.0
     assert result.should_write is True
 
-
-def test_floor_hvac_fallback_prefers_auto_when_heat_missing() -> None:
-    now = datetime(2026, 2, 18, 10, 0, tzinfo=UTC)
-    result = compute_floor(
-        policy_on=False,
-        cur_temp=10.0,
-        dev_min=5.0,
-        comfort_temp_c=22.0,
-        prefer_preset_manual=False,
-        hvac_mode_when_on="heat",
-        supported_hvac_modes=["cool", "auto"],
-        preset_modes=[],
-        soft_off_temp_override_c="",
-        min_keep_temp_c="",
-        schedule_defined=True,
-        schedule_on=True,
-        last_changed=now - timedelta(hours=1),
-        min_switch_interval_min=15,
-        now=now,
-    )
-    assert result.action == "set_on"
-    assert result.hvac_mode_final == "auto"
-
-
-def test_floor_debounce_blocks_action() -> None:
-    now = datetime(2026, 2, 18, 10, 0, tzinfo=UTC)
-    result = compute_floor(
-        policy_on=False,
-        cur_temp=5.0,
-        dev_min=5.0,
-        comfort_temp_c=22.0,
-        prefer_preset_manual=False,
-        hvac_mode_when_on="heat",
-        supported_hvac_modes=["heat"],
-        preset_modes=[],
-        soft_off_temp_override_c="",
-        min_keep_temp_c="",
-        schedule_defined=True,
-        schedule_on=True,
-        last_changed=now - timedelta(minutes=5),
-        min_switch_interval_min=15,
-        now=now,
-    )
-    assert result.action is None
-
-
-def test_floor_noop_when_already_at_target() -> None:
-    now = datetime(2026, 2, 18, 10, 0, tzinfo=UTC)
-    result = compute_floor(
-        policy_on=False,
-        cur_temp=22.0,
-        dev_min=5.0,
-        comfort_temp_c=22.0,
-        prefer_preset_manual=False,
-        hvac_mode_when_on="heat",
-        supported_hvac_modes=["heat"],
-        preset_modes=[],
-        soft_off_temp_override_c="",
-        min_keep_temp_c="",
-        schedule_defined=True,
-        schedule_on=True,
-        last_changed=now - timedelta(hours=1),
-        min_switch_interval_min=15,
-        now=now,
-    )
-    assert result.action is None

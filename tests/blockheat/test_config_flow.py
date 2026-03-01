@@ -25,13 +25,9 @@ def _step1_user_input(const: Any) -> dict[str, Any]:
         const.CONF_OUTDOOR_TEMPERATURE_SENSOR: "sensor.outdoor_temp",
         const.CONF_CONTROL_NUMBER_ENTITY: "number.block_heat_control",
         const.CONF_PV_SENSOR: "",
-        const.CONF_FLOOR_TEMP_SENSOR: "",
         const.CONF_ENABLE_DAIKIN_CONSUMER: False,
         const.CONF_DAIKIN_CLIMATE_ENTITY: "",
         const.CONF_DAIKIN_OUTDOOR_TEMP_SENSOR: "",
-        const.CONF_ENABLE_FLOOR_CONSUMER: False,
-        const.CONF_FLOOR_CLIMATE_ENTITY: "",
-        const.CONF_FLOOR_COMFORT_SCHEDULE: "",
     }
 
 
@@ -100,13 +96,13 @@ async def test_config_flow_uses_domain_filtered_entity_selectors(
     control_selector = _schema_value(
         result["data_schema"], const.CONF_CONTROL_NUMBER_ENTITY
     )
-    schedule_selector = _schema_value(
-        result["data_schema"], const.CONF_FLOOR_COMFORT_SCHEDULE
+    daikin_outdoor_selector = _schema_value(
+        result["data_schema"], const.CONF_DAIKIN_OUTDOOR_TEMP_SENSOR
     )
 
     assert nordpool_selector.config.domain == "sensor"
     assert control_selector.config.domain == "number"
-    assert schedule_selector.config.domain == ["schedule", "input_boolean"]
+    assert daikin_outdoor_selector.config.domain == "sensor"
 
 
 @pytest.mark.asyncio

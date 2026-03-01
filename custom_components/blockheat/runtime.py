@@ -95,6 +95,11 @@ from .engine import (
 
 _LOGGER = logging.getLogger(__name__)
 
+_SELF_WRITTEN_ENTITY_KEYS: tuple[str, ...] = (
+    CONF_CONTROL_NUMBER_ENTITY,
+    CONF_DAIKIN_CLIMATE_ENTITY,
+)
+
 
 @dataclass
 class RuntimeState:
@@ -142,6 +147,8 @@ class BlockheatRuntime:
 
         monitored_entities: list[str] = []
         for key in REQUIRED_ENTITY_KEYS + OPTIONAL_ENTITY_KEYS:
+            if key in _SELF_WRITTEN_ENTITY_KEYS:
+                continue
             entity_id = self._cfg_str(key)
             if entity_id:
                 monitored_entities.append(entity_id)
