@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 DOMAIN = "blockheat"
-PLATFORMS: list[str] = []
+PLATFORMS: list[str] = ["binary_sensor", "sensor"]
 
 CONF_TARGET_BOOLEAN = "target_boolean"
 CONF_NORDPOOL_PRICE = "nordpool_price"
@@ -71,6 +73,33 @@ DEFAULT_RECOMPUTE_MINUTES = 5
 DEFAULT_HELPER_WRITE_DELTA_C = 0.05
 DEFAULT_CONTROL_WRITE_DELTA_C = 0.2
 
+LEGACY_INTERNAL_ENTITY_KEYS: tuple[str, ...] = (
+    CONF_TARGET_BOOLEAN,
+    CONF_TARGET_SAVING_HELPER,
+    CONF_TARGET_COMFORT_HELPER,
+    CONF_TARGET_FINAL_HELPER,
+    CONF_FALLBACK_ACTIVE_BOOLEAN,
+    CONF_ELECTRIC_FALLBACK_LAST_TRIGGER,
+)
+
+STATE_POLICY_ON = "policy_on"
+STATE_POLICY_LAST_CHANGED = "policy_last_changed"
+STATE_TARGET_SAVING = "target_saving"
+STATE_TARGET_COMFORT = "target_comfort"
+STATE_TARGET_FINAL = "target_final"
+STATE_FALLBACK_ACTIVE = "fallback_active"
+STATE_FALLBACK_LAST_TRIGGER = "fallback_last_trigger"
+
+STATE_STORAGE_VERSION = 1
+STATE_STORAGE_KEY_PREFIX = "blockheat.internal_state"
+
+ENTITY_ID_POLICY_ACTIVE = "binary_sensor.blockheat_energy_saving_active"
+ENTITY_ID_FALLBACK_ACTIVE = "binary_sensor.blockheat_fallback_active"
+ENTITY_ID_TARGET_SAVING = "sensor.blockheat_target_saving"
+ENTITY_ID_TARGET_COMFORT = "sensor.blockheat_target_comfort"
+ENTITY_ID_TARGET_FINAL = "sensor.blockheat_target_final"
+ENTITY_ID_FALLBACK_LAST_TRIGGER = "sensor.blockheat_fallback_last_trigger"
+
 DEFAULTS: dict[str, object] = {
     CONF_MINUTES_TO_BLOCK: 180,
     CONF_PRICE_IGNORE_BELOW: 0.6,
@@ -110,17 +139,11 @@ DEFAULTS: dict[str, object] = {
 }
 
 REQUIRED_ENTITY_KEYS: tuple[str, ...] = (
-    CONF_TARGET_BOOLEAN,
     CONF_NORDPOOL_PRICE,
     CONF_COMFORT_ROOM_1_SENSOR,
     CONF_COMFORT_ROOM_2_SENSOR,
     CONF_STORAGE_ROOM_SENSOR,
     CONF_OUTDOOR_TEMPERATURE_SENSOR,
-    CONF_TARGET_SAVING_HELPER,
-    CONF_TARGET_COMFORT_HELPER,
-    CONF_TARGET_FINAL_HELPER,
-    CONF_FALLBACK_ACTIVE_BOOLEAN,
-    CONF_ELECTRIC_FALLBACK_LAST_TRIGGER,
     CONF_CONTROL_NUMBER_ENTITY,
 )
 
@@ -129,3 +152,11 @@ OPTIONAL_ENTITY_KEYS: tuple[str, ...] = (
     CONF_DAIKIN_CLIMATE_ENTITY,
     CONF_DAIKIN_OUTDOOR_TEMP_SENSOR,
 )
+
+
+def normalize_entry_data(data: dict[str, Any]) -> dict[str, Any]:
+    """Normalize entry/options data for runtime use and future saves."""
+    normalized = {**DEFAULTS, **data}
+    for key in LEGACY_INTERNAL_ENTITY_KEYS:
+        normalized.pop(key, None)
+    return normalized
