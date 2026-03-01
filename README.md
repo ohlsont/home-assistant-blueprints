@@ -3,21 +3,6 @@
 This repo now ships a custom Home Assistant integration for policy-driven heating,
 plus legacy blueprint references.
 
-## Codex Thread Workflow (Required)
-To keep agent work isolated and fast, use this workflow for every thread:
-1. Create a dedicated worktree and branch before changing files.
-2. Use branch names with the `codex/` prefix.
-3. Complete implementation and verification in that worktree.
-4. Commit and open a PR before considering the thread complete.
-5. Monitor PR CI/checks until they pass (or explicitly note if no checks are configured).
-6. Before closing the thread, check whether behavior/input changes require documentation updates and apply them.
-
-Example setup:
-```bash
-git worktree add .worktrees/codex/<topic> -b codex/<topic>
-cd .worktrees/codex/<topic>
-```
-
 ## Folder Layout
 - `custom_components/blockheat/`
   - HACS-compatible integration path (`config_flow`, runtime adapter, pure Python engine).
@@ -42,8 +27,16 @@ Daikin consumer control.
 4. Restart Home Assistant.
 5. Go to **Settings -> Devices & Services -> Add Integration** and add **Blockheat**.
 6. Complete both config steps:
-   - Step 1: entity mapping with searchable, domain-filtered pickers (external source/control entities + optional consumers)
-   - Step 2: tuning values (policy windows, target/fallback thresholds, deadbands)
+   - Step 1: entity mapping with searchable, domain-filtered entity pickers (policy sensors/helpers/control + optional consumers)
+   - Step 2: tuning wizard split into sections:
+     - Policy window and guards
+     - Saving target
+     - Comfort target
+     - Cold boost
+     - Fallback protection
+     - Limits and deadbands
+     - Optional Daikin section (only when enabled)
+     - Optional floor section (only when enabled)
 
 ### Install Manually to Home Assistant
 From this repo:
@@ -58,39 +51,39 @@ Then in Home Assistant:
 2. Go to **Settings -> Devices & Services -> Add Integration**.
 3. Add **Blockheat**.
 4. Complete both config steps:
-   - Step 1: entity mapping with searchable, domain-filtered pickers (external source/control entities + optional consumers)
-   - Step 2: tuning values (policy windows, target/fallback thresholds, deadbands)
+   - Step 1: entity mapping with searchable, domain-filtered entity pickers (policy sensors/helpers/control + optional consumers)
+   - Step 2: tuning wizard split into sections:
+     - Policy window and guards
+     - Saving target
+     - Comfort target
+     - Cold boost
+     - Fallback protection
+     - Limits and deadbands
+     - Optional Daikin section (only when enabled)
+     - Optional floor section (only when enabled)
 
-### Runtime Behavior (Current Integration)
-- The config flow is single-instance: only one `blockheat` config entry is supported.
-- Recompute runs on:
-  - Home Assistant startup
-  - Any state change on mapped required/optional entities
-  - A periodic 5-minute interval (`DEFAULT_RECOMPUTE_MINUTES = 5`)
-- Recompute always updates the diagnostics coordinator payload and fires `blockheat_snapshot`.
-- Recompute snapshots include causal metadata:
-  - `trigger`
-  - `saving_debug`
-  - `comfort_debug`
-  - `final_debug`
-- Policy transitions also fire:
-  - `energy_saving_state_changed`
-  - `blockheat_policy_changed`
+### Sectioned Tuning Baseline (Integration Defaults)
+The integration defaults are a balanced profile tuned for Swedish price-driven
+operation, `22°C` comfort target, and reduced risk of auxiliary electric heat.
 
-### Integration Services
-Services are exposed under the `blockheat` domain:
-- `blockheat.recompute`
-  - Forces an immediate full compute/write pass.
-- `blockheat.dump_diagnostics`
-  - Forces recompute and emits a diagnostics snapshot payload.
+| Section | Defaults |
+|---|---|
+| Policy window and guards | `minutes_to_block=180`, `price_ignore_below=0.6`, `pv_ignore_above_w=0.0`, `min_floor_temp=0.0`, `min_toggle_interval_min=15` |
+| Saving target | `heatpump_setpoint=20.0`, `saving_cold_offset_c=1.0`, `virtual_temperature=20.0`, `energy_saving_warm_shutdown_outdoor=8.0` |
+| Comfort target | `comfort_target_c=22.0`, `comfort_to_heatpump_offset_c=2.0`, `storage_target_c=24.5`, `storage_to_heatpump_offset_c=2.0`, `maintenance_target_c=20.0`, `comfort_margin_c=0.25` |
+| Cold boost | `cold_threshold=1.0`, `max_boost=3.0`, `boost_slope_c=4.0` |
+| Fallback protection | `electric_fallback_delta_c=1.5`, `release_delta_c=0.5`, `electric_fallback_minutes=45`, `electric_fallback_cooldown_minutes=90` |
+| Limits and deadbands | `control_min_c=10.0`, `control_max_c=26.0`, `saving_helper_write_delta_c=0.05`, `comfort_helper_write_delta_c=0.05`, `final_helper_write_delta_c=0.05`, `control_write_delta_c=0.2` |
+| Optional Daikin | `daikin_normal_temperature=22.0`, `daikin_saving_temperature=20.0`, `daikin_outdoor_temp_threshold=-10.0`, `daikin_min_temp_change=0.5` |
+| Optional floor (standby) | `floor_comfort_temp_c=22.0`, `floor_prefer_preset_manual=true`, `floor_hvac_mode_when_on=\"heat\"`, `floor_soft_off_temp_override_c=\"\"`, `floor_min_keep_temp_c=\"\"`, `floor_min_switch_interval_min=15` |
 
-Both services accept optional `entry_id` (text). If omitted, all Blockheat entries are targeted.
-
-Root-cause workflow for integration mode:
-1. Call `blockheat.dump_diagnostics`.
-2. Listen for `blockheat_snapshot` in **Developer Tools -> Events**.
-3. Inspect `trigger`, `saving_debug`, `comfort_debug`, and `final_debug`.
-4. Cross-check with Logbook entries for policy/fallback/final write transitions.
+Quick adjustment rails:
+- Policy strength: raise `minutes_to_block` to `210-240` for stronger savings, or lower to `120-150` for comfort-first behavior.
+- Saving aggressiveness: reduce `saving_cold_offset_c` to `0.5-0.8` if rooms dip too much, or increase to `1.2-1.5` for stronger savings.
+- Comfort tightness: lower `comfort_margin_c` to `0.15-0.2` for tighter control, or increase to `0.3` to reduce churn.
+- Cold-weather response: lower `boost_slope_c` to `3.0` for stronger recovery, or raise to `5.0-6.0` if too aggressive.
+- Fallback sensitivity: lower `electric_fallback_delta_c` to `1.0` for earlier intervention, or raise to `2.0` for less frequent fallback.
+- Write frequency: increase `control_write_delta_c` to `0.25-0.3` only if control writes are too frequent.
 
 ### Testing
 Install dev dependencies once:
@@ -115,56 +108,19 @@ Notes:
 - Existing `unittest` test modules under `tests/blockheat/` are collected and run by `pytest`.
 - Shared fake Home Assistant test fixtures are defined in `tests/conftest.py`.
 
-Mirror sync guard:
-- Run `uv run python scripts/check_component_mirror_sync.py` to verify that
-  `custom_components/blockheat` and `homeassistant/custom_components/blockheat`
-  are byte-identical when the mirror directory exists.
-
-Config tuning validation:
-- The config entry tuning step enforces bounded numeric ranges and rejects
-  invalid cross-field combinations such as `control_min_c > control_max_c`.
-
-### Code Quality
-Install dev dependencies and hooks:
-
-```bash
-uv sync --group dev
-uv run pre-commit install
-```
-
-Run local quality checks:
-
-```bash
-uv run ruff format --check custom_components homeassistant tests
-uv run ruff check custom_components homeassistant tests
-uv run mypy
-uv run pre-commit run --all-files
-```
-
-CI workflow split:
-- `.github/workflows/tests.yml`: test suite + coverage gate.
-- `.github/workflows/quality.yml`: Ruff format/lint + mypy.
-
 ### Compatibility Contract (v1)
-The integration now owns internal policy/target/fallback state and exposes
-read-only entities as the stable interface:
+The integration keeps these helper ids as the stable interface:
 
-- `binary_sensor.blockheat_energy_saving_active`
-- `binary_sensor.blockheat_fallback_active`
-- `sensor.blockheat_target_saving`
-- `sensor.blockheat_target_comfort`
-- `sensor.blockheat_target_final`
-- `sensor.blockheat_fallback_last_trigger`
+- `input_number.block_heat_target_saving`
+- `input_number.block_heat_target_comfort`
+- `input_number.block_heat_target_final`
+- `input_boolean.block_heat_fallback_active`
+- `input_datetime.block_heat_fallback_last_trigger`
 
 Compatibility events:
 - `energy_saving_state_changed` (legacy compatibility)
 - `blockheat_policy_changed` (namespaced event)
 - `blockheat_snapshot` (diagnostics snapshot event)
-  - Includes additive causal fields:
-    - `trigger`: recompute reason plus optional source/entity context
-    - `saving_debug`: saving path + write decision
-    - `comfort_debug`: comfort path + write decision
-    - `final_debug`: final source + write/no-write rationale
 
 ### Migration / Cutover (Big-Bang)
 Pre-cutover:
@@ -173,15 +129,10 @@ Pre-cutover:
    - `uv run python -m pytest tests/blockheat/test_engine.py tests/blockheat/test_parity_suite.py -q`
 3. Confirm config entry values map 1:1 to existing blueprint inputs.
 
-Behavior note (cold boost correction):
-- In this version, comfort cold boost is additive: below `cold_threshold`, colder
-  outdoor temperatures raise comfort/storage paths by up to `max_boost`.
-- Re-check `control_min_c`/`control_max_c` and fallback tuning after cutover.
-
 Cutover:
 1. Disable all Blockheat blueprint automations at once.
 2. Enable the Blockheat config entry.
-3. Verify internal Blockheat entities update and control number writes occur for at least one full periodic cycle.
+3. Verify helper writes and control number writes for at least one full periodic cycle.
 
 Rollback:
 1. Disable the Blockheat config entry.
@@ -295,9 +246,9 @@ Use these helper entity ids unless you have an existing naming convention:
 ### Comfort Target Calculator
 - Inputs: two comfort sensors, storage sensor, outdoor sensor, comfort/storage/maintenance settings, cold boost settings.
 - Formula:
-  - boost (additive) = f(cold threshold, outdoor, slope, max)
-  - comfort path = `(comfort_target - comfort_offset) + boost`
-  - storage path = `(storage_target - storage_offset) + boost`
+  - boost (pull-down) = f(cold threshold, outdoor, slope, max)
+  - comfort path = `(comfort_target - comfort_offset) - boost`
+  - storage path = `(storage_target - storage_offset) - boost`
   - comfort unsatisfied -> comfort path
   - comfort satisfied + storage needs heat -> max(storage path, comfort path)
   - comfort satisfied + storage OK -> maintenance target
@@ -319,21 +270,17 @@ Use these helper entity ids unless you have an existing naming convention:
 - Writes final helper target.
 - Writes control number only when delta >= configured write threshold.
 
-## Diagnostics Cards
-For integration runtime (native cards only), use:
-- `dashboards/blockheat/block-heat-diagnostics-native.yaml`
-
-To use the native integration card:
-1. Copy YAML into a Lovelace manual card or view YAML editor.
-2. Replace `number.REPLACE_control_temperature` with your control number entity.
-3. Run `blockheat.dump_diagnostics`, then inspect `blockheat_snapshot` in Developer Tools -> Events.
-4. Use the built-in logbook card in the stack for change-only decision traces.
-
-For chart-heavy diagnostics (ApexCharts), use:
+## Diagnostics Card
+A helper-driven diagnostics card is available at:
 - `dashboards/blockheat/block-heat-diagnostics-card.yaml`
 
-The ApexCharts card reads Blockheat integration-owned entities directly
-(`binary_sensor.blockheat_*` and `sensor.blockheat_*`).
+The markdown card reads helper outputs and state routing directly from the final
+arbiter inputs. It does not duplicate target formulas.
+
+To use it:
+1. Copy YAML into a Lovelace manual card or view YAML editor.
+2. Replace `auto` in the markdown card with your final arbiter automation id.
+3. Replace placeholder entities in ApexCharts/entities card where noted.
 
 ## Validation Matrix (Block Heat)
 The table below is the acceptance matrix for manual verification in Home
@@ -343,7 +290,7 @@ Assistant Developer Tools by forcing helper/sensor states.
 |---|---|---|---|
 | Policy ON + outdoor >= warm threshold | `target_saving = virtual_temperature`, `target_final` matches | Pending manual run | Requires HA runtime |
 | Policy ON + outdoor < warm threshold | `target_saving = setpoint - saving_cold_offset_c` | Pending manual run | Requires HA runtime |
-| Policy OFF + comfort unsatisfied | `target_comfort = comfort path` | Pending manual run | Requires HA runtime |
+| Policy OFF + comfort unsatisfied | `target_comfort = comfort path + boost` | Pending manual run | Requires HA runtime |
 | Policy OFF + comfort satisfied + storage needs heat | `target_comfort = max(storage path, comfort path)` | Pending manual run | Requires HA runtime |
 | Policy OFF + comfort satisfied + storage OK | `target_comfort = maintenance_target` | Pending manual run | Requires HA runtime |
 | Extreme cold boost | `target_comfort` clamps at max | Pending manual run | Requires HA runtime |
@@ -380,5 +327,5 @@ Default assumptions in the workbook:
 - Added 4 Block Heat blueprints with isolated responsibilities.
 - Final writer (`block-heat.yaml`) is the only Block Heat blueprint that calls
   `number.set_value` for the control number.
-- Diagnostics card now reads integration-owned runtime entities instead of
-  re-implementing full control math.
+- Diagnostics card now reads helper/module outputs instead of re-implementing
+  full control math.

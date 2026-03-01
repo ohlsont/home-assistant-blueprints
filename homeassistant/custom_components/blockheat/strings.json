@@ -4,13 +4,19 @@
     "step": {
       "user": {
         "title": "Blockheat entities",
-        "description": "Map external source and control entities. Internal Blockheat state is owned and exposed as read-only entities.",
+        "description": "Map Blockheat helpers and source entities.",
         "data": {
+          "target_boolean": "Energy saving boolean",
           "nordpool_price": "Nordpool price sensor",
           "comfort_room_1_sensor": "Comfort room 1 sensor",
           "comfort_room_2_sensor": "Comfort room 2 sensor",
           "storage_room_sensor": "Storage room sensor",
           "outdoor_temperature_sensor": "Outdoor temperature sensor",
+          "target_saving_helper": "Saving target helper",
+          "target_comfort_helper": "Comfort target helper",
+          "target_final_helper": "Final target helper",
+          "fallback_active_boolean": "Fallback active helper",
+          "electric_fallback_last_trigger": "Fallback last-trigger helper",
           "control_number_entity": "Control number entity",
           "pv_sensor": "PV sensor (optional)",
           "enable_daikin_consumer": "Enable Daikin consumer",
@@ -18,16 +24,95 @@
           "daikin_outdoor_temp_sensor": "Daikin outdoor sensor (optional)"
         }
       },
-      "tuning": {
-        "title": "Blockheat tuning",
-        "description": "Set policy, target, fallback and consumer thresholds."
+      "tuning_policy": {
+        "title": "Tuning: Policy window",
+        "description": "Configure expensive-slot policy and policy safety guards.",
+        "data": {
+          "minutes_to_block": "Minutes to block",
+          "price_ignore_below": "Cheap-price ignore threshold (SEK/kWh)",
+          "pv_ignore_above_w": "PV ignore threshold (W)",
+          "min_floor_temp": "Minimum floor temperature guard (°C)",
+          "min_toggle_interval_min": "Minimum policy toggle interval (min)"
+        }
+      },
+      "tuning_saving": {
+        "title": "Tuning: Saving target",
+        "description": "Set saving-mode target behavior for warm and cold conditions.",
+        "data": {
+          "heatpump_setpoint": "Heatpump setpoint (°C)",
+          "saving_cold_offset_c": "Saving cold offset (°C)",
+          "virtual_temperature": "Virtual temperature (°C)",
+          "energy_saving_warm_shutdown_outdoor": "Warm shutdown outdoor threshold (°C)"
+        }
+      },
+      "tuning_comfort": {
+        "title": "Tuning: Comfort target",
+        "description": "Set comfort, storage, and maintenance target behavior.",
+        "data": {
+          "comfort_target_c": "Comfort target (°C)",
+          "comfort_to_heatpump_offset_c": "Comfort-to-heatpump offset (°C)",
+          "storage_target_c": "Storage target (°C)",
+          "storage_to_heatpump_offset_c": "Storage-to-heatpump offset (°C)",
+          "maintenance_target_c": "Maintenance target (°C)",
+          "comfort_margin_c": "Comfort margin (°C)"
+        }
+      },
+      "tuning_boost": {
+        "title": "Tuning: Cold boost",
+        "description": "Configure cold-weather boost pull-down behavior.",
+        "data": {
+          "cold_threshold": "Cold threshold (°C)",
+          "max_boost": "Maximum boost (°C)",
+          "boost_slope_c": "Boost slope (°C per outdoor delta)"
+        }
+      },
+      "tuning_fallback": {
+        "title": "Tuning: Fallback protection",
+        "description": "Configure fallback trigger/release and cooldown behavior.",
+        "data": {
+          "electric_fallback_delta_c": "Fallback trigger delta (°C)",
+          "release_delta_c": "Fallback release delta (°C)",
+          "electric_fallback_minutes": "Fallback trigger duration (min)",
+          "electric_fallback_cooldown_minutes": "Fallback cooldown (min)"
+        }
+      },
+      "tuning_limits": {
+        "title": "Tuning: Limits and deadbands",
+        "description": "Set control clamp limits and helper/control write deadbands.",
+        "data": {
+          "control_min_c": "Control minimum (°C)",
+          "control_max_c": "Control maximum (°C)",
+          "saving_helper_write_delta_c": "Saving helper write delta (°C)",
+          "comfort_helper_write_delta_c": "Comfort helper write delta (°C)",
+          "final_helper_write_delta_c": "Final helper write delta (°C)",
+          "control_write_delta_c": "Control write delta (°C)"
+        }
+      },
+      "tuning_daikin": {
+        "title": "Tuning: Daikin consumer",
+        "description": "Set optional Daikin consumer temperatures and write threshold.",
+        "data": {
+          "daikin_normal_temperature": "Daikin normal temperature (°C)",
+          "daikin_saving_temperature": "Daikin saving temperature (°C)",
+          "daikin_outdoor_temp_threshold": "Daikin outdoor threshold (°C)",
+          "daikin_min_temp_change": "Daikin minimum write delta (°C)"
+        }
+      },
+      "tuning_floor": {
+        "title": "Tuning: Floor consumer",
+        "description": "Set optional floor-heating consumer behavior.",
+        "data": {
+          "floor_comfort_temp_c": "Floor comfort temperature (°C)",
+          "floor_prefer_preset_manual": "Prefer manual preset",
+          "floor_hvac_mode_when_on": "HVAC mode when ON",
+          "floor_soft_off_temp_override_c": "Soft-off temperature override (optional)",
+          "floor_min_keep_temp_c": "Minimum keep temperature (optional)",
+          "floor_min_switch_interval_min": "Minimum switch interval (min)"
+        }
       }
     },
     "error": {
-      "invalid_required_entities": "Required entity id values cannot be empty.",
-      "invalid_control_range": "Control minimum must be less than or equal to control maximum.",
-      "invalid_boost_slope": "Cold boost slope must be greater than zero.",
-      "invalid_non_negative": "Intervals and deltas must be non-negative."
+      "invalid_required_entities": "Required entity id values cannot be empty."
     },
     "abort": {
       "single_instance_allowed": "Only one Blockheat config entry is supported."
@@ -38,15 +123,41 @@
       "init": {
         "title": "Blockheat entities"
       },
-      "tuning": {
-        "title": "Blockheat tuning"
+      "tuning_policy": {
+        "title": "Tuning: Policy window",
+        "description": "Configure expensive-slot policy and policy safety guards."
+      },
+      "tuning_saving": {
+        "title": "Tuning: Saving target",
+        "description": "Set saving-mode target behavior for warm and cold conditions."
+      },
+      "tuning_comfort": {
+        "title": "Tuning: Comfort target",
+        "description": "Set comfort, storage, and maintenance target behavior."
+      },
+      "tuning_boost": {
+        "title": "Tuning: Cold boost",
+        "description": "Configure cold-weather boost pull-down behavior."
+      },
+      "tuning_fallback": {
+        "title": "Tuning: Fallback protection",
+        "description": "Configure fallback trigger/release and cooldown behavior."
+      },
+      "tuning_limits": {
+        "title": "Tuning: Limits and deadbands",
+        "description": "Set control clamp limits and helper/control write deadbands."
+      },
+      "tuning_daikin": {
+        "title": "Tuning: Daikin consumer",
+        "description": "Set optional Daikin consumer temperatures and write threshold."
+      },
+      "tuning_floor": {
+        "title": "Tuning: Floor consumer",
+        "description": "Set optional floor-heating consumer behavior."
       }
     },
     "error": {
-      "invalid_required_entities": "Required entity id values cannot be empty.",
-      "invalid_control_range": "Control minimum must be less than or equal to control maximum.",
-      "invalid_boost_slope": "Cold boost slope must be greater than zero.",
-      "invalid_non_negative": "Intervals and deltas must be non-negative."
+      "invalid_required_entities": "Required entity id values cannot be empty."
     }
   }
 }
