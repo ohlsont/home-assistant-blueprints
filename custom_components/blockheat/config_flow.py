@@ -440,7 +440,7 @@ def _validate_required_entities(data: dict[str, Any]) -> bool:
     return all(str(data.get(key, "")).strip() for key in _REQUIRED_USER_SCHEMA_KEYS)
 
 
-class BlockheatConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class BlockheatConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
     """Blockheat config flow."""
 
     VERSION = 1
