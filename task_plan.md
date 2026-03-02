@@ -1,59 +1,52 @@
-# Task Plan: Block Heat diagnostics dashboard card
+# Task Plan: Integration-Only Repository Cleanup
 
 ## Goal
-Create a Home Assistant dashboard diagnostics card for the Block Heat blueprint, with clear computed feedback for screenshots, and document how to use it.
+Remove legacy automation assets and outdated references so the repository is clearly integration-only.
 
 ## Current Phase
 Phase 4
 
 ## Phases
 
-### Phase 1: Requirements & Discovery
-- [x] Confirm desired output (dashboard card for diagnostics)
-- [x] Review blueprint inputs and logic for derived values
-- [x] Document findings in findings.md
+### Phase 1: Discovery
+- [x] Identify all legacy asset files to remove
+- [x] Identify all repository references and outdated terminology
+- [x] Confirm runtime integration code path remains unaffected
 - **Status:** complete
 
-### Phase 2: Planning & Structure
-- [x] Define diagnostics metrics and layout
-- [x] Decide where to store card YAML
-- [x] Document decisions with rationale
+### Phase 2: Planning
+- [x] Define hard purge scope and explicit exceptions
+- [x] Define verification commands and acceptance criteria
+- [x] Confirm commit/PR/check workflow
 - **Status:** complete
 
 ### Phase 3: Implementation
-- [x] Create diagnostics card YAML
-- [x] Add README instructions and usage notes
-- [x] Keep changes minimal and focused
+- [x] Delete legacy asset files
+- [x] Rewrite product-facing documentation to integration-only guidance
+- [x] Update project metadata and mirrored comments
+- [x] Sanitize planning/history documents
 - **Status:** complete
 
 ### Phase 4: Testing & Verification
-- [x] Manual review of formulas against blueprint
-- [x] Document verification notes in progress.md
-- **Status:** complete
+- [ ] Run strict terminology audit
+- [ ] Run format, lint, type, and test suite checks
+- [ ] Validate removed files are absent
+- **Status:** in_progress
 
 ### Phase 5: Delivery
-- [x] Summarize changes and next steps
-- **Status:** complete
+- [ ] Commit with Conventional Commit message
+- [ ] Open pull request with verification summary
+- [ ] Monitor PR checks to completion
+- **Status:** pending
 
-## Key Questions
-1. Where should the diagnostics card live? (New YAML under blueprints/automation/blockheat/)
-2. Should we avoid custom Lovelace cards? (Yes, use built-in markdown/entities)
-3. What automation entity id will be used? (User will replace placeholder)
-
-## Decisions Made
+## Key Decisions
 | Decision | Rationale |
 |----------|-----------|
-| Use markdown card templates for computed values | Built-in HA capability, no custom cards |
-| Provide entity list as placeholders | Entities card does not accept templates |
-| Store card YAML under dashboards/ | Keeps blueprint folder clean and intent clear |
-| Read blueprint inputs from `blueprint_input` | Keeps card in sync with automation setup |
-
-## Errors Encountered
-| Error | Attempt | Resolution |
-|-------|---------|------------|
-| rg not available in shell | 1 | Used grep instead |
+| Hard purge of legacy assets | Prevent conflicting setup paths in the same repository |
+| Keep manifest URLs unchanged | Canonical repository links remain valid |
+| Preserve notes files while sanitizing wording | Keeps useful project history without outdated guidance |
 
 ## Notes
-- Update phase status as you progress: pending → in_progress → complete
-- Re-read this plan before major decisions (attention manipulation)
-- Log ALL errors - they help avoid repetition
+- Keep runtime behavior unchanged.
+- Keep mirrored integration files in sync.
+- Treat this as repository hygiene and documentation cleanup, not control-logic work.

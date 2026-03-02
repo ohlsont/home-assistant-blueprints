@@ -18,5 +18,6 @@
 - Use Conventional Commits for all git commit messages.
 
 ## Structure
-- Blueprint files live under `blueprints/automation/blockheat/`.
+- Integration files live under `custom_components/blockheat/`.
+- Home Assistant mirror files live under `homeassistant/custom_components/blockheat/`.
 - Update `README.md` when behavior or inputs change.

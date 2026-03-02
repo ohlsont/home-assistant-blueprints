@@ -1,23 +1,21 @@
 # Blockheat Home Assistant Integration
 
-This repo now ships a custom Home Assistant integration for policy-driven heating,
-plus legacy blueprint references.
+This repository ships a Home Assistant custom integration for policy-driven
+heating control.
 
 ## Folder Layout
 - `custom_components/blockheat/`
   - HACS-compatible integration path (`config_flow`, runtime adapter, pure Python engine).
 - `homeassistant/custom_components/blockheat/`
   - Local development/testing mirror of the integration code.
-- `blueprints/automation/blockheat/core/`
-  - Legacy Block Heat core blueprint chain (reference only during migration).
-- `blueprints/automation/blockheat/policy/`
-  - Legacy policy producer blueprint (reference).
-- `blueprints/automation/blockheat/consumers/`
-  - Legacy consumer blueprints (reference).
+- `dashboards/blockheat/`
+  - Optional diagnostics card YAML for Lovelace.
+- `tests/`
+  - Unit and parity tests collected by `pytest`.
 
 ## Primary Path: Custom Integration (Config Entry UI)
-The recommended runtime is now `custom_components/blockheat` with one config
-entry that owns policy, target calculators, final writer, and optional
+The recommended runtime is `custom_components/blockheat` with one config entry
+that owns policy, target calculators, final writer, and optional
 Daikin consumer control.
 
 ### Install via HACS (GitHub)
@@ -60,7 +58,7 @@ Then in Home Assistant:
 
 ### Sectioned Tuning Baseline (Integration Defaults)
 The integration defaults are a balanced profile tuned for Swedish price-driven
-operation, `22°C` comfort target, and reduced risk of auxiliary electric heat.
+operation, `22 C` comfort target, and reduced risk of auxiliary electric heat.
 
 | Section | Defaults |
 |---|---|
@@ -78,7 +76,7 @@ Quick adjustment rails:
 - Cold-weather response: lower `boost_slope_c` to `3.0` for stronger recovery, or raise to `5.0-6.0` if too aggressive.
 - Write frequency: increase `control_write_delta_c` to `0.25-0.3` only if control writes are too frequent.
 
-### Testing
+## Testing
 Install dev dependencies once:
 
 ```bash
@@ -101,7 +99,7 @@ Notes:
 - Existing `unittest` test modules under `tests/blockheat/` are collected and run by `pytest`.
 - Shared fake Home Assistant test fixtures are defined in `tests/conftest.py`.
 
-### Internal State Contract (v1)
+## Internal State Contract (v1)
 The integration exposes policy/target state as read-only entities:
 
 - `binary_sensor.blockheat_energy_saving_active`
@@ -119,147 +117,34 @@ Compatibility events:
 - `blockheat_policy_changed` (namespaced event)
 - `blockheat_snapshot` (diagnostics snapshot event)
 
-### Migration / Cutover (Big-Bang)
+## Migration / Cutover (Big-Bang)
 Pre-cutover:
 1. Backup current helper + automation YAML/state.
 2. Run parity tests from this repo:
    - `uv run python -m pytest tests/blockheat/test_engine.py tests/blockheat/test_parity_suite.py -q`
-3. Confirm config entry values map 1:1 to existing blueprint inputs.
+3. Confirm config entry values map 1:1 to existing legacy automation inputs.
 
 Cutover:
-1. Disable all Blockheat blueprint automations at once.
+1. Disable all legacy Blockheat automations at once.
 2. Enable the Blockheat config entry.
 3. Verify helper writes and control number writes for at least one full periodic cycle.
 
 Rollback:
 1. Disable the Blockheat config entry.
-2. Re-enable prior blueprint automations.
+2. Re-enable prior legacy automations.
 3. No helper renaming is required.
 
-### Known Non-Goals (v1)
+## Known Non-Goals (v1)
 - No control-logic redesign; behavior is parity-focused.
-- No action-sequence hooks equivalent to blueprint `on_enable_actions` / `on_disable_actions`.
-
-## Legacy Path: YAML-First Blueprints (`configuration.yaml` + package)
-If you want faster setup and reproducibility, use Home Assistant packages instead
-of creating helpers/automations in the UI. This remains available as a legacy
-reference path during migration.
-
-### Files in this repo for YAML-first setup
-- `homeassistant/configuration.yaml.packages-snippet.yaml`
-  - Snippet to enable packages in `/config/configuration.yaml`.
-- `homeassistant/packages/blockheat_modular.yaml`
-  - Authoritative helper + automation package using blueprint paths under
-    `blockheat/{core,policy,consumers}`.
-
-### Quick copy commands (run from this repo)
-```bash
-cp -R blueprints/automation/blockheat /config/blueprints/automation/
-mkdir -p /config/packages
-cp homeassistant/packages/blockheat_modular.yaml /config/packages/blockheat_modular.yaml
-```
-
-### `configuration.yaml` wiring
-Add this under the existing top-level `homeassistant:` block in
-`/config/configuration.yaml`:
-```yaml
-packages: !include_dir_named packages
-```
-If `homeassistant:` does not exist, use the full snippet from:
-`homeassistant/configuration.yaml.packages-snippet.yaml`.
-
-### Required placeholder replacement before reload
-In `/config/packages/blockheat_modular.yaml`, replace all `REPLACE_*` entities,
-especially:
-- `input_boolean.REPLACE_energy_saving`
-- `sensor.REPLACE_nordpool_price`
-- `sensor.REPLACE_outdoor_temperature`
-- `sensor.REPLACE_comfort_room_1`
-- `sensor.REPLACE_comfort_room_2`
-- `sensor.REPLACE_storage_room`
-- `number.REPLACE_control_temperature`
-
-Optional consumer placeholders are in commented blocks for Daikin.
-
-## Legacy Blueprints (Reference)
-- `blueprints/automation/blockheat/core/block-heat-target-saving.yaml`
-  - Saving-mode target calculator for Block Heat.
-  - Writes to `input_number` saving-target helper.
-- `blueprints/automation/blockheat/core/block-heat-target-comfort.yaml`
-  - Comfort-mode target calculator for Block Heat.
-  - Writes to `input_number` comfort-target helper.
-- `blueprints/automation/blockheat/core/block-heat.yaml`
-  - Final arbiter/writer for Block Heat.
-  - Reads helper outputs and is the only module writing the control `number`.
-- `blueprints/automation/blockheat/consumers/daikin-energy-saver.yaml`
-  - Direct Daikin climate control driven by the policy boolean.
-- `blueprints/automation/blockheat/policy/energy_saving_policy_bool.yaml`
-  - Produces shared energy-saving policy boolean from price/PV inputs.
-
-## Block Heat Architecture (Modular)
-Block Heat is now split into three independent automations:
-
-1. Saving target calculator (`block-heat-target-saving.yaml`)
-2. Comfort target calculator (`block-heat-target-comfort.yaml`)
-3. Final arbiter and writer (`block-heat.yaml`)
-
-The final arbiter applies this precedence:
-- Policy ON -> use saving target helper
-- Policy OFF -> use comfort target helper
-
-Only the final arbiter writes the control number.
-
-### Canonical Helper Contract
-Use these helper entity ids unless you have an existing naming convention:
-
-- `input_number.block_heat_target_saving`
-- `input_number.block_heat_target_comfort`
-- `input_number.block_heat_target_final`
-
-### Recommended Setup Order (Legacy Blueprint Path)
-1. Create helper entities listed above.
-2. Create automation from `blueprints/automation/blockheat/core/block-heat-target-saving.yaml`.
-3. Create automation from `blueprints/automation/blockheat/core/block-heat-target-comfort.yaml`.
-4. Create automation from `blueprints/automation/blockheat/core/block-heat.yaml` (final arbiter/writer).
-5. Verify all helper entities are updated before checking control-number writes.
-
-## Block Heat Module Behavior
-
-### Saving Target Calculator
-- Inputs: policy boolean, outdoor temperature, setpoint, `saving_cold_offset_c`, warm shutdown threshold, virtual temperature.
-- Formula:
-  - outdoor >= warm shutdown -> target = virtual temperature
-  - otherwise -> target = setpoint - saving cold offset
-- Output: writes clamped target to saving helper.
-
-### Comfort Target Calculator
-- Inputs: two comfort sensors, storage sensor, outdoor sensor, comfort/storage/maintenance settings, cold boost settings.
-- Formula:
-  - boost (pull-down) = f(cold threshold, outdoor, slope, max)
-  - comfort path = `(comfort_target - comfort_offset) - boost`
-  - storage path = `(storage_target - storage_offset) - boost`
-  - comfort unsatisfied -> comfort path
-  - comfort satisfied + storage needs heat -> max(storage path, comfort path)
-  - comfort satisfied + storage OK -> maintenance target
-- Output: writes clamped target to comfort helper.
-
-### Final Arbiter and Writer
-- Reads policy boolean + helper targets.
-- Applies precedence and final clamp.
-- Writes final helper target.
-- Writes control number only when delta >= configured write threshold.
+- No action-sequence hooks for enable/disable transitions.
 
 ## Diagnostics Card
 A helper-driven diagnostics card is available at:
 - `dashboards/blockheat/block-heat-diagnostics-card.yaml`
 
-The markdown card reads helper outputs and state routing directly from the final
-arbiter inputs. It does not duplicate target formulas.
-
 To use it:
 1. Copy YAML into a Lovelace manual card or view YAML editor.
-2. Replace `auto` in the markdown card with your final arbiter automation id.
-3. Replace placeholder entities in ApexCharts/entities card where noted.
+2. Replace placeholder entities where noted.
 
 ## Validation Matrix (Block Heat)
 The table below is the acceptance matrix for manual verification in Home
@@ -294,14 +179,7 @@ timeline simulation of the Blockheat control chain.
     policy/write states, and comfort deficit vs cold boost).
 
 Default assumptions in the workbook:
-- Outdoor profile is linear from `20°C` to `-20°C` over 14 days.
+- Outdoor profile is linear from `20 C` to `-20 C` over 14 days.
 - Time step is daily (`1440` minutes).
 - Thermal response uses moderate coefficients (room/storage coupling constants
   in `Inputs`).
-
-## Local Structural Checks (This Repo Session)
-- Added 3 Block Heat blueprints with isolated responsibilities.
-- Final writer (`block-heat.yaml`) is the only Block Heat blueprint that calls
-  `number.set_value` for the control number.
-- Diagnostics card now reads helper/module outputs instead of re-implementing
-  full control math.

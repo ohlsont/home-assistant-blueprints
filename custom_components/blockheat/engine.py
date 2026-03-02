@@ -92,7 +92,7 @@ def compute_policy(
     now: datetime,
     min_toggle_interval_min: int,
 ) -> PolicyComputation:
-    """Compute policy ON/OFF decision matching blueprint behavior."""
+    """Compute policy ON/OFF decision matching integration behavior."""
     current_price = as_float(price, 0.0) or 0.0
     current_pv = as_float(pv_now, 0.0) or 0.0
 
