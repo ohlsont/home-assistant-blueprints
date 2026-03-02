@@ -58,13 +58,10 @@ from .const import (
     CONF_STORAGE_ROOM_SENSOR,
     CONF_STORAGE_TARGET_C,
     CONF_STORAGE_TO_HEATPUMP_OFFSET_C,
-    CONF_TARGET_BOOLEAN,
-    CONF_TARGET_COMFORT_HELPER,
-    CONF_TARGET_FINAL_HELPER,
-    CONF_TARGET_SAVING_HELPER,
     CONF_VIRTUAL_TEMPERATURE,
     DEFAULTS,
     DOMAIN,
+    normalize_entry_data,
 )
 
 TUNING_POLICY_STEP = "tuning_policy"
@@ -76,15 +73,11 @@ TUNING_DAIKIN_STEP = "tuning_daikin"
 TUNING_FLOOR_STEP = "tuning_floor"
 
 _REQUIRED_USER_SCHEMA_KEYS: tuple[str, ...] = (
-    CONF_TARGET_BOOLEAN,
     CONF_NORDPOOL_PRICE,
     CONF_COMFORT_ROOM_1_SENSOR,
     CONF_COMFORT_ROOM_2_SENSOR,
     CONF_STORAGE_ROOM_SENSOR,
     CONF_OUTDOOR_TEMPERATURE_SENSOR,
-    CONF_TARGET_SAVING_HELPER,
-    CONF_TARGET_COMFORT_HELPER,
-    CONF_TARGET_FINAL_HELPER,
     CONF_CONTROL_NUMBER_ENTITY,
 )
 
@@ -153,9 +146,7 @@ def _next_tuning_step(current: dict[str, Any], step_id: str) -> str | None:
 def _user_schema(current: dict[str, Any]) -> vol.Schema:
     return vol.Schema(
         {
-            _required_marker(current, CONF_TARGET_BOOLEAN): _entity_selector(
-                "input_boolean"
-            ),
+            # Core inputs
             _required_marker(current, CONF_NORDPOOL_PRICE): _entity_selector("sensor"),
             _required_marker(current, CONF_COMFORT_ROOM_1_SENSOR): _entity_selector(
                 "sensor"
@@ -169,22 +160,16 @@ def _user_schema(current: dict[str, Any]) -> vol.Schema:
             _required_marker(
                 current, CONF_OUTDOOR_TEMPERATURE_SENSOR
             ): _entity_selector("sensor"),
-            _required_marker(current, CONF_TARGET_SAVING_HELPER): _entity_selector(
-                "input_number"
-            ),
-            _required_marker(current, CONF_TARGET_COMFORT_HELPER): _entity_selector(
-                "input_number"
-            ),
-            _required_marker(current, CONF_TARGET_FINAL_HELPER): _entity_selector(
-                "input_number"
-            ),
+            # Control output
             _required_marker(current, CONF_CONTROL_NUMBER_ENTITY): _entity_selector(
                 "number"
             ),
+            # Optional signals
             _optional_marker(current, CONF_PV_SENSOR): _entity_selector("sensor"),
             _optional_marker(current, CONF_FLOOR_TEMP_SENSOR): _entity_selector(
                 "sensor"
             ),
+            # Optional consumers
             _optional_marker(current, CONF_ENABLE_DAIKIN_CONSUMER): bool,
             _optional_marker(current, CONF_DAIKIN_CLIMATE_ENTITY): _entity_selector(
                 "climate"
@@ -424,7 +409,10 @@ class BlockheatConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ig
             current = self._current_state()
             next_step = _next_tuning_step(current, step_id)
             if next_step is None:
-                return self.async_create_entry(title="Blockheat", data=current)
+                return self.async_create_entry(
+                    title="Blockheat",
+                    data=normalize_entry_data(current),
+                )
             return self.async_show_form(
                 step_id=next_step,
                 data_schema=_tuning_schema_for_step(next_step, current),
@@ -526,7 +514,10 @@ class BlockheatOptionsFlow(config_entries.OptionsFlow):
             current = self._current_state()
             next_step = _next_tuning_step(current, step_id)
             if next_step is None:
-                return self.async_create_entry(title="", data=current)
+                return self.async_create_entry(
+                    title="",
+                    data=normalize_entry_data(current),
+                )
             return self.async_show_form(
                 step_id=next_step,
                 data_schema=_tuning_schema_for_step(next_step, current),

@@ -4,18 +4,38 @@
     "step": {
       "user": {
         "title": "Blockheat entities",
-        "description": "Map external source and control entities. Internal Blockheat state is owned and exposed as read-only entities.",
+        "description": "Map external inputs and writable outputs. Legacy helper/boolean mappings are internal-only. Read-only internal state entities: binary_sensor.blockheat_energy_saving_active, sensor.blockheat_target_saving, sensor.blockheat_target_comfort, sensor.blockheat_target_final.",
         "data": {
-          "nordpool_price": "Nordpool price sensor",
-          "comfort_room_1_sensor": "Comfort room 1 sensor",
-          "comfort_room_2_sensor": "Comfort room 2 sensor",
-          "storage_room_sensor": "Storage room sensor",
-          "outdoor_temperature_sensor": "Outdoor temperature sensor",
-          "control_number_entity": "Control number entity",
-          "pv_sensor": "PV sensor (optional)",
-          "enable_daikin_consumer": "Enable Daikin consumer",
-          "daikin_climate_entity": "Daikin climate entity (optional)",
-          "daikin_outdoor_temp_sensor": "Daikin outdoor sensor (optional)"
+          "nordpool_price": "Core - Nordpool price sensor",
+          "comfort_room_1_sensor": "Core - Comfort room 1 sensor",
+          "comfort_room_2_sensor": "Core - Comfort room 2 sensor",
+          "storage_room_sensor": "Core - Storage room sensor",
+          "outdoor_temperature_sensor": "Core - Outdoor temperature sensor",
+          "control_number_entity": "Control output - Writable control number entity",
+          "pv_sensor": "Optional signal - PV production sensor",
+          "floor_temp_sensor": "Optional signal - Floor temperature sensor",
+          "enable_daikin_consumer": "Optional consumer - Enable Daikin control",
+          "daikin_climate_entity": "Optional consumer - Daikin climate entity",
+          "daikin_outdoor_temp_sensor": "Optional consumer - Daikin outdoor temperature sensor",
+          "enable_floor_consumer": "Optional consumer - Enable floor consumer control",
+          "floor_climate_entity": "Optional consumer - Floor climate entity",
+          "floor_comfort_schedule": "Optional consumer - Floor comfort schedule/boolean"
+        },
+        "data_description": {
+          "nordpool_price": "Current price sensor with optional `today` attribute for slot ranking.",
+          "comfort_room_1_sensor": "Primary comfort room temperature sensor.",
+          "comfort_room_2_sensor": "Secondary comfort room temperature sensor.",
+          "storage_room_sensor": "Storage tank or storage room temperature sensor.",
+          "outdoor_temperature_sensor": "Outdoor temperature input used by saving and boost logic.",
+          "control_number_entity": "Numeric control endpoint Blockheat writes final target values to.",
+          "pv_sensor": "Optional PV power sensor used to suppress blocking when production is high.",
+          "floor_temp_sensor": "Optional floor temperature signal available to policy guard logic.",
+          "enable_daikin_consumer": "Enable optional Daikin consumer writes in tuning and runtime.",
+          "daikin_climate_entity": "Target Daikin climate entity for optional consumer writes.",
+          "daikin_outdoor_temp_sensor": "Optional outdoor sensor for Daikin cold-weather guard.",
+          "enable_floor_consumer": "Enable optional floor climate consumer writes in tuning and runtime.",
+          "floor_climate_entity": "Target floor climate entity for optional consumer control.",
+          "floor_comfort_schedule": "Schedule or boolean that indicates floor comfort-active periods."
         }
       },
       "tuning_policy": {
@@ -108,7 +128,40 @@
   "options": {
     "step": {
       "init": {
-        "title": "Blockheat entities"
+        "title": "Blockheat entities",
+        "description": "Map external inputs and writable outputs. Legacy helper/boolean mappings are internal-only. Read-only internal state entities: binary_sensor.blockheat_energy_saving_active, sensor.blockheat_target_saving, sensor.blockheat_target_comfort, sensor.blockheat_target_final.",
+        "data": {
+          "nordpool_price": "Core - Nordpool price sensor",
+          "comfort_room_1_sensor": "Core - Comfort room 1 sensor",
+          "comfort_room_2_sensor": "Core - Comfort room 2 sensor",
+          "storage_room_sensor": "Core - Storage room sensor",
+          "outdoor_temperature_sensor": "Core - Outdoor temperature sensor",
+          "control_number_entity": "Control output - Writable control number entity",
+          "pv_sensor": "Optional signal - PV production sensor",
+          "floor_temp_sensor": "Optional signal - Floor temperature sensor",
+          "enable_daikin_consumer": "Optional consumer - Enable Daikin control",
+          "daikin_climate_entity": "Optional consumer - Daikin climate entity",
+          "daikin_outdoor_temp_sensor": "Optional consumer - Daikin outdoor temperature sensor",
+          "enable_floor_consumer": "Optional consumer - Enable floor consumer control",
+          "floor_climate_entity": "Optional consumer - Floor climate entity",
+          "floor_comfort_schedule": "Optional consumer - Floor comfort schedule/boolean"
+        },
+        "data_description": {
+          "nordpool_price": "Current price sensor with optional `today` attribute for slot ranking.",
+          "comfort_room_1_sensor": "Primary comfort room temperature sensor.",
+          "comfort_room_2_sensor": "Secondary comfort room temperature sensor.",
+          "storage_room_sensor": "Storage tank or storage room temperature sensor.",
+          "outdoor_temperature_sensor": "Outdoor temperature input used by saving and boost logic.",
+          "control_number_entity": "Numeric control endpoint Blockheat writes final target values to.",
+          "pv_sensor": "Optional PV power sensor used to suppress blocking when production is high.",
+          "floor_temp_sensor": "Optional floor temperature signal available to policy guard logic.",
+          "enable_daikin_consumer": "Enable optional Daikin consumer writes in tuning and runtime.",
+          "daikin_climate_entity": "Target Daikin climate entity for optional consumer writes.",
+          "daikin_outdoor_temp_sensor": "Optional outdoor sensor for Daikin cold-weather guard.",
+          "enable_floor_consumer": "Enable optional floor climate consumer writes in tuning and runtime.",
+          "floor_climate_entity": "Target floor climate entity for optional consumer control.",
+          "floor_comfort_schedule": "Schedule or boolean that indicates floor comfort-active periods."
+        }
       },
       "tuning_policy": {
         "title": "Tuning: Policy window",
