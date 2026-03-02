@@ -211,7 +211,7 @@ async def test_config_flow_schema_defaults_reflect_new_baseline(
     policy_step = await flow.async_step_user(_step1_user_input(const))
     assert policy_step["step_id"] == "tuning_policy"
     assert (
-        _schema_default(policy_step["data_schema"], const.CONF_MINUTES_TO_BLOCK) == 180
+        _schema_default(policy_step["data_schema"], const.CONF_MINUTES_TO_BLOCK) == 240
     )
     assert (
         _schema_default(policy_step["data_schema"], const.CONF_PRICE_IGNORE_BELOW)

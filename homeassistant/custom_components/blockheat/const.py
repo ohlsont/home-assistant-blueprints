@@ -88,7 +88,7 @@ ENTITY_ID_TARGET_COMFORT = "sensor.blockheat_target_comfort"
 ENTITY_ID_TARGET_FINAL = "sensor.blockheat_target_final"
 
 DEFAULTS: dict[str, object] = {
-    CONF_MINUTES_TO_BLOCK: 180,
+    CONF_MINUTES_TO_BLOCK: 240,
     CONF_PRICE_IGNORE_BELOW: 0.6,
     CONF_PV_SENSOR: "",
     CONF_PV_IGNORE_ABOVE_W: 0.0,
