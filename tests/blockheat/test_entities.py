@@ -58,6 +58,7 @@ async def test_binary_sensor_entities_read_internal_state(
     assert policy.extra_state_attributes["source"] == "blockheat_internal_state"
     assert policy.extra_state_attributes["raw"] is True
 
+
 @pytest.mark.asyncio
 async def test_sensor_entities_read_internal_state_and_handle_bad_values(
     blockheat_env: SimpleNamespace,
