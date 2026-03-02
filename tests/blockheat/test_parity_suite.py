@@ -186,5 +186,6 @@ class ParitySuite(unittest.TestCase):
         self.assertGreater(colder.boost_clamped, 0.0)
         self.assertGreater(colder.target, at_threshold.target)
 
+
 if __name__ == "__main__":
     unittest.main()

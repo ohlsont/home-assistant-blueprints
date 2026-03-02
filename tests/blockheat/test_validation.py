@@ -31,7 +31,10 @@ def test_validate_tuning_values_rejects_invalid_boost_slope(
 def test_validate_tuning_values_rejects_negative_non_negative_field(
     blockheat_env: SimpleNamespace,
 ) -> None:
-    assert _validate(blockheat_env, {"control_write_delta_c": -1}) == "invalid_non_negative"
+    assert (
+        _validate(blockheat_env, {"control_write_delta_c": -1})
+        == "invalid_non_negative"
+    )
 
 
 def test_validate_tuning_values_accepts_valid_and_blank_values(
