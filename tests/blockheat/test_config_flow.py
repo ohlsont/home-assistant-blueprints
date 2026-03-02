@@ -48,10 +48,14 @@ def _step1_user_input(
         const.CONF_FLOOR_TEMP_SENSOR: "",
         const.CONF_ENABLE_DAIKIN_CONSUMER: enable_daikin,
         const.CONF_DAIKIN_CLIMATE_ENTITY: "climate.daikin" if enable_daikin else "",
-        const.CONF_DAIKIN_OUTDOOR_TEMP_SENSOR: "sensor.daikin_outdoor" if enable_daikin else "",
+        const.CONF_DAIKIN_OUTDOOR_TEMP_SENSOR: "sensor.daikin_outdoor"
+        if enable_daikin
+        else "",
         const.CONF_ENABLE_FLOOR_CONSUMER: enable_floor,
         const.CONF_FLOOR_CLIMATE_ENTITY: "climate.floor_heat" if enable_floor else "",
-        const.CONF_FLOOR_COMFORT_SCHEDULE: "schedule.floor_comfort" if enable_floor else "",
+        const.CONF_FLOOR_COMFORT_SCHEDULE: "schedule.floor_comfort"
+        if enable_floor
+        else "",
     }
 
 
@@ -120,17 +124,23 @@ async def _walk_core_tuning_steps(flow: Any, const: Any) -> dict[str, Any]:
     assert result["step_id"] == "tuning_saving"
     result = await flow.async_step_tuning_saving(_tuning_input(const, "tuning_saving"))
     assert result["step_id"] == "tuning_comfort"
-    result = await flow.async_step_tuning_comfort(_tuning_input(const, "tuning_comfort"))
+    result = await flow.async_step_tuning_comfort(
+        _tuning_input(const, "tuning_comfort")
+    )
     assert result["step_id"] == "tuning_boost"
     result = await flow.async_step_tuning_boost(_tuning_input(const, "tuning_boost"))
     assert result["step_id"] == "tuning_fallback"
-    result = await flow.async_step_tuning_fallback(_tuning_input(const, "tuning_fallback"))
+    result = await flow.async_step_tuning_fallback(
+        _tuning_input(const, "tuning_fallback")
+    )
     assert result["step_id"] == "tuning_limits"
     return result
 
 
 @pytest.mark.asyncio
-async def test_config_flow_single_instance_aborts(blockheat_env: SimpleNamespace) -> None:
+async def test_config_flow_single_instance_aborts(
+    blockheat_env: SimpleNamespace,
+) -> None:
     flow = blockheat_env.config_flow.BlockheatConfigFlow()
     flow._current_entries = [object()]
     result = await flow.async_step_user()
@@ -139,7 +149,9 @@ async def test_config_flow_single_instance_aborts(blockheat_env: SimpleNamespace
 
 
 @pytest.mark.asyncio
-async def test_config_flow_rejects_invalid_required_entity(blockheat_env: SimpleNamespace) -> None:
+async def test_config_flow_rejects_invalid_required_entity(
+    blockheat_env: SimpleNamespace,
+) -> None:
     const = blockheat_env.const
     flow = blockheat_env.config_flow.BlockheatConfigFlow()
     invalid = _step1_user_input(const)
@@ -181,11 +193,16 @@ async def test_config_flow_routes_through_expected_steps(
     for step_id in expected_optional_steps:
         assert result["type"] == "form"
         assert result["step_id"] == step_id
-        result = await getattr(flow, f"async_step_{step_id}")(_tuning_input(const, step_id))
+        result = await getattr(flow, f"async_step_{step_id}")(
+            _tuning_input(const, step_id)
+        )
 
     assert result["type"] == "create_entry"
     assert result["title"] == "Blockheat"
-    assert result["data"][const.CONF_TARGET_BOOLEAN] == "input_boolean.block_heat_energy_saving"
+    assert (
+        result["data"][const.CONF_TARGET_BOOLEAN]
+        == "input_boolean.block_heat_energy_saving"
+    )
     assert result["data"][const.CONF_MINUTES_TO_BLOCK] == 210
     assert result["data"][const.CONF_DAIKIN_SAVING_TEMPERATURE] == 20.0
     assert result["data"][const.CONF_STORAGE_TARGET_C] == 24.5
@@ -207,7 +224,9 @@ async def test_config_flow_uses_domain_filtered_entity_selectors(
     daikin_outdoor_selector = _schema_value(
         result["data_schema"], const.CONF_DAIKIN_OUTDOOR_TEMP_SENSOR
     )
-    schedule_selector = _schema_value(result["data_schema"], const.CONF_FLOOR_COMFORT_SCHEDULE)
+    schedule_selector = _schema_value(
+        result["data_schema"], const.CONF_FLOOR_COMFORT_SCHEDULE
+    )
 
     assert nordpool_selector.config.domain == "sensor"
     assert target_selector.config.domain == "input_boolean"
@@ -225,8 +244,13 @@ async def test_config_flow_schema_defaults_reflect_new_baseline(
     flow = blockheat_env.config_flow.BlockheatConfigFlow()
     policy_step = await flow.async_step_user(_step1_user_input(const))
     assert policy_step["step_id"] == "tuning_policy"
-    assert _schema_default(policy_step["data_schema"], const.CONF_MINUTES_TO_BLOCK) == 180
-    assert _schema_default(policy_step["data_schema"], const.CONF_PRICE_IGNORE_BELOW) == 0.6
+    assert (
+        _schema_default(policy_step["data_schema"], const.CONF_MINUTES_TO_BLOCK) == 180
+    )
+    assert (
+        _schema_default(policy_step["data_schema"], const.CONF_PRICE_IGNORE_BELOW)
+        == 0.6
+    )
 
     saving_step = await flow.async_step_tuning_policy({})
     assert saving_step["step_id"] == "tuning_saving"
@@ -239,8 +263,14 @@ async def test_config_flow_schema_defaults_reflect_new_baseline(
 
     comfort_step = await flow.async_step_tuning_saving({})
     assert comfort_step["step_id"] == "tuning_comfort"
-    assert _schema_default(comfort_step["data_schema"], const.CONF_STORAGE_TARGET_C) == 24.5
-    assert _schema_default(comfort_step["data_schema"], const.CONF_COMFORT_MARGIN_C) == 0.25
+    assert (
+        _schema_default(comfort_step["data_schema"], const.CONF_STORAGE_TARGET_C)
+        == 24.5
+    )
+    assert (
+        _schema_default(comfort_step["data_schema"], const.CONF_COMFORT_MARGIN_C)
+        == 0.25
+    )
 
     boost_step = await flow.async_step_tuning_comfort({})
     assert boost_step["step_id"] == "tuning_boost"
@@ -250,10 +280,14 @@ async def test_config_flow_schema_defaults_reflect_new_baseline(
     fallback_step = await flow.async_step_tuning_boost({})
     assert fallback_step["step_id"] == "tuning_fallback"
     assert (
-        _schema_default(fallback_step["data_schema"], const.CONF_ELECTRIC_FALLBACK_DELTA_C)
+        _schema_default(
+            fallback_step["data_schema"], const.CONF_ELECTRIC_FALLBACK_DELTA_C
+        )
         == 1.5
     )
-    assert _schema_default(fallback_step["data_schema"], const.CONF_RELEASE_DELTA_C) == 0.5
+    assert (
+        _schema_default(fallback_step["data_schema"], const.CONF_RELEASE_DELTA_C) == 0.5
+    )
     assert (
         _schema_default(
             fallback_step["data_schema"], const.CONF_ELECTRIC_FALLBACK_COOLDOWN_MINUTES
@@ -271,7 +305,9 @@ async def test_config_flow_schema_defaults_reflect_new_baseline(
     daikin_step = await daikin_flow.async_step_tuning_limits({})
     assert daikin_step["step_id"] == "tuning_daikin"
     assert (
-        _schema_default(daikin_step["data_schema"], const.CONF_DAIKIN_SAVING_TEMPERATURE)
+        _schema_default(
+            daikin_step["data_schema"], const.CONF_DAIKIN_SAVING_TEMPERATURE
+        )
         == 20.0
     )
 
@@ -326,9 +362,14 @@ async def test_options_flow_routes_through_expected_steps(
     for step_id in expected_optional_steps:
         assert result["type"] == "form"
         assert result["step_id"] == step_id
-        result = await getattr(flow, f"async_step_{step_id}")(_tuning_input(const, step_id))
+        result = await getattr(flow, f"async_step_{step_id}")(
+            _tuning_input(const, step_id)
+        )
 
     assert result["type"] == "create_entry"
     assert result["data"][const.CONF_STORAGE_TARGET_C] == 24.5
     assert result["data"][const.CONF_DAIKIN_SAVING_TEMPERATURE] == 20.0
-    assert result["data"][const.CONF_TARGET_COMFORT_HELPER] == "input_number.block_heat_target_comfort"
+    assert (
+        result["data"][const.CONF_TARGET_COMFORT_HELPER]
+        == "input_number.block_heat_target_comfort"
+    )
