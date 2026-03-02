@@ -9,9 +9,16 @@ ROOT = Path(__file__).resolve().parents[1]
 
 CUSTOM_STRINGS = ROOT / "custom_components" / "blockheat" / "strings.json"
 CUSTOM_EN = ROOT / "custom_components" / "blockheat" / "translations" / "en.json"
-MIRROR_STRINGS = ROOT / "homeassistant" / "custom_components" / "blockheat" / "strings.json"
+MIRROR_STRINGS = (
+    ROOT / "homeassistant" / "custom_components" / "blockheat" / "strings.json"
+)
 MIRROR_EN = (
-    ROOT / "homeassistant" / "custom_components" / "blockheat" / "translations" / "en.json"
+    ROOT
+    / "homeassistant"
+    / "custom_components"
+    / "blockheat"
+    / "translations"
+    / "en.json"
 )
 
 TUNING_STEPS = (
@@ -28,26 +35,28 @@ def _load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def _assert_step_field_explanations(translations: dict, root_key: str, step_id: str) -> None:
+def _assert_step_field_explanations(
+    translations: dict, root_key: str, step_id: str
+) -> None:
     step = translations[root_key]["step"][step_id]
     data = step.get("data")
     descriptions = step.get("data_description")
 
     assert isinstance(data, dict), f"{root_key}.{step_id}.data must be a mapping"
-    assert isinstance(
-        descriptions, dict
-    ), f"{root_key}.{step_id}.data_description must be a mapping"
+    assert isinstance(descriptions, dict), (
+        f"{root_key}.{step_id}.data_description must be a mapping"
+    )
     assert data, f"{root_key}.{step_id}.data must not be empty"
-    assert (
-        set(descriptions.keys()) == set(data.keys())
-    ), f"{root_key}.{step_id}.data_description keys must match data keys"
+    assert set(descriptions.keys()) == set(data.keys()), (
+        f"{root_key}.{step_id}.data_description keys must match data keys"
+    )
 
     for key, label in data.items():
         assert str(label).strip(), f"{root_key}.{step_id}.data[{key}] must be non-empty"
     for key, description in descriptions.items():
-        assert (
-            str(description).strip()
-        ), f"{root_key}.{step_id}.data_description[{key}] must be non-empty"
+        assert str(description).strip(), (
+            f"{root_key}.{step_id}.data_description[{key}] must be non-empty"
+        )
 
 
 def test_translation_files_are_kept_in_sync_for_component_and_mirror() -> None:
