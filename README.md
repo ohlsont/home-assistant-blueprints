@@ -62,7 +62,7 @@ operation, `22 C` comfort target, and reduced risk of auxiliary electric heat.
 
 | Section | Defaults |
 |---|---|
-| Policy window and guards | `minutes_to_block=180`, `price_ignore_below=0.6`, `pv_ignore_above_w=0.0`, `min_toggle_interval_min=15` |
+| Policy window and guards | `minutes_to_block=240`, `price_ignore_below=0.6`, `pv_ignore_above_w=0.0`, `min_toggle_interval_min=15` |
 | Saving target | `heatpump_setpoint=20.0`, `saving_cold_offset_c=1.0`, `virtual_temperature=20.0`, `energy_saving_warm_shutdown_outdoor=8.0` |
 | Comfort target | `comfort_target_c=22.0`, `comfort_to_heatpump_offset_c=2.0`, `storage_target_c=24.5`, `storage_to_heatpump_offset_c=2.0`, `maintenance_target_c=20.0`, `comfort_margin_c=0.25` |
 | Cold boost | `cold_threshold=1.0`, `max_boost=3.0`, `boost_slope_c=4.0` |
@@ -70,7 +70,7 @@ operation, `22 C` comfort target, and reduced risk of auxiliary electric heat.
 | Optional Daikin | `daikin_normal_temperature=22.0`, `daikin_saving_temperature=20.0`, `daikin_outdoor_temp_threshold=-10.0`, `daikin_min_temp_change=0.5` |
 
 Quick adjustment rails:
-- Policy strength: raise `minutes_to_block` to `210-240` for stronger savings, or lower to `120-150` for comfort-first behavior.
+- Policy strength: raise `minutes_to_block` to `255-300` for stronger savings, or lower to `120-210` for comfort-first behavior.
 - Saving aggressiveness: reduce `saving_cold_offset_c` to `0.5-0.8` if rooms dip too much, or increase to `1.2-1.5` for stronger savings.
 - Comfort tightness: lower `comfort_margin_c` to `0.15-0.2` for tighter control, or increase to `0.3` to reduce churn.
 - Cold-weather response: lower `boost_slope_c` to `3.0` for stronger recovery, or raise to `5.0-6.0` if too aggressive.
