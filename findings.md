@@ -9,15 +9,14 @@
 - Fix comfort satisfied margin at 0.2 C (no input).
 - Add storage-to-heatpump offset input (default 2 C).
 - Drop to maintenance target (default 20 C) when comfort rooms satisfied.
-- Enforce maintenance minimum (default 19 C) unless electric assist is allowed.
-- Add optional electric assist fallback after 30 minutes below target by 0.5 C, allow min 18 C.
-- Electric assist fallback should always be allowed; remove toggle.
-- Remove direct electric minimum; fallback can drive to mirror minimum.
+- Enforce maintenance minimum (default 19 C) under low-comfort conditions.
+- Add optional low-temperature recovery path after 30 minutes below target by 0.5 C.
+- Remove direct minimum override and drive to mirror minimum only through core routing.
 - Remove warm margin; cold boost is always applied based on outdoor temperature.
 - Remove min write delta input; hardcode threshold at 0.2 °C.
 - Remove limits inputs; clamp control temperature to 10..26 °C.
 - Remove maintenance minimum input and safety section header.
-- Enforce electric assist cooldown using input_datetime helper (no delay-based cooldown).
+- Enforce cooldown using input_datetime helper (no delay-based cooldown).
 - Allow storage room target to drive heating when comfort rooms are satisfied.
 - Keep Energy Saving Policy override behavior unchanged.
 - Update README.md with new topology, behavior, and defaults.
@@ -33,8 +32,8 @@
 | Min-of-rooms comfort reference | Keeps coldest comfort room on target |
 | Storage cap does not gate comfort | Prevents comfort rooms from staying cold |
 | Fixed offset input for heatpump target | Keeps heatpump value aligned with comfort target |
-| Electric assist fallback optional | Allows compressor-only operation by default |
-| Template trigger for fallback | Leverages built-in duration trigger in automation |
+| Recovery path optional | Allows compressor-only operation by default |
+| Template trigger for delayed arm | Leverages built-in duration trigger in automation |
 | Cooldown enforced via input_datetime | Avoids restart-mode canceling delay |
 
 ## Issues Encountered

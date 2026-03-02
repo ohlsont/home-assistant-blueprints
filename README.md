@@ -17,7 +17,7 @@ plus legacy blueprint references.
 
 ## Primary Path: Custom Integration (Config Entry UI)
 The recommended runtime is now `custom_components/blockheat` with one config
-entry that owns policy, target calculators, fallback, final writer, and optional
+entry that owns policy, target calculators, final writer, and optional
 Daikin consumer control.
 
 ### Install via HACS (GitHub)
@@ -33,7 +33,6 @@ Daikin consumer control.
      - Saving target
      - Comfort target
      - Cold boost
-     - Fallback protection
      - Limits and deadbands
      - Optional Daikin section (only when enabled)
      - Optional floor section (only when enabled)
@@ -57,7 +56,6 @@ Then in Home Assistant:
      - Saving target
      - Comfort target
      - Cold boost
-     - Fallback protection
      - Limits and deadbands
      - Optional Daikin section (only when enabled)
      - Optional floor section (only when enabled)
@@ -72,7 +70,6 @@ operation, `22°C` comfort target, and reduced risk of auxiliary electric heat.
 | Saving target | `heatpump_setpoint=20.0`, `saving_cold_offset_c=1.0`, `virtual_temperature=20.0`, `energy_saving_warm_shutdown_outdoor=8.0` |
 | Comfort target | `comfort_target_c=22.0`, `comfort_to_heatpump_offset_c=2.0`, `storage_target_c=24.5`, `storage_to_heatpump_offset_c=2.0`, `maintenance_target_c=20.0`, `comfort_margin_c=0.25` |
 | Cold boost | `cold_threshold=1.0`, `max_boost=3.0`, `boost_slope_c=4.0` |
-| Fallback protection | `electric_fallback_delta_c=1.5`, `release_delta_c=0.5`, `electric_fallback_minutes=45`, `electric_fallback_cooldown_minutes=90` |
 | Limits and deadbands | `control_min_c=10.0`, `control_max_c=26.0`, `saving_helper_write_delta_c=0.05`, `comfort_helper_write_delta_c=0.05`, `final_helper_write_delta_c=0.05`, `control_write_delta_c=0.2` |
 | Optional Daikin | `daikin_normal_temperature=22.0`, `daikin_saving_temperature=20.0`, `daikin_outdoor_temp_threshold=-10.0`, `daikin_min_temp_change=0.5` |
 | Optional floor (standby) | `floor_comfort_temp_c=22.0`, `floor_prefer_preset_manual=true`, `floor_hvac_mode_when_on=\"heat\"`, `floor_soft_off_temp_override_c=\"\"`, `floor_min_keep_temp_c=\"\"`, `floor_min_switch_interval_min=15` |
@@ -82,7 +79,6 @@ Quick adjustment rails:
 - Saving aggressiveness: reduce `saving_cold_offset_c` to `0.5-0.8` if rooms dip too much, or increase to `1.2-1.5` for stronger savings.
 - Comfort tightness: lower `comfort_margin_c` to `0.15-0.2` for tighter control, or increase to `0.3` to reduce churn.
 - Cold-weather response: lower `boost_slope_c` to `3.0` for stronger recovery, or raise to `5.0-6.0` if too aggressive.
-- Fallback sensitivity: lower `electric_fallback_delta_c` to `1.0` for earlier intervention, or raise to `2.0` for less frequent fallback.
 - Write frequency: increase `control_write_delta_c` to `0.25-0.3` only if control writes are too frequent.
 
 ### Testing
@@ -114,8 +110,6 @@ The integration keeps these helper ids as the stable interface:
 - `input_number.block_heat_target_saving`
 - `input_number.block_heat_target_comfort`
 - `input_number.block_heat_target_final`
-- `input_boolean.block_heat_fallback_active`
-- `input_datetime.block_heat_fallback_last_trigger`
 
 Compatibility events:
 - `energy_saving_state_changed` (legacy compatibility)
@@ -191,9 +185,6 @@ Optional consumer placeholders are in commented blocks for Daikin.
 - `blueprints/automation/blockheat/core/block-heat-target-comfort.yaml`
   - Comfort-mode target calculator for Block Heat.
   - Writes to `input_number` comfort-target helper.
-- `blueprints/automation/blockheat/core/block-heat-fallback-manager.yaml`
-  - Electric assist fallback state manager.
-  - Writes to fallback `input_boolean` and last-trigger `input_datetime`.
 - `blueprints/automation/blockheat/core/block-heat.yaml`
   - Final arbiter/writer for Block Heat.
   - Reads helper outputs and is the only module writing the control `number`.
@@ -203,17 +194,15 @@ Optional consumer placeholders are in commented blocks for Daikin.
   - Produces shared energy-saving policy boolean from price/PV inputs.
 
 ## Block Heat Architecture (Modular)
-Block Heat is now split into four independent automations:
+Block Heat is now split into three independent automations:
 
 1. Saving target calculator (`block-heat-target-saving.yaml`)
 2. Comfort target calculator (`block-heat-target-comfort.yaml`)
-3. Fallback manager (`block-heat-fallback-manager.yaml`)
-4. Final arbiter and writer (`block-heat.yaml`)
+3. Final arbiter and writer (`block-heat.yaml`)
 
 The final arbiter applies this precedence:
 - Policy ON -> use saving target helper
-- Policy OFF and fallback active -> force control minimum
-- Policy OFF and fallback inactive -> use comfort target helper
+- Policy OFF -> use comfort target helper
 
 Only the final arbiter writes the control number.
 
@@ -223,16 +212,13 @@ Use these helper entity ids unless you have an existing naming convention:
 - `input_number.block_heat_target_saving`
 - `input_number.block_heat_target_comfort`
 - `input_number.block_heat_target_final`
-- `input_boolean.block_heat_fallback_active`
-- `input_datetime.block_heat_fallback_last_trigger`
 
 ### Recommended Setup Order (Legacy Blueprint Path)
 1. Create helper entities listed above.
 2. Create automation from `blueprints/automation/blockheat/core/block-heat-target-saving.yaml`.
 3. Create automation from `blueprints/automation/blockheat/core/block-heat-target-comfort.yaml`.
-4. Create automation from `blueprints/automation/blockheat/core/block-heat-fallback-manager.yaml`.
-5. Create automation from `blueprints/automation/blockheat/core/block-heat.yaml` (final arbiter/writer).
-6. Verify all helper entities are updated before checking control-number writes.
+4. Create automation from `blueprints/automation/blockheat/core/block-heat.yaml` (final arbiter/writer).
+5. Verify all helper entities are updated before checking control-number writes.
 
 ## Block Heat Module Behavior
 
@@ -254,18 +240,8 @@ Use these helper entity ids unless you have an existing naming convention:
   - comfort satisfied + storage OK -> maintenance target
 - Output: writes clamped target to comfort helper.
 
-### Fallback Manager
-- Activation (turn ON fallback boolean):
-  - policy OFF
-  - coldest comfort room below `(comfort_target - electric_fallback_delta_c)`
-    for `electric_fallback_minutes`
-  - cooldown satisfied since `block_heat_fallback_last_trigger`
-- Deactivation:
-  - policy ON, or
-  - coldest comfort room recovers above `(comfort_target - release_delta_c)`
-
 ### Final Arbiter and Writer
-- Reads policy boolean + fallback boolean + helper targets.
+- Reads policy boolean + helper targets.
 - Applies precedence and final clamp.
 - Writes final helper target.
 - Writes control number only when delta >= configured write threshold.
@@ -295,9 +271,6 @@ Assistant Developer Tools by forcing helper/sensor states.
 | Policy OFF + comfort satisfied + storage OK | `target_comfort = maintenance_target` | Pending manual run | Requires HA runtime |
 | Extreme cold boost | `target_comfort` clamps at max | Pending manual run | Requires HA runtime |
 | Extreme warm/low computed value | target clamps at min | Pending manual run | Requires HA runtime |
-| Sustained below-target for fallback window | `fallback_active = on`, last trigger updated | Pending manual run | Requires HA runtime |
-| Cooldown window not elapsed | fallback cannot re-arm | Pending manual run | Requires HA runtime |
-| Recovery above release threshold | `fallback_active = off` | Pending manual run | Requires HA runtime |
 | Final target delta below deadband | no control write | Pending manual run | Requires HA runtime |
 | Final target delta above deadband | control entity updated | Pending manual run | Requires HA runtime |
 
@@ -307,15 +280,15 @@ timeline simulation of the Blockheat control chain.
 
 - Purpose:
   - Validate how outdoor cooling affects room/storage temperatures and routing
-    through saving, comfort, fallback, and final write-deadband logic.
+    through saving, comfort, and final write-deadband logic.
 - Editable sheet:
   - `Inputs` (parameters and per-day `energy_saving_override` toggles).
 - Computed sheet:
   - `Simulation` (14-day formulas for thermal response, target selection,
-    fallback activation/release, final target, and control-write behavior).
+    final target, and control-write behavior).
 - Chart sheet:
   - `Graphs` (system overview trends for temperatures, targets/signals, binary
-    policy/fallback/write states, and comfort deficit vs cold boost).
+    policy/write states, and comfort deficit vs cold boost).
 
 Default assumptions in the workbook:
 - Outdoor profile is linear from `20°C` to `-20°C` over 14 days.
@@ -324,7 +297,7 @@ Default assumptions in the workbook:
   in `Inputs`).
 
 ## Local Structural Checks (This Repo Session)
-- Added 4 Block Heat blueprints with isolated responsibilities.
+- Added 3 Block Heat blueprints with isolated responsibilities.
 - Final writer (`block-heat.yaml`) is the only Block Heat blueprint that calls
   `number.set_value` for the control number.
 - Diagnostics card now reads helper/module outputs instead of re-implementing

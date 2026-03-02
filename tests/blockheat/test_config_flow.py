@@ -41,8 +41,6 @@ def _step1_user_input(
         const.CONF_TARGET_SAVING_HELPER: "input_number.block_heat_target_saving",
         const.CONF_TARGET_COMFORT_HELPER: "input_number.block_heat_target_comfort",
         const.CONF_TARGET_FINAL_HELPER: "input_number.block_heat_target_final",
-        const.CONF_FALLBACK_ACTIVE_BOOLEAN: "input_boolean.block_heat_fallback_active",
-        const.CONF_ELECTRIC_FALLBACK_LAST_TRIGGER: "input_datetime.block_heat_fallback_last_trigger",
         const.CONF_CONTROL_NUMBER_ENTITY: "number.block_heat_control",
         const.CONF_PV_SENSOR: "",
         const.CONF_FLOOR_TEMP_SENSOR: "",
@@ -87,12 +85,6 @@ def _tuning_input(const: Any, step_id: str) -> dict[str, Any]:
             const.CONF_MAX_BOOST: 3.0,
             const.CONF_BOOST_SLOPE_C: 4.0,
         },
-        "tuning_fallback": {
-            const.CONF_ELECTRIC_FALLBACK_DELTA_C: 1.5,
-            const.CONF_RELEASE_DELTA_C: 0.5,
-            const.CONF_ELECTRIC_FALLBACK_MINUTES: 45,
-            const.CONF_ELECTRIC_FALLBACK_COOLDOWN_MINUTES: 90,
-        },
         "tuning_limits": {
             const.CONF_CONTROL_MIN_C: 10.0,
             const.CONF_CONTROL_MAX_C: 26.0,
@@ -129,10 +121,6 @@ async def _walk_core_tuning_steps(flow: Any, const: Any) -> dict[str, Any]:
     )
     assert result["step_id"] == "tuning_boost"
     result = await flow.async_step_tuning_boost(_tuning_input(const, "tuning_boost"))
-    assert result["step_id"] == "tuning_fallback"
-    result = await flow.async_step_tuning_fallback(
-        _tuning_input(const, "tuning_fallback")
-    )
     assert result["step_id"] == "tuning_limits"
     return result
 
@@ -277,23 +265,8 @@ async def test_config_flow_schema_defaults_reflect_new_baseline(
     assert _schema_default(boost_step["data_schema"], const.CONF_COLD_THRESHOLD) == 1.0
     assert _schema_default(boost_step["data_schema"], const.CONF_BOOST_SLOPE_C) == 4.0
 
-    fallback_step = await flow.async_step_tuning_boost({})
-    assert fallback_step["step_id"] == "tuning_fallback"
-    assert (
-        _schema_default(
-            fallback_step["data_schema"], const.CONF_ELECTRIC_FALLBACK_DELTA_C
-        )
-        == 1.5
-    )
-    assert (
-        _schema_default(fallback_step["data_schema"], const.CONF_RELEASE_DELTA_C) == 0.5
-    )
-    assert (
-        _schema_default(
-            fallback_step["data_schema"], const.CONF_ELECTRIC_FALLBACK_COOLDOWN_MINUTES
-        )
-        == 90
-    )
+    limits_step = await flow.async_step_tuning_boost({})
+    assert limits_step["step_id"] == "tuning_limits"
 
     daikin_flow = blockheat_env.config_flow.BlockheatConfigFlow()
     await daikin_flow.async_step_user(_step1_user_input(const, enable_daikin=True))
@@ -301,7 +274,6 @@ async def test_config_flow_schema_defaults_reflect_new_baseline(
     await daikin_flow.async_step_tuning_saving({})
     await daikin_flow.async_step_tuning_comfort({})
     await daikin_flow.async_step_tuning_boost({})
-    await daikin_flow.async_step_tuning_fallback({})
     daikin_step = await daikin_flow.async_step_tuning_limits({})
     assert daikin_step["step_id"] == "tuning_daikin"
     assert (

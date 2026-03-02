@@ -35,13 +35,8 @@ from .const import (
     CONF_DAIKIN_OUTDOOR_TEMP_SENSOR,
     CONF_DAIKIN_OUTDOOR_TEMP_THRESHOLD,
     CONF_DAIKIN_SAVING_TEMPERATURE,
-    CONF_ELECTRIC_FALLBACK_COOLDOWN_MINUTES,
-    CONF_ELECTRIC_FALLBACK_DELTA_C,
-    CONF_ELECTRIC_FALLBACK_LAST_TRIGGER,
-    CONF_ELECTRIC_FALLBACK_MINUTES,
     CONF_ENABLE_DAIKIN_CONSUMER,
     CONF_ENERGY_SAVING_WARM_SHUTDOWN_OUTDOOR,
-    CONF_FALLBACK_ACTIVE_BOOLEAN,
     CONF_FINAL_HELPER_WRITE_DELTA_C,
     CONF_HEATPUMP_SETPOINT,
     CONF_MAINTENANCE_TARGET_C,
@@ -53,7 +48,6 @@ from .const import (
     CONF_PRICE_IGNORE_BELOW,
     CONF_PV_IGNORE_ABOVE_W,
     CONF_PV_SENSOR,
-    CONF_RELEASE_DELTA_C,
     CONF_SAVING_COLD_OFFSET_C,
     CONF_SAVING_HELPER_WRITE_DELTA_C,
     CONF_STORAGE_ROOM_SENSOR,
@@ -71,8 +65,6 @@ from .const import (
     EVENT_ENERGY_SAVING_STATE_CHANGED,
     OPTIONAL_ENTITY_KEYS,
     REQUIRED_ENTITY_KEYS,
-    STATE_FALLBACK_ACTIVE,
-    STATE_FALLBACK_LAST_TRIGGER,
     STATE_POLICY_LAST_CHANGED,
     STATE_POLICY_ON,
     STATE_STORAGE_KEY_PREFIX,
@@ -87,7 +79,6 @@ from .engine import (
     as_int,
     compute_comfort_target,
     compute_daikin,
-    compute_fallback_conditions,
     compute_final_target,
     compute_policy,
     compute_saving_target,
@@ -110,8 +101,6 @@ class RuntimeState:
     target_saving: float | None = None
     target_comfort: float | None = None
     target_final: float | None = None
-    fallback_active: bool = False
-    fallback_last_trigger: datetime | None = None
 
 
 class BlockheatRuntime:
@@ -129,8 +118,6 @@ class BlockheatRuntime:
         self._config = {**DEFAULTS, **config}
         self._coordinator = coordinator
         self._unsubscribers: list[Callable[[], None]] = []
-        self._fallback_arm_since: datetime | None = None
-        self._fallback_arm_timer_unsub: Callable[[], None] | None = None
         self._lock = asyncio.Lock()
         self._state_store: storage.Store[dict[str, Any]] = storage.Store(
             hass,
@@ -181,7 +168,6 @@ class BlockheatRuntime:
     async def async_unload(self) -> None:
         """Tear down listeners."""
         await self._async_save_state(force=True)
-        self._clear_fallback_arm_timer()
         while self._unsubscribers:
             unsub = self._unsubscribers.pop()
             unsub()
@@ -212,16 +198,6 @@ class BlockheatRuntime:
             self.async_recompute("periodic", trigger={"source": "periodic"})
         )
 
-    @callback
-    def _async_handle_fallback_arm_timer(self, _: datetime) -> None:
-        self._fallback_arm_timer_unsub = None
-        self.hass.async_create_task(
-            self.async_recompute(
-                "fallback_arm_timer",
-                trigger={"source": "fallback_arm_timer"},
-            )
-        )
-
     async def async_recompute(
         self,
         reason: str = "manual",
@@ -241,18 +217,8 @@ class BlockheatRuntime:
             saving_target, saving_debug = await self._async_apply_saving_target()
             comfort_target, comfort_debug = await self._async_apply_comfort_target()
 
-            (
-                fallback_active_effective,
-                fallback_debug,
-            ) = await self._async_apply_fallback(
-                now,
-                policy_on_effective,
-                trigger_context,
-            )
-
             final_target, final_debug = await self._async_apply_final_target(
                 policy_on_effective=policy_on_effective,
-                fallback_active_effective=fallback_active_effective,
                 saving_target=saving_target,
                 comfort_target=comfort_target,
                 trigger_context=trigger_context,
@@ -270,7 +236,6 @@ class BlockheatRuntime:
                 "saving_debug": saving_debug,
                 "comfort_target": comfort_target,
                 "comfort_debug": comfort_debug,
-                "fallback": fallback_debug,
                 "final_target": final_target,
                 "final_debug": final_debug,
                 "daikin": daikin_result,
@@ -485,112 +450,10 @@ class BlockheatRuntime:
         }
         return computation.target, debug
 
-    async def _async_apply_fallback(
-        self,
-        now: datetime,
-        policy_on: bool,
-        trigger_context: dict[str, Any],
-    ) -> tuple[bool, dict[str, Any]]:
-        fallback_active = self._state.fallback_active
-
-        conditions = compute_fallback_conditions(
-            policy_on=policy_on,
-            fallback_active=fallback_active,
-            room1_temp=self._state_float(self._cfg_str(CONF_COMFORT_ROOM_1_SENSOR)),
-            room2_temp=self._state_float(self._cfg_str(CONF_COMFORT_ROOM_2_SENSOR)),
-            comfort_target_c=self._cfg_float(CONF_COMFORT_TARGET_C, 22.0),
-            trigger_delta_c=self._cfg_float(CONF_ELECTRIC_FALLBACK_DELTA_C, 0.5),
-            release_delta_c=self._cfg_float(CONF_RELEASE_DELTA_C, 0.1),
-            cooldown_minutes=self._cfg_int(CONF_ELECTRIC_FALLBACK_COOLDOWN_MINUTES, 60),
-            last_trigger=self._state.fallback_last_trigger,
-            now=now,
-        )
-
-        should_arm = False
-        if conditions.arm_condition:
-            if self._fallback_arm_since is None:
-                self._fallback_arm_since = now
-                self._set_fallback_arm_timer(
-                    self._cfg_int(CONF_ELECTRIC_FALLBACK_MINUTES, 30) * 60
-                )
-            elapsed_sec = (now - self._fallback_arm_since).total_seconds()
-            should_arm = elapsed_sec >= (
-                self._cfg_int(CONF_ELECTRIC_FALLBACK_MINUTES, 30) * 60
-            )
-        else:
-            self._fallback_arm_since = None
-            self._clear_fallback_arm_timer()
-
-        fallback_active_effective = fallback_active
-        transition = "none"
-        if should_arm:
-            fallback_active_effective = True
-            transition = "armed"
-            self._state.fallback_active = True
-            self._state.fallback_last_trigger = now
-            self._fallback_arm_since = None
-            self._clear_fallback_arm_timer()
-            await self._async_log(
-                "Blockheat Fallback",
-                (
-                    f"ARMED - comfort_min={conditions.comfort_min}, "
-                    f"trigger_threshold={conditions.trigger_threshold:.3f}, "
-                    f"cooldown_ok={conditions.cooldown_ok}; "
-                    f"{self._trigger_summary(trigger_context)}"
-                ),
-            )
-        elif conditions.release_by_policy or conditions.release_by_recovery:
-            self._state.fallback_active = False
-            fallback_active_effective = False
-            transition = "released"
-            release_reason = (
-                "policy_on" if conditions.release_by_policy else "comfort_recovered"
-            )
-            await self._async_log(
-                "Blockheat Fallback",
-                (
-                    f"RELEASED - reason={release_reason}, "
-                    f"comfort_min={conditions.comfort_min}, "
-                    f"release_threshold={conditions.release_threshold:.3f}; "
-                    f"{self._trigger_summary(trigger_context)}"
-                ),
-            )
-
-        debug = {
-            "active_before": fallback_active,
-            "active_after": fallback_active_effective,
-            "transition": transition,
-            "comfort_min": conditions.comfort_min,
-            "trigger_threshold": conditions.trigger_threshold,
-            "release_threshold": conditions.release_threshold,
-            "cooldown_ok": conditions.cooldown_ok,
-            "arm_condition": conditions.arm_condition,
-            "last_trigger": (
-                self._state.fallback_last_trigger.isoformat()
-                if self._state.fallback_last_trigger is not None
-                else None
-            ),
-        }
-        return fallback_active_effective, debug
-
-    def _set_fallback_arm_timer(self, seconds: int) -> None:
-        self._clear_fallback_arm_timer()
-        self._fallback_arm_timer_unsub = event_helper.async_call_later(
-            self.hass,
-            seconds,
-            self._async_handle_fallback_arm_timer,
-        )
-
-    def _clear_fallback_arm_timer(self) -> None:
-        if self._fallback_arm_timer_unsub is not None:
-            self._fallback_arm_timer_unsub()
-            self._fallback_arm_timer_unsub = None
-
     async def _async_apply_final_target(
         self,
         *,
         policy_on_effective: bool,
-        fallback_active_effective: bool,
         saving_target: float,
         comfort_target: float,
         trigger_context: dict[str, Any],
@@ -602,7 +465,6 @@ class BlockheatRuntime:
 
         final = compute_final_target(
             policy_on=policy_on_effective,
-            fallback_active=fallback_active_effective,
             saving_target=saving_target,
             comfort_target=comfort_target,
             control_current=control_current,
@@ -764,10 +626,6 @@ class BlockheatRuntime:
         self._state.target_saving = as_float(raw.get(STATE_TARGET_SAVING))
         self._state.target_comfort = as_float(raw.get(STATE_TARGET_COMFORT))
         self._state.target_final = as_float(raw.get(STATE_TARGET_FINAL))
-        self._state.fallback_active = bool(raw.get(STATE_FALLBACK_ACTIVE, False))
-        self._state.fallback_last_trigger = self._parse_datetime_value(
-            raw.get(STATE_FALLBACK_LAST_TRIGGER)
-        )
         self._last_saved_state = self._serialize_state()
 
     async def _async_save_state(self, force: bool = False) -> None:
@@ -802,21 +660,6 @@ class BlockheatRuntime:
                 self._cfg_str(CONF_TARGET_FINAL_HELPER)
             )
 
-        if self._state.fallback_last_trigger is None:
-            legacy_last_trigger = self.hass.states.get(
-                self._cfg_str(CONF_ELECTRIC_FALLBACK_LAST_TRIGGER)
-            )
-            if legacy_last_trigger is not None:
-                self._state.fallback_last_trigger = self._parse_datetime_value(
-                    legacy_last_trigger.state
-                )
-
-        legacy_fallback = self.hass.states.get(
-            self._cfg_str(CONF_FALLBACK_ACTIVE_BOOLEAN)
-        )
-        if legacy_fallback is not None:
-            self._state.fallback_active = legacy_fallback.state == "on"
-
     def _serialize_state(self) -> dict[str, Any]:
         return {
             STATE_POLICY_ON: self._state.policy_on,
@@ -828,12 +671,6 @@ class BlockheatRuntime:
             STATE_TARGET_SAVING: self._state.target_saving,
             STATE_TARGET_COMFORT: self._state.target_comfort,
             STATE_TARGET_FINAL: self._state.target_final,
-            STATE_FALLBACK_ACTIVE: self._state.fallback_active,
-            STATE_FALLBACK_LAST_TRIGGER: (
-                self._state.fallback_last_trigger.isoformat()
-                if self._state.fallback_last_trigger is not None
-                else None
-            ),
         }
 
     def _parse_datetime_value(self, value: Any) -> datetime | None:

@@ -30,13 +30,3 @@ input_number:
     step: 0.1
     mode: box
     unit_of_measurement: "°C"
-
-input_boolean:
-  block_heat_fallback_active:
-    name: Block Heat Fallback Active
-
-input_datetime:
-  block_heat_fallback_last_trigger:
-    name: Block Heat Fallback Last Trigger
-    has_date: true
-    has_time: true

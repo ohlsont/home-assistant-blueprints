@@ -41,16 +41,6 @@ def _make_runtime_context(
     if "final_target" in state_seed:
         runtime._state.target_final = float(state_seed["final_target"])
 
-    if "fallback_active" in state_seed:
-        runtime._state.fallback_active = (
-            str(state_seed["fallback_active"]).lower() == "on"
-        )
-
-    if "fallback_last_trigger" in state_seed:
-        runtime._state.fallback_last_trigger = runtime._parse_datetime_value(
-            state_seed["fallback_last_trigger"]
-        )
-
     return SimpleNamespace(
         config=config,
         const=blockheat_env.const,
@@ -221,124 +211,6 @@ async def test_policy_transition_fires_events_and_toggles_boolean(
     ]
     assert off_events
     assert off_events[-1]["event_data"]["state"] == "off"
-
-
-@pytest.mark.asyncio
-async def test_fallback_arms_after_delay_and_writes_last_trigger(
-    blockheat_env: SimpleNamespace,
-    fake_hass: Any,
-    build_config: Any,
-    seed_runtime_states: Any,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    ctx = _make_runtime_context(
-        blockheat_env,
-        fake_hass,
-        build_config,
-        seed_runtime_states,
-        overrides={
-            blockheat_env.const.CONF_MINUTES_TO_BLOCK: 0,
-            blockheat_env.const.CONF_ELECTRIC_FALLBACK_MINUTES: 30,
-        },
-        seed_kwargs={
-            "room1_temp": 20.0,
-            "room2_temp": 20.0,
-            "fallback_active": "off",
-            "price": 0.0,
-            "prices_today": [0.0, 0.0, 0.0, 0.0],
-        },
-    )
-
-    start_time = datetime(2026, 2, 19, 12, 0, tzinfo=UTC)
-    monkeypatch.setattr(ctx.runtime_module.dt_util, "utcnow", lambda: start_time)
-    first_snapshot = await ctx.runtime.async_recompute("fallback_wait_start")
-
-    assert ctx.runtime._fallback_arm_since is not None
-    assert any(item["active"] for item in ctx.hass.later_calls)
-    assert first_snapshot["internal_state"][ctx.const.STATE_FALLBACK_ACTIVE] is False
-
-    monkeypatch.setattr(
-        ctx.runtime_module.dt_util,
-        "utcnow",
-        lambda: start_time + timedelta(minutes=31),
-    )
-    second_snapshot = await ctx.runtime.async_recompute("fallback_wait_elapsed")
-    assert second_snapshot["internal_state"][ctx.const.STATE_FALLBACK_ACTIVE] is True
-    assert (
-        second_snapshot["internal_state"][ctx.const.STATE_FALLBACK_LAST_TRIGGER]
-        is not None
-    )
-    assert (
-        _service_calls_for(ctx.hass.services.calls, "input_datetime", "set_datetime")
-        == []
-    )
-
-
-@pytest.mark.asyncio
-async def test_fallback_release_by_policy_and_recovery(
-    blockheat_env: SimpleNamespace,
-    fake_hass: Any,
-    build_config: Any,
-    seed_runtime_states: Any,
-) -> None:
-    policy_ctx = _make_runtime_context(
-        blockheat_env,
-        fake_hass,
-        build_config,
-        seed_runtime_states,
-        overrides={
-            blockheat_env.const.CONF_MIN_TOGGLE_INTERVAL_MIN: 0,
-            blockheat_env.const.CONF_MINUTES_TO_BLOCK: 30,
-        },
-        seed_kwargs={
-            "policy_state": "on",
-            "fallback_active": "on",
-            "price": 9.0,
-            "prices_today": [1.0, 2.0, 9.0, 8.0],
-        },
-    )
-    policy_snapshot = await policy_ctx.runtime.async_recompute("release_by_policy")
-    assert policy_snapshot["fallback"]["transition"] == "released"
-    assert (
-        policy_snapshot["internal_state"][policy_ctx.const.STATE_FALLBACK_ACTIVE]
-        is False
-    )
-
-    recovery_ctx = _make_runtime_context(
-        blockheat_env,
-        fake_hass,
-        build_config,
-        seed_runtime_states,
-        overrides={
-            blockheat_env.const.CONF_MIN_TOGGLE_INTERVAL_MIN: 0,
-            blockheat_env.const.CONF_MINUTES_TO_BLOCK: 30,
-        },
-        seed_kwargs={
-            "policy_state": "off",
-            "fallback_active": "on",
-            "price": 0.0,
-            "prices_today": [0.0, 0.0, 0.0, 0.0],
-        },
-    )
-    recovery_ctx.hass.states.set(
-        recovery_ctx.config[recovery_ctx.const.CONF_NORDPOOL_PRICE],
-        "0.0",
-        attributes={"today": [0.0, 0.0, 0.0, 0.0]},
-    )
-    recovery_ctx.hass.states.set(
-        recovery_ctx.config[recovery_ctx.const.CONF_COMFORT_ROOM_1_SENSOR], "22.0"
-    )
-    recovery_ctx.hass.states.set(
-        recovery_ctx.config[recovery_ctx.const.CONF_COMFORT_ROOM_2_SENSOR], "22.0"
-    )
-    recovery_snapshot = await recovery_ctx.runtime.async_recompute(
-        "release_by_recovery"
-    )
-    assert recovery_snapshot["fallback"]["transition"] == "released"
-    assert (
-        recovery_snapshot["internal_state"][recovery_ctx.const.STATE_FALLBACK_ACTIVE]
-        is False
-    )
 
 
 @pytest.mark.asyncio
@@ -548,11 +420,9 @@ async def test_async_unload_clears_timers_and_subscriptions(
     assert ctx.hass.state_trackers
     assert ctx.hass.interval_trackers
     assert ctx.hass.bus.once_listeners
-    assert any(item["active"] for item in ctx.hass.later_calls)
 
     await ctx.runtime.async_unload()
     assert all(not item["active"] for item in ctx.hass.state_trackers)
     assert all(not item["active"] for item in ctx.hass.interval_trackers)
     assert all(not item["active"] for item in ctx.hass.bus.once_listeners)
     assert all(not item["active"] for item in ctx.hass.later_calls)
-    assert ctx.runtime._fallback_arm_timer_unsub is None

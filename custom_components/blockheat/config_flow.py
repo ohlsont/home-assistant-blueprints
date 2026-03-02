@@ -29,14 +29,9 @@ from .const import (
     CONF_DAIKIN_OUTDOOR_TEMP_SENSOR,
     CONF_DAIKIN_OUTDOOR_TEMP_THRESHOLD,
     CONF_DAIKIN_SAVING_TEMPERATURE,
-    CONF_ELECTRIC_FALLBACK_COOLDOWN_MINUTES,
-    CONF_ELECTRIC_FALLBACK_DELTA_C,
-    CONF_ELECTRIC_FALLBACK_LAST_TRIGGER,
-    CONF_ELECTRIC_FALLBACK_MINUTES,
     CONF_ENABLE_DAIKIN_CONSUMER,
     CONF_ENABLE_FLOOR_CONSUMER,
     CONF_ENERGY_SAVING_WARM_SHUTDOWN_OUTDOOR,
-    CONF_FALLBACK_ACTIVE_BOOLEAN,
     CONF_FINAL_HELPER_WRITE_DELTA_C,
     CONF_FLOOR_CLIMATE_ENTITY,
     CONF_FLOOR_COMFORT_SCHEDULE,
@@ -58,7 +53,6 @@ from .const import (
     CONF_PRICE_IGNORE_BELOW,
     CONF_PV_IGNORE_ABOVE_W,
     CONF_PV_SENSOR,
-    CONF_RELEASE_DELTA_C,
     CONF_SAVING_COLD_OFFSET_C,
     CONF_SAVING_HELPER_WRITE_DELTA_C,
     CONF_STORAGE_ROOM_SENSOR,
@@ -77,7 +71,6 @@ TUNING_POLICY_STEP = "tuning_policy"
 TUNING_SAVING_STEP = "tuning_saving"
 TUNING_COMFORT_STEP = "tuning_comfort"
 TUNING_BOOST_STEP = "tuning_boost"
-TUNING_FALLBACK_STEP = "tuning_fallback"
 TUNING_LIMITS_STEP = "tuning_limits"
 TUNING_DAIKIN_STEP = "tuning_daikin"
 TUNING_FLOOR_STEP = "tuning_floor"
@@ -92,8 +85,6 @@ _REQUIRED_USER_SCHEMA_KEYS: tuple[str, ...] = (
     CONF_TARGET_SAVING_HELPER,
     CONF_TARGET_COMFORT_HELPER,
     CONF_TARGET_FINAL_HELPER,
-    CONF_FALLBACK_ACTIVE_BOOLEAN,
-    CONF_ELECTRIC_FALLBACK_LAST_TRIGGER,
     CONF_CONTROL_NUMBER_ENTITY,
 )
 
@@ -142,7 +133,6 @@ def _ordered_tuning_steps(current: dict[str, Any]) -> list[str]:
         TUNING_SAVING_STEP,
         TUNING_COMFORT_STEP,
         TUNING_BOOST_STEP,
-        TUNING_FALLBACK_STEP,
         TUNING_LIMITS_STEP,
     ]
     if _is_enabled(current.get(CONF_ENABLE_DAIKIN_CONSUMER, False)):
@@ -188,12 +178,6 @@ def _user_schema(current: dict[str, Any]) -> vol.Schema:
             _required_marker(current, CONF_TARGET_FINAL_HELPER): _entity_selector(
                 "input_number"
             ),
-            _required_marker(current, CONF_FALLBACK_ACTIVE_BOOLEAN): _entity_selector(
-                "input_boolean"
-            ),
-            _required_marker(
-                current, CONF_ELECTRIC_FALLBACK_LAST_TRIGGER
-            ): _entity_selector("input_datetime"),
             _required_marker(current, CONF_CONTROL_NUMBER_ENTITY): _entity_selector(
                 "number"
             ),
@@ -315,28 +299,6 @@ def _tuning_boost_schema(current: dict[str, Any]) -> vol.Schema:
     )
 
 
-def _tuning_fallback_schema(current: dict[str, Any]) -> vol.Schema:
-    return vol.Schema(
-        {
-            vol.Required(
-                CONF_ELECTRIC_FALLBACK_DELTA_C,
-                default=_cfg_value(current, CONF_ELECTRIC_FALLBACK_DELTA_C),
-            ): _bounded_float(0, 20),
-            vol.Required(
-                CONF_RELEASE_DELTA_C, default=_cfg_value(current, CONF_RELEASE_DELTA_C)
-            ): _bounded_float(0, 20),
-            vol.Required(
-                CONF_ELECTRIC_FALLBACK_MINUTES,
-                default=_cfg_value(current, CONF_ELECTRIC_FALLBACK_MINUTES),
-            ): _bounded_int(0, 1440),
-            vol.Required(
-                CONF_ELECTRIC_FALLBACK_COOLDOWN_MINUTES,
-                default=_cfg_value(current, CONF_ELECTRIC_FALLBACK_COOLDOWN_MINUTES),
-            ): _bounded_int(0, 1440),
-        }
-    )
-
-
 def _tuning_limits_schema(current: dict[str, Any]) -> vol.Schema:
     return vol.Schema(
         {
@@ -425,7 +387,6 @@ _STEP_SCHEMAS: dict[str, Callable[[dict[str, Any]], vol.Schema]] = {
     TUNING_SAVING_STEP: _tuning_saving_schema,
     TUNING_COMFORT_STEP: _tuning_comfort_schema,
     TUNING_BOOST_STEP: _tuning_boost_schema,
-    TUNING_FALLBACK_STEP: _tuning_fallback_schema,
     TUNING_LIMITS_STEP: _tuning_limits_schema,
     TUNING_DAIKIN_STEP: _tuning_daikin_schema,
     TUNING_FLOOR_STEP: _tuning_floor_schema,
@@ -517,11 +478,6 @@ class BlockheatConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ig
         self, user_input: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         return await self._async_handle_tuning_step(TUNING_BOOST_STEP, user_input)
-
-    async def async_step_tuning_fallback(
-        self, user_input: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
-        return await self._async_handle_tuning_step(TUNING_FALLBACK_STEP, user_input)
 
     async def async_step_tuning_limits(
         self, user_input: dict[str, Any] | None = None
@@ -618,11 +574,6 @@ class BlockheatOptionsFlow(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         return await self._async_handle_tuning_step(TUNING_BOOST_STEP, user_input)
-
-    async def async_step_tuning_fallback(
-        self, user_input: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
-        return await self._async_handle_tuning_step(TUNING_FALLBACK_STEP, user_input)
 
     async def async_step_tuning_limits(
         self, user_input: dict[str, Any] | None = None

@@ -7,7 +7,7 @@
 - **Started:** 2026-02-05
 - Actions taken:
   - Read existing blueprints and README to understand baseline behavior.
-  - Collected user requirements for three-room topology and electric assist.
+  - Collected user requirements for three-room topology and low-temperature recovery.
   - Reviewed Qvantum ETK manual for sensor and timing constraints.
 - Files created/modified:
   - task_plan.md (created)
@@ -19,7 +19,7 @@
 - Actions taken:
   - Finalized inputs, defaults, and behavior summary for blueprint update.
   - Agreed on comfort target 22 C, storage cap 25 C, maintenance 20/19 C.
-  - Set electric assist trigger: 30 min, 0.5 C below target, min 18 C.
+  - Set recovery trigger: 30 min, 0.5 C below target, min 18 C.
 - Files created/modified:
   - task_plan.md (updated)
   - findings.md (updated)
@@ -28,8 +28,8 @@
 - **Status:** complete
 - Actions taken:
   - Updated blueprint inputs and logic for comfort min reference and storage cap.
-  - Added maintenance gating and optional electric assist fallback.
-  - Switched electric assist cooldown to input_datetime helper for reliability.
+  - Added maintenance gating and optional recovery path.
+  - Switched cooldown tracking to input_datetime helper for reliability.
   - Added comfort-to-heatpump offset input and applied it to control target.
   - Added storage target input to drive heating after comfort is satisfied.
   - Added separate storage-to-heatpump offset input.
@@ -73,13 +73,13 @@
   - dashboards/blockheat/block-heat-diagnostics-card.yaml (created)
   - README.md (updated)
 
-## Session: 2026-02-05 (Electric Assist Always Allowed)
+## Session: 2026-02-05 (Recovery Path Always Allowed)
 
 ### Phase 3: Implementation
 - **Status:** complete
 - Actions taken:
-  - Removed the allow-direct-electric option so fallback is always allowed.
-  - Updated fallback logic, effective minimum clamp, diagnostics card, and README text.
+  - Removed the direct-override option so recovery is always allowed.
+  - Updated recovery logic, effective minimum clamp, diagnostics card, and README text.
 - Files created/modified:
   - blueprints/automation/blockheat/block-heat.yaml (updated)
   - dashboards/blockheat/block-heat-diagnostics-card.yaml (updated)
@@ -89,7 +89,7 @@
 ### Phase 4: Testing & Verification
 - **Status:** complete
 - Actions taken:
-  - Manually reviewed fallback trigger, maintenance clamp, and target selection logic.
+  - Manually reviewed recovery trigger, maintenance clamp, and target selection logic.
 
 ## Session: 2026-02-05 (Remove Storage Cap)
 
@@ -116,13 +116,13 @@
   - dashboards/blockheat/block-heat-diagnostics-card.yaml (updated)
   - findings.md (updated)
 
-## Session: 2026-02-05 (Remove Direct Electric Minimum)
+## Session: 2026-02-05 (Remove Direct Minimum Override)
 
 ### Phase 3: Implementation
 - **Status:** complete
 - Actions taken:
-  - Removed direct electric minimum input and maintenance clamp.
-  - Updated fallback to drive control temperature to mirror minimum.
+  - Removed direct minimum input and maintenance clamp.
+  - Updated routing to drive control temperature to mirror minimum.
   - Updated diagnostics card and README text.
 - Files created/modified:
   - blueprints/automation/blockheat/block-heat.yaml (updated)

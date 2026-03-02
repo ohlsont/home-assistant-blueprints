@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Any
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
@@ -11,16 +10,13 @@ from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from homeassistant.util import dt as dt_util
 
 from . import ENTRY_COORDINATOR
 from .const import (
     DOMAIN,
-    ENTITY_ID_FALLBACK_LAST_TRIGGER,
     ENTITY_ID_TARGET_COMFORT,
     ENTITY_ID_TARGET_FINAL,
     ENTITY_ID_TARGET_SAVING,
-    STATE_FALLBACK_LAST_TRIGGER,
     STATE_TARGET_COMFORT,
     STATE_TARGET_FINAL,
     STATE_TARGET_SAVING,
@@ -62,12 +58,6 @@ async def async_setup_entry(
                 name="Target final",
                 state_key=STATE_TARGET_FINAL,
                 icon="mdi:thermometer",
-            ),
-            BlockheatFallbackLastTriggerSensor(
-                coordinator=coordinator,
-                entry_id=entry.entry_id,
-                entity_id=ENTITY_ID_FALLBACK_LAST_TRIGGER,
-                state_key=STATE_FALLBACK_LAST_TRIGGER,
             ),
         ]
     )
@@ -148,33 +138,3 @@ class BlockheatTemperatureSensor(BlockheatBaseSensor):
             return float(state)
         except (TypeError, ValueError):
             return None
-
-
-class BlockheatFallbackLastTriggerSensor(BlockheatBaseSensor):
-    """Read-only timestamp sensor for fallback last trigger."""
-
-    _attr_device_class = SensorDeviceClass.TIMESTAMP
-    _attr_icon = "mdi:clock-outline"
-
-    def __init__(
-        self,
-        *,
-        coordinator: BlockheatCoordinator,
-        entry_id: str,
-        entity_id: str,
-        state_key: str,
-    ) -> None:
-        super().__init__(
-            coordinator=coordinator,
-            entry_id=entry_id,
-            entity_id=entity_id,
-            name="Fallback last trigger",
-            state_key=state_key,
-        )
-
-    @property
-    def native_value(self) -> datetime | None:
-        value = self._internal_state().get(self._state_key)
-        if value is None:
-            return None
-        return dt_util.parse_datetime(str(value))

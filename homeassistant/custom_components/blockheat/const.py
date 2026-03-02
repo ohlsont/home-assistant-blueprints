@@ -25,8 +25,6 @@ CONF_OUTDOOR_TEMPERATURE_SENSOR = "outdoor_temperature_sensor"
 CONF_TARGET_SAVING_HELPER = "target_saving_helper"
 CONF_TARGET_COMFORT_HELPER = "target_comfort_helper"
 CONF_TARGET_FINAL_HELPER = "target_final_helper"
-CONF_FALLBACK_ACTIVE_BOOLEAN = "fallback_active_boolean"
-CONF_ELECTRIC_FALLBACK_LAST_TRIGGER = "electric_fallback_last_trigger"
 CONF_CONTROL_NUMBER_ENTITY = "control_number_entity"
 
 CONF_HEATPUMP_SETPOINT = "heatpump_setpoint"
@@ -50,11 +48,6 @@ CONF_SAVING_HELPER_WRITE_DELTA_C = "saving_helper_write_delta_c"
 CONF_COMFORT_HELPER_WRITE_DELTA_C = "comfort_helper_write_delta_c"
 CONF_FINAL_HELPER_WRITE_DELTA_C = "final_helper_write_delta_c"
 CONF_CONTROL_WRITE_DELTA_C = "control_write_delta_c"
-
-CONF_ELECTRIC_FALLBACK_DELTA_C = "electric_fallback_delta_c"
-CONF_RELEASE_DELTA_C = "release_delta_c"
-CONF_ELECTRIC_FALLBACK_MINUTES = "electric_fallback_minutes"
-CONF_ELECTRIC_FALLBACK_COOLDOWN_MINUTES = "electric_fallback_cooldown_minutes"
 
 CONF_ENABLE_DAIKIN_CONSUMER = "enable_daikin_consumer"
 CONF_DAIKIN_CLIMATE_ENTITY = "daikin_climate_entity"
@@ -90,8 +83,6 @@ LEGACY_INTERNAL_ENTITY_KEYS: tuple[str, ...] = (
     CONF_TARGET_SAVING_HELPER,
     CONF_TARGET_COMFORT_HELPER,
     CONF_TARGET_FINAL_HELPER,
-    CONF_FALLBACK_ACTIVE_BOOLEAN,
-    CONF_ELECTRIC_FALLBACK_LAST_TRIGGER,
 )
 
 STATE_POLICY_ON = "policy_on"
@@ -99,18 +90,14 @@ STATE_POLICY_LAST_CHANGED = "policy_last_changed"
 STATE_TARGET_SAVING = "target_saving"
 STATE_TARGET_COMFORT = "target_comfort"
 STATE_TARGET_FINAL = "target_final"
-STATE_FALLBACK_ACTIVE = "fallback_active"
-STATE_FALLBACK_LAST_TRIGGER = "fallback_last_trigger"
 
 STATE_STORAGE_VERSION = 1
 STATE_STORAGE_KEY_PREFIX = "blockheat.internal_state"
 
 ENTITY_ID_POLICY_ACTIVE = "binary_sensor.blockheat_energy_saving_active"
-ENTITY_ID_FALLBACK_ACTIVE = "binary_sensor.blockheat_fallback_active"
 ENTITY_ID_TARGET_SAVING = "sensor.blockheat_target_saving"
 ENTITY_ID_TARGET_COMFORT = "sensor.blockheat_target_comfort"
 ENTITY_ID_TARGET_FINAL = "sensor.blockheat_target_final"
-ENTITY_ID_FALLBACK_LAST_TRIGGER = "sensor.blockheat_fallback_last_trigger"
 
 DEFAULTS: dict[str, object] = {
     CONF_MINUTES_TO_BLOCK: 180,
@@ -139,10 +126,6 @@ DEFAULTS: dict[str, object] = {
     CONF_COMFORT_HELPER_WRITE_DELTA_C: DEFAULT_HELPER_WRITE_DELTA_C,
     CONF_FINAL_HELPER_WRITE_DELTA_C: DEFAULT_HELPER_WRITE_DELTA_C,
     CONF_CONTROL_WRITE_DELTA_C: DEFAULT_CONTROL_WRITE_DELTA_C,
-    CONF_ELECTRIC_FALLBACK_DELTA_C: 1.5,
-    CONF_RELEASE_DELTA_C: 0.5,
-    CONF_ELECTRIC_FALLBACK_MINUTES: 45,
-    CONF_ELECTRIC_FALLBACK_COOLDOWN_MINUTES: 90,
     CONF_ENABLE_DAIKIN_CONSUMER: False,
     CONF_DAIKIN_CLIMATE_ENTITY: "",
     CONF_DAIKIN_NORMAL_TEMPERATURE: 22.0,

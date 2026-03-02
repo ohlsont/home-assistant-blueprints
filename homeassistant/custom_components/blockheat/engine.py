@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -40,12 +40,6 @@ def clamp(value: float, min_value: float, max_value: float) -> float:
     return min(max_value, max(min_value, value))
 
 
-def min_numeric(values: Iterable[float | None]) -> float | None:
-    """Return minimum numeric value from iterable."""
-    candidates = [value for value in values if value is not None]
-    return min(candidates) if candidates else None
-
-
 @dataclass(slots=True)
 class PolicyComputation:
     target_on: bool
@@ -69,17 +63,6 @@ class ComfortComputation:
     boost_clamped: float
     comfort_target_unclamped: float
     storage_target_unclamped: float
-
-
-@dataclass(slots=True)
-class FallbackConditions:
-    arm_condition: bool
-    release_by_policy: bool
-    release_by_recovery: bool
-    comfort_min: float | None
-    trigger_threshold: float
-    release_threshold: float
-    cooldown_ok: bool
 
 
 @dataclass(slots=True)
@@ -237,60 +220,9 @@ def compute_comfort_target(
     )
 
 
-def compute_fallback_conditions(
-    *,
-    policy_on: bool,
-    fallback_active: bool,
-    room1_temp: float | None,
-    room2_temp: float | None,
-    comfort_target_c: float,
-    trigger_delta_c: float,
-    release_delta_c: float,
-    cooldown_minutes: int,
-    last_trigger: datetime | None,
-    now: datetime,
-) -> FallbackConditions:
-    """Compute fallback manager conditions."""
-    comfort_min = min_numeric((room1_temp, room2_temp))
-    trigger_threshold = comfort_target_c - trigger_delta_c
-    release_threshold = comfort_target_c - release_delta_c
-
-    if last_trigger is None:
-        cooldown_ok = True
-    else:
-        cooldown_ok = (now - last_trigger).total_seconds() >= (cooldown_minutes * 60)
-
-    arm_condition = (
-        (not policy_on)
-        and comfort_min is not None
-        and comfort_min < trigger_threshold
-        and cooldown_ok
-        and (not fallback_active)
-    )
-
-    release_by_policy = policy_on and fallback_active
-    release_by_recovery = (
-        (not policy_on)
-        and fallback_active
-        and comfort_min is not None
-        and comfort_min >= release_threshold
-    )
-
-    return FallbackConditions(
-        arm_condition=arm_condition,
-        release_by_policy=release_by_policy,
-        release_by_recovery=release_by_recovery,
-        comfort_min=comfort_min,
-        trigger_threshold=trigger_threshold,
-        release_threshold=release_threshold,
-        cooldown_ok=cooldown_ok,
-    )
-
-
 def compute_final_target(
     *,
     policy_on: bool,
-    fallback_active: bool,
     saving_target: float | None,
     comfort_target: float | None,
     control_current: float | None,
@@ -307,10 +239,7 @@ def compute_final_target(
             source = "control_current"
         else:
             selected_unclamped = control_min_c
-            source = "control_min_fallback"
-    elif fallback_active:
-        selected_unclamped = control_min_c
-        source = "fallback_min"
+            source = "control_min_default"
     else:
         if comfort_target is not None:
             selected_unclamped = comfort_target
@@ -320,7 +249,7 @@ def compute_final_target(
             source = "control_current"
         else:
             selected_unclamped = control_min_c
-            source = "control_min_fallback"
+            source = "control_min_default"
 
     return FinalTargetComputation(
         target=clamp(selected_unclamped, control_min_c, control_max_c),

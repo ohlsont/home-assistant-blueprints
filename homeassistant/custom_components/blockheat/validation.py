@@ -13,10 +13,6 @@ _NON_NEGATIVE_KEYS: tuple[str, ...] = (
     "comfort_helper_write_delta_c",
     "final_helper_write_delta_c",
     "control_write_delta_c",
-    "electric_fallback_delta_c",
-    "release_delta_c",
-    "electric_fallback_minutes",
-    "electric_fallback_cooldown_minutes",
     "daikin_min_temp_change",
     "floor_min_switch_interval_min",
 )

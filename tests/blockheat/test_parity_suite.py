@@ -5,7 +5,6 @@ from __future__ import annotations
 import importlib.util
 import sys
 import unittest
-from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -22,7 +21,6 @@ else:
     spec.loader.exec_module(engine)
 
 compute_comfort_target = engine.compute_comfort_target
-compute_fallback_conditions = engine.compute_fallback_conditions
 compute_final_target = engine.compute_final_target
 compute_saving_target = engine.compute_saving_target
 
@@ -40,7 +38,6 @@ class ParitySuite(unittest.TestCase):
         )
         final = compute_final_target(
             policy_on=True,
-            fallback_active=False,
             saving_target=saving,
             comfort_target=23.0,
             control_current=20.0,
@@ -82,7 +79,6 @@ class ParitySuite(unittest.TestCase):
         )
         final = compute_final_target(
             policy_on=False,
-            fallback_active=False,
             saving_target=19.0,
             comfort_target=comfort.target,
             control_current=20.0,
@@ -189,37 +185,6 @@ class ParitySuite(unittest.TestCase):
         self.assertEqual(at_threshold.boost_clamped, 0.0)
         self.assertGreater(colder.boost_clamped, 0.0)
         self.assertGreater(colder.target, at_threshold.target)
-
-    def test_fallback_arm_and_release(self) -> None:
-        now = datetime(2026, 2, 18, 10, 0, tzinfo=UTC)
-        armed = compute_fallback_conditions(
-            policy_on=False,
-            fallback_active=False,
-            room1_temp=20.0,
-            room2_temp=20.0,
-            comfort_target_c=22.0,
-            trigger_delta_c=0.5,
-            release_delta_c=0.1,
-            cooldown_minutes=60,
-            last_trigger=now - timedelta(hours=5),
-            now=now,
-        )
-        self.assertTrue(armed.arm_condition)
-
-        released = compute_fallback_conditions(
-            policy_on=False,
-            fallback_active=True,
-            room1_temp=22.0,
-            room2_temp=22.0,
-            comfort_target_c=22.0,
-            trigger_delta_c=0.5,
-            release_delta_c=0.1,
-            cooldown_minutes=60,
-            last_trigger=now - timedelta(minutes=30),
-            now=now,
-        )
-        self.assertTrue(released.release_by_recovery)
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -21,10 +21,6 @@ class ValidateTuningValuesTests(unittest.TestCase):
             "comfort_helper_write_delta_c": 0.05,
             "final_helper_write_delta_c": 0.05,
             "control_write_delta_c": 0.2,
-            "electric_fallback_delta_c": 0.5,
-            "release_delta_c": 0.1,
-            "electric_fallback_minutes": 30,
-            "electric_fallback_cooldown_minutes": 60,
             "min_toggle_interval_min": 15,
             "minutes_to_block": 240,
             "floor_min_switch_interval_min": 15,
@@ -51,7 +47,7 @@ class ValidateTuningValuesTests(unittest.TestCase):
 
     def test_rejects_negative_intervals(self):
         payload = self._base()
-        payload["electric_fallback_minutes"] = -1
+        payload["minutes_to_block"] = -1
         self.assertEqual(validate_tuning_values(payload), "invalid_non_negative")
 
 

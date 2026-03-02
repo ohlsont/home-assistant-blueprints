@@ -60,16 +60,6 @@
           "boost_slope_c": "Boost slope (°C per outdoor delta)"
         }
       },
-      "tuning_fallback": {
-        "title": "Tuning: Fallback protection",
-        "description": "Configure fallback trigger/release and cooldown behavior.",
-        "data": {
-          "electric_fallback_delta_c": "Fallback trigger delta (°C)",
-          "release_delta_c": "Fallback release delta (°C)",
-          "electric_fallback_minutes": "Fallback trigger duration (min)",
-          "electric_fallback_cooldown_minutes": "Fallback cooldown (min)"
-        }
-      },
       "tuning_limits": {
         "title": "Tuning: Limits and deadbands",
         "description": "Set control clamp limits and helper/control write deadbands.",
@@ -135,10 +125,6 @@
       "tuning_boost": {
         "title": "Tuning: Cold boost",
         "description": "Configure cold-weather boost pull-down behavior."
-      },
-      "tuning_fallback": {
-        "title": "Tuning: Fallback protection",
-        "description": "Configure fallback trigger/release and cooldown behavior."
       },
       "tuning_limits": {
         "title": "Tuning: Limits and deadbands",
