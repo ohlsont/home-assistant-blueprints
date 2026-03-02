@@ -25,6 +25,10 @@ def _schema_default(data_schema: Any, key: str) -> Any:
     raise AssertionError(f"Schema key not found: {key}")
 
 
+def _schema_keys(data_schema: Any) -> set[str]:
+    return {getattr(marker, "schema", marker) for marker in data_schema.schema}
+
+
 def _step1_user_input(
     const: Any,
     *,
@@ -32,15 +36,11 @@ def _step1_user_input(
     enable_floor: bool = False,
 ) -> dict[str, Any]:
     return {
-        const.CONF_TARGET_BOOLEAN: "input_boolean.block_heat_energy_saving",
         const.CONF_NORDPOOL_PRICE: "sensor.nordpool_price",
         const.CONF_COMFORT_ROOM_1_SENSOR: "sensor.comfort_room_1",
         const.CONF_COMFORT_ROOM_2_SENSOR: "sensor.comfort_room_2",
         const.CONF_STORAGE_ROOM_SENSOR: "sensor.storage_room",
         const.CONF_OUTDOOR_TEMPERATURE_SENSOR: "sensor.outdoor_temp",
-        const.CONF_TARGET_SAVING_HELPER: "input_number.block_heat_target_saving",
-        const.CONF_TARGET_COMFORT_HELPER: "input_number.block_heat_target_comfort",
-        const.CONF_TARGET_FINAL_HELPER: "input_number.block_heat_target_final",
         const.CONF_CONTROL_NUMBER_ENTITY: "number.block_heat_control",
         const.CONF_PV_SENSOR: "",
         const.CONF_FLOOR_TEMP_SENSOR: "",
@@ -143,7 +143,7 @@ async def test_config_flow_rejects_invalid_required_entity(
     const = blockheat_env.const
     flow = blockheat_env.config_flow.BlockheatConfigFlow()
     invalid = _step1_user_input(const)
-    invalid[const.CONF_TARGET_BOOLEAN] = "   "
+    invalid[const.CONF_NORDPOOL_PRICE] = "   "
 
     result = await flow.async_step_user(invalid)
     assert result["type"] == "form"
@@ -187,13 +187,13 @@ async def test_config_flow_routes_through_expected_steps(
 
     assert result["type"] == "create_entry"
     assert result["title"] == "Blockheat"
-    assert (
-        result["data"][const.CONF_TARGET_BOOLEAN]
-        == "input_boolean.block_heat_energy_saving"
-    )
     assert result["data"][const.CONF_MINUTES_TO_BLOCK] == 210
     assert result["data"][const.CONF_DAIKIN_SAVING_TEMPERATURE] == 20.0
     assert result["data"][const.CONF_STORAGE_TARGET_C] == 24.5
+    assert const.CONF_TARGET_BOOLEAN not in result["data"]
+    assert const.CONF_TARGET_SAVING_HELPER not in result["data"]
+    assert const.CONF_TARGET_COMFORT_HELPER not in result["data"]
+    assert const.CONF_TARGET_FINAL_HELPER not in result["data"]
 
 
 @pytest.mark.asyncio
@@ -205,7 +205,6 @@ async def test_config_flow_uses_domain_filtered_entity_selectors(
     result = await flow.async_step_user()
 
     nordpool_selector = _schema_value(result["data_schema"], const.CONF_NORDPOOL_PRICE)
-    target_selector = _schema_value(result["data_schema"], const.CONF_TARGET_BOOLEAN)
     control_selector = _schema_value(
         result["data_schema"], const.CONF_CONTROL_NUMBER_ENTITY
     )
@@ -217,10 +216,15 @@ async def test_config_flow_uses_domain_filtered_entity_selectors(
     )
 
     assert nordpool_selector.config.domain == "sensor"
-    assert target_selector.config.domain == "input_boolean"
     assert control_selector.config.domain == "number"
     assert daikin_outdoor_selector.config.domain == "sensor"
     assert schedule_selector.config.domain == ["schedule", "input_boolean"]
+
+    schema_keys = _schema_keys(result["data_schema"])
+    assert const.CONF_TARGET_BOOLEAN not in schema_keys
+    assert const.CONF_TARGET_SAVING_HELPER not in schema_keys
+    assert const.CONF_TARGET_COMFORT_HELPER not in schema_keys
+    assert const.CONF_TARGET_FINAL_HELPER not in schema_keys
 
 
 @pytest.mark.asyncio
@@ -252,12 +256,10 @@ async def test_config_flow_schema_defaults_reflect_new_baseline(
     comfort_step = await flow.async_step_tuning_saving({})
     assert comfort_step["step_id"] == "tuning_comfort"
     assert (
-        _schema_default(comfort_step["data_schema"], const.CONF_STORAGE_TARGET_C)
-        == 24.5
+        _schema_default(comfort_step["data_schema"], const.CONF_STORAGE_TARGET_C) == 24.5
     )
     assert (
-        _schema_default(comfort_step["data_schema"], const.CONF_COMFORT_MARGIN_C)
-        == 0.25
+        _schema_default(comfort_step["data_schema"], const.CONF_COMFORT_MARGIN_C) == 0.25
     )
 
     boost_step = await flow.async_step_tuning_comfort({})
@@ -341,7 +343,35 @@ async def test_options_flow_routes_through_expected_steps(
     assert result["type"] == "create_entry"
     assert result["data"][const.CONF_STORAGE_TARGET_C] == 24.5
     assert result["data"][const.CONF_DAIKIN_SAVING_TEMPERATURE] == 20.0
-    assert (
-        result["data"][const.CONF_TARGET_COMFORT_HELPER]
-        == "input_number.block_heat_target_comfort"
+    assert const.CONF_TARGET_BOOLEAN not in result["data"]
+    assert const.CONF_TARGET_SAVING_HELPER not in result["data"]
+    assert const.CONF_TARGET_COMFORT_HELPER not in result["data"]
+    assert const.CONF_TARGET_FINAL_HELPER not in result["data"]
+
+
+@pytest.mark.asyncio
+async def test_options_flow_strips_legacy_internal_entity_keys_on_save(
+    blockheat_env: SimpleNamespace,
+    build_config: Any,
+) -> None:
+    const = blockheat_env.const
+    legacy_entry_data = build_config(
+        {
+            const.CONF_TARGET_BOOLEAN: "input_boolean.block_heat_energy_saving",
+            const.CONF_TARGET_SAVING_HELPER: "input_number.block_heat_target_saving",
+            const.CONF_TARGET_COMFORT_HELPER: "input_number.block_heat_target_comfort",
+            const.CONF_TARGET_FINAL_HELPER: "input_number.block_heat_target_final",
+        }
     )
+    entry = blockheat_env.FakeConfigEntry("entry-1", data=legacy_entry_data)
+    flow = blockheat_env.config_flow.BlockheatOptionsFlow(entry)
+
+    await flow.async_step_init(_step1_user_input(const))
+    await _walk_core_tuning_steps(flow, const)
+    result = await flow.async_step_tuning_limits(_tuning_input(const, "tuning_limits"))
+
+    assert result["type"] == "create_entry"
+    assert const.CONF_TARGET_BOOLEAN not in result["data"]
+    assert const.CONF_TARGET_SAVING_HELPER not in result["data"]
+    assert const.CONF_TARGET_COMFORT_HELPER not in result["data"]
+    assert const.CONF_TARGET_FINAL_HELPER not in result["data"]

@@ -27,7 +27,7 @@ Daikin consumer control.
 4. Restart Home Assistant.
 5. Go to **Settings -> Devices & Services -> Add Integration** and add **Blockheat**.
 6. Complete both config steps:
-   - Step 1: entity mapping with searchable, domain-filtered entity pickers (policy sensors/helpers/control + optional consumers)
+   - Step 1: entity mapping with searchable, domain-filtered entity pickers for external inputs, control output, optional signals, and optional consumers. Legacy helper/boolean mappings are internal-only.
    - Step 2: tuning wizard split into sections:
      - Policy window and guards
      - Saving target
@@ -50,7 +50,7 @@ Then in Home Assistant:
 2. Go to **Settings -> Devices & Services -> Add Integration**.
 3. Add **Blockheat**.
 4. Complete both config steps:
-   - Step 1: entity mapping with searchable, domain-filtered entity pickers (policy sensors/helpers/control + optional consumers)
+   - Step 1: entity mapping with searchable, domain-filtered entity pickers for external inputs, control output, optional signals, and optional consumers. Legacy helper/boolean mappings are internal-only.
    - Step 2: tuning wizard split into sections:
      - Policy window and guards
      - Saving target
@@ -104,12 +104,18 @@ Notes:
 - Existing `unittest` test modules under `tests/blockheat/` are collected and run by `pytest`.
 - Shared fake Home Assistant test fixtures are defined in `tests/conftest.py`.
 
-### Compatibility Contract (v1)
-The integration keeps these helper ids as the stable interface:
+### Internal State Contract (v1)
+The integration exposes policy/target state as read-only entities:
 
-- `input_number.block_heat_target_saving`
-- `input_number.block_heat_target_comfort`
-- `input_number.block_heat_target_final`
+- `binary_sensor.blockheat_energy_saving_active`
+- `sensor.blockheat_target_saving`
+- `sensor.blockheat_target_comfort`
+- `sensor.blockheat_target_final`
+
+Legacy helper/boolean mappings (`target_boolean`, `target_*_helper`) are hidden from the
+config UI and stripped from saved config/options on save. Runtime still seeds
+from those legacy entities when no persisted internal state exists, to keep
+existing installs migration-safe.
 
 Compatibility events:
 - `energy_saving_state_changed` (legacy compatibility)
