@@ -280,7 +280,8 @@ def _tuning_comfort_schema(current: dict[str, Any]) -> vol.Schema:
                 default=_cfg_value(current, CONF_COMFORT_TO_HEATPUMP_OFFSET_C),
             ): _bounded_float(0, 20),
             vol.Required(
-                CONF_STORAGE_TARGET_C, default=_cfg_value(current, CONF_STORAGE_TARGET_C)
+                CONF_STORAGE_TARGET_C,
+                default=_cfg_value(current, CONF_STORAGE_TARGET_C),
             ): _bounded_float(0, 60),
             vol.Required(
                 CONF_STORAGE_TO_HEATPUMP_OFFSET_C,
@@ -452,7 +453,9 @@ class BlockheatConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ig
     def _current_state(self) -> dict[str, Any]:
         return {**DEFAULTS, **self._entity_data, **self._tuning_data}
 
-    async def _async_handle_tuning_step(self, step_id: str, user_input: dict[str, Any] | None) -> dict[str, Any]:
+    async def _async_handle_tuning_step(
+        self, step_id: str, user_input: dict[str, Any] | None
+    ) -> dict[str, Any]:
         current = self._current_state()
 
         if user_input is not None:
@@ -471,7 +474,9 @@ class BlockheatConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ig
             data_schema=_tuning_schema_for_step(step_id, current),
         )
 
-    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         errors: dict[str, str] = {}
 
         if self._async_current_entries():
@@ -493,28 +498,44 @@ class BlockheatConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ig
             errors=errors,
         )
 
-    async def async_step_tuning_policy(self, user_input: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def async_step_tuning_policy(
+        self, user_input: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         return await self._async_handle_tuning_step(TUNING_POLICY_STEP, user_input)
 
-    async def async_step_tuning_saving(self, user_input: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def async_step_tuning_saving(
+        self, user_input: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         return await self._async_handle_tuning_step(TUNING_SAVING_STEP, user_input)
 
-    async def async_step_tuning_comfort(self, user_input: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def async_step_tuning_comfort(
+        self, user_input: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         return await self._async_handle_tuning_step(TUNING_COMFORT_STEP, user_input)
 
-    async def async_step_tuning_boost(self, user_input: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def async_step_tuning_boost(
+        self, user_input: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         return await self._async_handle_tuning_step(TUNING_BOOST_STEP, user_input)
 
-    async def async_step_tuning_fallback(self, user_input: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def async_step_tuning_fallback(
+        self, user_input: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         return await self._async_handle_tuning_step(TUNING_FALLBACK_STEP, user_input)
 
-    async def async_step_tuning_limits(self, user_input: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def async_step_tuning_limits(
+        self, user_input: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         return await self._async_handle_tuning_step(TUNING_LIMITS_STEP, user_input)
 
-    async def async_step_tuning_daikin(self, user_input: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def async_step_tuning_daikin(
+        self, user_input: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         return await self._async_handle_tuning_step(TUNING_DAIKIN_STEP, user_input)
 
-    async def async_step_tuning_floor(self, user_input: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def async_step_tuning_floor(
+        self, user_input: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         return await self._async_handle_tuning_step(TUNING_FLOOR_STEP, user_input)
 
     @staticmethod
@@ -539,7 +560,9 @@ class BlockheatOptionsFlow(config_entries.OptionsFlow):
     def _current_state(self) -> dict[str, Any]:
         return {**self._base_state(), **self._entity_data, **self._tuning_data}
 
-    async def _async_handle_tuning_step(self, step_id: str, user_input: dict[str, Any] | None) -> dict[str, Any]:
+    async def _async_handle_tuning_step(
+        self, step_id: str, user_input: dict[str, Any] | None
+    ) -> dict[str, Any]:
         current = self._current_state()
 
         if user_input is not None:
@@ -558,7 +581,9 @@ class BlockheatOptionsFlow(config_entries.OptionsFlow):
             data_schema=_tuning_schema_for_step(step_id, current),
         )
 
-    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         current = self._current_state()
 
         if user_input is not None:
@@ -574,26 +599,42 @@ class BlockheatOptionsFlow(config_entries.OptionsFlow):
 
         return self.async_show_form(step_id="init", data_schema=_user_schema(current))
 
-    async def async_step_tuning_policy(self, user_input: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def async_step_tuning_policy(
+        self, user_input: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         return await self._async_handle_tuning_step(TUNING_POLICY_STEP, user_input)
 
-    async def async_step_tuning_saving(self, user_input: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def async_step_tuning_saving(
+        self, user_input: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         return await self._async_handle_tuning_step(TUNING_SAVING_STEP, user_input)
 
-    async def async_step_tuning_comfort(self, user_input: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def async_step_tuning_comfort(
+        self, user_input: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         return await self._async_handle_tuning_step(TUNING_COMFORT_STEP, user_input)
 
-    async def async_step_tuning_boost(self, user_input: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def async_step_tuning_boost(
+        self, user_input: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         return await self._async_handle_tuning_step(TUNING_BOOST_STEP, user_input)
 
-    async def async_step_tuning_fallback(self, user_input: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def async_step_tuning_fallback(
+        self, user_input: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         return await self._async_handle_tuning_step(TUNING_FALLBACK_STEP, user_input)
 
-    async def async_step_tuning_limits(self, user_input: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def async_step_tuning_limits(
+        self, user_input: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         return await self._async_handle_tuning_step(TUNING_LIMITS_STEP, user_input)
 
-    async def async_step_tuning_daikin(self, user_input: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def async_step_tuning_daikin(
+        self, user_input: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         return await self._async_handle_tuning_step(TUNING_DAIKIN_STEP, user_input)
 
-    async def async_step_tuning_floor(self, user_input: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def async_step_tuning_floor(
+        self, user_input: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         return await self._async_handle_tuning_step(TUNING_FLOOR_STEP, user_input)
