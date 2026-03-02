@@ -135,7 +135,10 @@ async def test_config_flow_rejects_invalid_required_entity(
     assert result["errors"]["base"] == "invalid_required_entities"
 
 
-@pytest.mark.parametrize(("enable_daikin", "expected_optional_steps"), [(False, []), (True, ["tuning_daikin"])])
+@pytest.mark.parametrize(
+    ("enable_daikin", "expected_optional_steps"),
+    [(False, []), (True, ["tuning_daikin"])],
+)
 @pytest.mark.asyncio
 async def test_config_flow_routes_through_expected_steps(
     blockheat_env: SimpleNamespace,
@@ -144,7 +147,9 @@ async def test_config_flow_routes_through_expected_steps(
 ) -> None:
     const = blockheat_env.const
     flow = blockheat_env.config_flow.BlockheatConfigFlow()
-    first = await flow.async_step_user(_step1_user_input(const, enable_daikin=enable_daikin))
+    first = await flow.async_step_user(
+        _step1_user_input(const, enable_daikin=enable_daikin)
+    )
     assert first["type"] == "form"
     assert first["step_id"] == "tuning_policy"
 
@@ -274,7 +279,10 @@ async def test_options_flow_rejects_invalid_required_entities(
     assert result["errors"]["base"] == "invalid_required_entities"
 
 
-@pytest.mark.parametrize(("enable_daikin", "expected_optional_steps"), [(False, []), (True, ["tuning_daikin"])])
+@pytest.mark.parametrize(
+    ("enable_daikin", "expected_optional_steps"),
+    [(False, []), (True, ["tuning_daikin"])],
+)
 @pytest.mark.asyncio
 async def test_options_flow_routes_through_expected_steps(
     blockheat_env: SimpleNamespace,
@@ -286,7 +294,9 @@ async def test_options_flow_routes_through_expected_steps(
     entry = blockheat_env.FakeConfigEntry("entry-1", data=build_config())
     flow = blockheat_env.config_flow.BlockheatOptionsFlow(entry)
 
-    first = await flow.async_step_init(_step1_user_input(const, enable_daikin=enable_daikin))
+    first = await flow.async_step_init(
+        _step1_user_input(const, enable_daikin=enable_daikin)
+    )
     assert first["type"] == "form"
     assert first["step_id"] == "tuning_policy"
 
