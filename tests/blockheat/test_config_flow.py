@@ -256,10 +256,12 @@ async def test_config_flow_schema_defaults_reflect_new_baseline(
     comfort_step = await flow.async_step_tuning_saving({})
     assert comfort_step["step_id"] == "tuning_comfort"
     assert (
-        _schema_default(comfort_step["data_schema"], const.CONF_STORAGE_TARGET_C) == 24.5
+        _schema_default(comfort_step["data_schema"], const.CONF_STORAGE_TARGET_C)
+        == 24.5
     )
     assert (
-        _schema_default(comfort_step["data_schema"], const.CONF_COMFORT_MARGIN_C) == 0.25
+        _schema_default(comfort_step["data_schema"], const.CONF_COMFORT_MARGIN_C)
+        == 0.25
     )
 
     boost_step = await flow.async_step_tuning_comfort({})
