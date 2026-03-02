@@ -609,8 +609,6 @@ def seed_runtime_states(blockheat_env: SimpleNamespace) -> Any:
         comfort_target: float = 20.0,
         final_target: float = 20.0,
         control_value: float = 20.0,
-        fallback_active: str = "off",
-        fallback_last_trigger: str = "2026-02-18T00:00:00+00:00",
     ) -> None:
         changed = datetime.now(UTC) - timedelta(hours=2)
         hass.states.set(
@@ -674,24 +672,6 @@ def seed_runtime_states(blockheat_env: SimpleNamespace) -> Any:
             hass.states.set(
                 legacy_final_entity,
                 str(final_target),
-                last_changed=changed,
-            )
-
-        legacy_fallback_entity = config.get(const.CONF_FALLBACK_ACTIVE_BOOLEAN, "")
-        if legacy_fallback_entity:
-            hass.states.set(
-                legacy_fallback_entity,
-                fallback_active,
-                last_changed=changed,
-            )
-
-        legacy_fallback_last_trigger = config.get(
-            const.CONF_ELECTRIC_FALLBACK_LAST_TRIGGER, ""
-        )
-        if legacy_fallback_last_trigger:
-            hass.states.set(
-                legacy_fallback_last_trigger,
-                fallback_last_trigger,
                 last_changed=changed,
             )
 

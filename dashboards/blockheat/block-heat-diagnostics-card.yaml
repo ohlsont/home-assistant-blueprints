@@ -7,11 +7,9 @@ cards:
     title: Block Heat Diagnostics
     content: |
       {% set policy = 'binary_sensor.blockheat_energy_saving_active' %}
-      {% set fallback = 'binary_sensor.blockheat_fallback_active' %}
       {% set target_saving_entity = 'sensor.blockheat_target_saving' %}
       {% set target_comfort_entity = 'sensor.blockheat_target_comfort' %}
       {% set target_final_entity = 'sensor.blockheat_target_final' %}
-      {% set fallback_last_trigger = 'sensor.blockheat_fallback_last_trigger' %}
       {% set control_entity = 'number.REPLACE_control_temperature' %}
 
       {% set target_saving = states(target_saving_entity) | float(default=none) %}
@@ -20,15 +18,7 @@ cards:
       {% set control_current = states(control_entity) | float(default=none) %}
 
       {% set policy_saving = is_state(policy, 'on') %}
-      {% set fallback_active = is_state(fallback, 'on') %}
-
-      {% if policy_saving %}
-        {% set selected_source = 'saving target' %}
-      {% elif fallback_active %}
-        {% set selected_source = 'fallback minimum clamp' %}
-      {% else %}
-        {% set selected_source = 'comfort target' %}
-      {% endif %}
+      {% set selected_source = 'saving target' if policy_saving else 'comfort target' %}
 
       {% set control_delta = none %}
       {% if target_final is number and control_current is number %}
@@ -36,14 +26,12 @@ cards:
       {% endif %}
 
       **Policy saving**: {{ 'ON' if policy_saving else 'OFF' }}
-      **Fallback active**: {{ 'ON' if fallback_active else 'OFF' }}
       **Selected source**: {{ selected_source }}
 
       **Saving target**: {{ target_saving | round(2) if target_saving is number else 'unknown' }} °C
       **Comfort target**: {{ target_comfort | round(2) if target_comfort is number else 'unknown' }} °C
       **Final target**: {{ target_final | round(2) if target_final is number else 'unknown' }} °C
       **Control number (current)**: {{ control_current | round(2) if control_current is number else 'unknown' }} °C
-      **Fallback last trigger**: {{ states(fallback_last_trigger) }}
 
       **Final - control delta**: {{ control_delta if control_delta is not none else 'unknown' }} °C
 
@@ -102,23 +90,12 @@ cards:
         group_by:
           duration: 30min
           func: last
-      - entity: binary_sensor.blockheat_fallback_active
-        name: Fallback active
-        yaxis_id: mode
-        type: line
-        curve: stepline
-        transform: "return x === 'on' ? 1 : 0;"
-        group_by:
-          duration: 30min
-          func: last
 
   - type: entities
     title: Block Heat Entities
     entities:
       - entity: binary_sensor.blockheat_energy_saving_active
         name: Energy saving active
-      - entity: binary_sensor.blockheat_fallback_active
-        name: Fallback active
       - entity: sensor.blockheat_target_saving
         name: Target saving
       - entity: sensor.blockheat_target_comfort
@@ -127,5 +104,3 @@ cards:
         name: Target final
       - entity: number.REPLACE_control_temperature
         name: Control temperature
-      - entity: sensor.blockheat_fallback_last_trigger
-        name: Fallback last trigger

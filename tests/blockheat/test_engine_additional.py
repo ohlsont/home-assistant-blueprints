@@ -25,7 +25,6 @@ else:
 DEFAULT_POLICY_CUTOFF = engine.DEFAULT_POLICY_CUTOFF
 compute_comfort_target = engine.compute_comfort_target
 compute_daikin = engine.compute_daikin
-compute_fallback_conditions = engine.compute_fallback_conditions
 compute_final_target = engine.compute_final_target
 compute_policy = engine.compute_policy
 compute_saving_target = engine.compute_saving_target
@@ -347,64 +346,9 @@ def test_comfort_storage_vs_comfort_tie_is_stable() -> None:
     assert result.target == result.comfort_target_unclamped
 
 
-def test_fallback_cooldown_exact_boundary_arms() -> None:
-    now = datetime(2026, 2, 18, 10, 0, tzinfo=UTC)
-    result = compute_fallback_conditions(
-        policy_on=False,
-        fallback_active=False,
-        room1_temp=20.0,
-        room2_temp=20.0,
-        comfort_target_c=22.0,
-        trigger_delta_c=0.5,
-        release_delta_c=0.1,
-        cooldown_minutes=60,
-        last_trigger=now - timedelta(minutes=60),
-        now=now,
-    )
-    assert result.cooldown_ok is True
-    assert result.arm_condition is True
-
-
-def test_fallback_cooldown_one_second_short_blocks_arm() -> None:
-    now = datetime(2026, 2, 18, 10, 0, tzinfo=UTC)
-    result = compute_fallback_conditions(
-        policy_on=False,
-        fallback_active=False,
-        room1_temp=20.0,
-        room2_temp=20.0,
-        comfort_target_c=22.0,
-        trigger_delta_c=0.5,
-        release_delta_c=0.1,
-        cooldown_minutes=60,
-        last_trigger=now - timedelta(minutes=59, seconds=59),
-        now=now,
-    )
-    assert result.cooldown_ok is False
-    assert result.arm_condition is False
-
-
-def test_fallback_missing_comfort_sensors_never_arms() -> None:
-    now = datetime(2026, 2, 18, 10, 0, tzinfo=UTC)
-    result = compute_fallback_conditions(
-        policy_on=False,
-        fallback_active=False,
-        room1_temp=None,
-        room2_temp=None,
-        comfort_target_c=22.0,
-        trigger_delta_c=0.5,
-        release_delta_c=0.1,
-        cooldown_minutes=60,
-        last_trigger=now - timedelta(minutes=120),
-        now=now,
-    )
-    assert result.comfort_min is None
-    assert result.arm_condition is False
-
-
 def test_final_target_policy_on_missing_saving_falls_back_to_control_current() -> None:
     result = compute_final_target(
         policy_on=True,
-        fallback_active=False,
         saving_target=None,
         comfort_target=22.0,
         control_current=19.0,
@@ -418,14 +362,13 @@ def test_final_target_policy_on_missing_saving_falls_back_to_control_current() -
 def test_final_target_policy_off_missing_all_uses_control_min() -> None:
     result = compute_final_target(
         policy_on=False,
-        fallback_active=False,
         saving_target=None,
         comfort_target=None,
         control_current=None,
         control_min_c=10.0,
         control_max_c=26.0,
     )
-    assert result.source == "control_min_fallback"
+    assert result.source == "control_min_default"
     assert result.target == 10.0
 
 

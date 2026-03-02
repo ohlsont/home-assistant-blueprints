@@ -8,8 +8,7 @@ blueprint:
 
     Precedence:
     1) Policy ON  -> saving target helper
-    2) Policy OFF + fallback active -> control minimum
-    3) Policy OFF + fallback inactive -> comfort target helper
+    2) Policy OFF -> comfort target helper
 
     This is the only Block Heat blueprint that writes to the control number.
   domain: automation
@@ -24,13 +23,6 @@ blueprint:
 
     energy_saving_boolean:
       name: Policy — Energy saving boolean
-      selector:
-        entity:
-          domain: input_boolean
-          multiple: false
-
-    fallback_active_boolean:
-      name: Policy — Fallback active boolean
       selector:
         entity:
           domain: input_boolean
@@ -127,7 +119,6 @@ max_exceeded: silent
 
 variables:
   es_bool: !input energy_saving_boolean
-  fallback_active_boolean: !input fallback_active_boolean
   target_saving_helper: !input target_saving_helper
   target_comfort_helper: !input target_comfort_helper
   target_final_helper: !input target_final_helper
@@ -140,8 +131,6 @@ variables:
 trigger:
   - platform: state
     entity_id: !input energy_saving_boolean
-  - platform: state
-    entity_id: !input fallback_active_boolean
   - platform: state
     entity_id: !input target_saving_helper
   - platform: state
@@ -172,8 +161,6 @@ action:
           {% else %}
             {{ min_c }}
           {% endif %}
-        {% elif is_state(fallback_active_boolean, 'on') %}
-          {{ min_c }}
         {% else %}
           {% if comfort_target is number %}
             {{ comfort_target }}

@@ -7,21 +7,13 @@ cards:
     title: Block Heat Diagnostics (Integration, Native)
     content: |
       {% set policy_entity = 'input_boolean.block_heat_energy_saving' %}
-      {% set fallback_entity = 'input_boolean.block_heat_fallback_active' %}
       {% set saving_target_entity = 'input_number.block_heat_target_saving' %}
       {% set comfort_target_entity = 'input_number.block_heat_target_comfort' %}
       {% set final_target_entity = 'input_number.block_heat_target_final' %}
       {% set control_entity = 'number.REPLACE_control_temperature' %}
 
       {% set policy_on = is_state(policy_entity, 'on') %}
-      {% set fallback_on = is_state(fallback_entity, 'on') %}
-      {% if policy_on %}
-        {% set route = 'saving' %}
-      {% elif fallback_on %}
-        {% set route = 'fallback_min' %}
-      {% else %}
-        {% set route = 'comfort' %}
-      {% endif %}
+      {% set route = 'saving' if policy_on else 'comfort' %}
 
       {% set final_target = states(final_target_entity) | float(default=none) %}
       {% set control_current = states(control_entity) | float(default=none) %}
@@ -32,7 +24,6 @@ cards:
       {% endif %}
 
       **Policy**: {{ 'ON' if policy_on else 'OFF' }}
-      **Fallback**: {{ 'ON' if fallback_on else 'OFF' }}
       **Active route**: `{{ route }}`
 
       **Target saving**: {{ states(saving_target_entity) }} °C
@@ -50,8 +41,6 @@ cards:
     entities:
       - entity: input_boolean.block_heat_energy_saving
         name: Policy saving
-      - entity: input_boolean.block_heat_fallback_active
-        name: Fallback active
       - entity: input_number.block_heat_target_saving
         name: Target saving
       - entity: input_number.block_heat_target_comfort
@@ -66,18 +55,14 @@ cards:
     hours_to_show: 24
     entities:
       - input_boolean.block_heat_energy_saving
-      - input_boolean.block_heat_fallback_active
       - input_number.block_heat_target_final
       - number.REPLACE_control_temperature
-      - input_datetime.block_heat_fallback_last_trigger
 
   - type: entities
     title: Replace These Entities
     entities:
       - entity: input_boolean.block_heat_energy_saving
         name: Policy boolean
-      - entity: input_boolean.block_heat_fallback_active
-        name: Fallback active
       - entity: input_number.block_heat_target_saving
         name: Saving helper
       - entity: input_number.block_heat_target_comfort
@@ -86,5 +71,3 @@ cards:
         name: Final helper
       - entity: number.REPLACE_control_temperature
         name: Control number
-      - entity: input_datetime.block_heat_fallback_last_trigger
-        name: Last fallback trigger

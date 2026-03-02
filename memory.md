@@ -8,5 +8,5 @@
 - Secondary system: Daikin air-air heat pump on second floor, centrally placed, heats most of that floor.
 - Ohmigo emulates a PT100 room sensor for the heatpump input.
 - Heatpump neutral/maintenance target: 20 C.
-- Direct electric observed to engage below ~19 C; optional assist may be used if compressor can't keep up.
+- Auxiliary heat observed to engage below ~19 C under heavy demand.
 - Storage/buffer room is used to absorb cold snaps (cap at 25 C).

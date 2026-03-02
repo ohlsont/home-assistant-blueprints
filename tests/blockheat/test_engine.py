@@ -23,7 +23,6 @@ else:
 
 compute_comfort_target = engine.compute_comfort_target
 compute_daikin = engine.compute_daikin
-compute_fallback_conditions = engine.compute_fallback_conditions
 compute_final_target = engine.compute_final_target
 compute_policy = engine.compute_policy
 compute_saving_target = engine.compute_saving_target
@@ -153,45 +152,10 @@ class ComfortTargetTests(unittest.TestCase):
         self.assertAlmostEqual(result.target, 20.0)
 
 
-class FallbackTests(unittest.TestCase):
-    def test_fallback_arm_condition(self) -> None:
-        now = datetime(2026, 2, 18, 10, 0, tzinfo=UTC)
-        result = compute_fallback_conditions(
-            policy_on=False,
-            fallback_active=False,
-            room1_temp=20.0,
-            room2_temp=20.2,
-            comfort_target_c=22.0,
-            trigger_delta_c=0.5,
-            release_delta_c=0.1,
-            cooldown_minutes=60,
-            last_trigger=now - timedelta(minutes=180),
-            now=now,
-        )
-        self.assertTrue(result.arm_condition)
-
-    def test_fallback_release_by_policy(self) -> None:
-        now = datetime(2026, 2, 18, 10, 0, tzinfo=UTC)
-        result = compute_fallback_conditions(
-            policy_on=True,
-            fallback_active=True,
-            room1_temp=20.0,
-            room2_temp=20.0,
-            comfort_target_c=22.0,
-            trigger_delta_c=0.5,
-            release_delta_c=0.1,
-            cooldown_minutes=60,
-            last_trigger=now - timedelta(minutes=30),
-            now=now,
-        )
-        self.assertTrue(result.release_by_policy)
-
-
 class FinalTargetTests(unittest.TestCase):
     def test_final_prefers_saving_when_policy_on(self) -> None:
         result = compute_final_target(
             policy_on=True,
-            fallback_active=False,
             saving_target=18.0,
             comfort_target=23.0,
             control_current=21.0,
@@ -201,18 +165,29 @@ class FinalTargetTests(unittest.TestCase):
         self.assertEqual(result.target, 18.0)
         self.assertEqual(result.source, "saving")
 
-    def test_final_forces_min_when_fallback_active(self) -> None:
+    def test_final_prefers_comfort_when_policy_off(self) -> None:
         result = compute_final_target(
             policy_on=False,
-            fallback_active=True,
             saving_target=18.0,
             comfort_target=23.0,
             control_current=21.0,
             control_min_c=10.0,
             control_max_c=26.0,
         )
+        self.assertEqual(result.target, 23.0)
+        self.assertEqual(result.source, "comfort")
+
+    def test_final_uses_default_min_when_policy_off_targets_missing(self) -> None:
+        result = compute_final_target(
+            policy_on=False,
+            saving_target=18.0,
+            comfort_target=None,
+            control_current=None,
+            control_min_c=10.0,
+            control_max_c=26.0,
+        )
         self.assertEqual(result.target, 10.0)
-        self.assertEqual(result.source, "fallback_min")
+        self.assertEqual(result.source, "control_min_default")
 
 
 class ConsumerTests(unittest.TestCase):

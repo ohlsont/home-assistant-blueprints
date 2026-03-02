@@ -13,9 +13,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import ENTRY_COORDINATOR
 from .const import (
     DOMAIN,
-    ENTITY_ID_FALLBACK_ACTIVE,
     ENTITY_ID_POLICY_ACTIVE,
-    STATE_FALLBACK_ACTIVE,
     STATE_POLICY_ON,
 )
 from .coordinator import BlockheatCoordinator
@@ -39,14 +37,6 @@ async def async_setup_entry(
                 name="Energy saving active",
                 state_key=STATE_POLICY_ON,
                 icon="mdi:flash",
-            ),
-            BlockheatBinarySensor(
-                coordinator=coordinator,
-                entry_id=entry.entry_id,
-                entity_id=ENTITY_ID_FALLBACK_ACTIVE,
-                name="Fallback active",
-                state_key=STATE_FALLBACK_ACTIVE,
-                icon="mdi:shield-alert",
             ),
         ]
     )
