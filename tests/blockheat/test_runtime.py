@@ -16,15 +16,26 @@ def _make_runtime_context(
     build_config: Any,
     seed_runtime_states: Any,
     *,
+    entry_data: dict[str, Any] | None = None,
+    entry_options: dict[str, Any] | None = None,
     overrides: dict[str, Any] | None = None,
     seed_kwargs: dict[str, Any] | None = None,
 ) -> SimpleNamespace:
-    config = build_config(overrides or {})
+    base_entry_data = build_config() if entry_data is None else dict(entry_data)
+    entry_options_data = {} if entry_options is None else dict(entry_options)
+    if overrides:
+        base_entry_data.update(overrides)
+    config = {**base_entry_data, **entry_options_data}
     state_seed = seed_kwargs or {}
     seed_runtime_states(fake_hass, config, **state_seed)
     coordinator = blockheat_env.coordinator.BlockheatCoordinator(fake_hass)
     runtime = blockheat_env.runtime.BlockheatRuntime(
-        fake_hass, "entry-test", config, coordinator
+        fake_hass,
+        "entry-test",
+        config,
+        coordinator,
+        entry_data=base_entry_data,
+        entry_options=entry_options_data,
     )
 
     if "policy_state" in state_seed:
@@ -43,6 +54,8 @@ def _make_runtime_context(
 
     return SimpleNamespace(
         config=config,
+        entry_data=base_entry_data,
+        entry_options=entry_options_data,
         const=blockheat_env.const,
         runtime_module=blockheat_env.runtime,
         runtime=runtime,
@@ -158,6 +171,67 @@ async def test_snapshot_contains_causal_debug_payload(
     }
     assert snapshot["final_debug"]["source"] == "saving"
     assert snapshot["final_debug"]["control_write_performed"] is True
+
+
+@pytest.mark.asyncio
+async def test_snapshot_exposes_daikin_config_debug_views(
+    blockheat_env: SimpleNamespace,
+    fake_hass: Any,
+    build_config: Any,
+    seed_runtime_states: Any,
+) -> None:
+    disabled_ctx = _make_runtime_context(
+        blockheat_env,
+        fake_hass,
+        build_config,
+        seed_runtime_states,
+    )
+    disabled_snapshot = await disabled_ctx.runtime.async_recompute("config_debug_off")
+    assert disabled_snapshot["config_debug"]["entry_data"][
+        disabled_ctx.const.CONF_ENABLE_DAIKIN_CONSUMER
+    ] is False
+    assert disabled_snapshot["config_debug"]["entry_options"][
+        disabled_ctx.const.CONF_ENABLE_DAIKIN_CONSUMER
+    ] is None
+    assert disabled_snapshot["config_debug"]["effective"][
+        disabled_ctx.const.CONF_ENABLE_DAIKIN_CONSUMER
+    ] is False
+
+    enabled_ctx = _make_runtime_context(
+        blockheat_env,
+        fake_hass,
+        build_config,
+        seed_runtime_states,
+        entry_options={
+            blockheat_env.const.CONF_ENABLE_DAIKIN_CONSUMER: True,
+            blockheat_env.const.CONF_DAIKIN_CLIMATE_ENTITY: "climate.daikin_upstairs",
+            blockheat_env.const.CONF_DAIKIN_OUTDOOR_TEMP_SENSOR: (
+                "sensor.daikin_outdoor"
+            ),
+            blockheat_env.const.CONF_DAIKIN_NORMAL_TEMPERATURE: 22.0,
+            blockheat_env.const.CONF_DAIKIN_SAVING_TEMPERATURE: 20.0,
+            blockheat_env.const.CONF_DAIKIN_OUTDOOR_TEMP_THRESHOLD: -10.0,
+            blockheat_env.const.CONF_DAIKIN_MIN_TEMP_CHANGE: 0.5,
+        },
+        seed_kwargs={
+            "policy_state": "off",
+            "price": 0.0,
+            "prices_today": [0.0, 0.0, 0.0, 0.0],
+        },
+    )
+    enabled_ctx.hass.states.set(
+        "climate.daikin_upstairs",
+        "heat",
+        attributes={"temperature": 19.0},
+    )
+    enabled_ctx.hass.states.set("sensor.daikin_outdoor", "5.0")
+    enabled_snapshot = await enabled_ctx.runtime.async_recompute("config_debug_on")
+    assert enabled_snapshot["config_debug"]["entry_options"][
+        enabled_ctx.const.CONF_ENABLE_DAIKIN_CONSUMER
+    ] is True
+    assert enabled_snapshot["config_debug"]["effective"][
+        enabled_ctx.const.CONF_DAIKIN_CLIMATE_ENTITY
+    ] == "climate.daikin_upstairs"
 
 
 @pytest.mark.asyncio
