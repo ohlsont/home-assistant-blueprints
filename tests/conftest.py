@@ -221,6 +221,44 @@ class FakeConfigEntriesManager:
         return True
 
 
+@dataclass
+class FakeEntityRegistryEntry:
+    entity_id: str
+    unique_id: str
+    config_entry_id: str
+
+
+class FakeEntityRegistry:
+    def __init__(self) -> None:
+        self._entries: dict[str, FakeEntityRegistryEntry] = {}
+        self.update_calls: list[dict[str, Any]] = []
+
+    def add(
+        self, *, entity_id: str, unique_id: str, config_entry_id: str
+    ) -> FakeEntityRegistryEntry:
+        entry = FakeEntityRegistryEntry(
+            entity_id=entity_id,
+            unique_id=unique_id,
+            config_entry_id=config_entry_id,
+        )
+        self._entries[entity_id] = entry
+        return entry
+
+    def async_get(self, entity_id: str) -> FakeEntityRegistryEntry | None:
+        return self._entries.get(entity_id)
+
+    def async_update_entity(
+        self, entity_id: str, *, new_entity_id: str
+    ) -> FakeEntityRegistryEntry:
+        entry = self._entries.pop(entity_id)
+        entry.entity_id = new_entity_id
+        self._entries[new_entity_id] = entry
+        self.update_calls.append(
+            {"entity_id": entity_id, "new_entity_id": new_entity_id}
+        )
+        return entry
+
+
 class FakeHass:
     def __init__(self, service_not_found_cls: type[Exception]) -> None:
         self.data: dict[str, Any] = {}
@@ -381,6 +419,7 @@ def blockheat_env(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
     selector_module = types.ModuleType("homeassistant.helpers.selector")
     storage_module = types.ModuleType("homeassistant.helpers.storage")
     entity_platform_module = types.ModuleType("homeassistant.helpers.entity_platform")
+    entity_registry_module = types.ModuleType("homeassistant.helpers.entity_registry")
     update_coordinator_module = types.ModuleType(
         "homeassistant.helpers.update_coordinator"
     )
@@ -444,6 +483,8 @@ def blockheat_env(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
             self._items[self.key] = data
 
     storage_module.Store = FakeStore
+    entity_registry = FakeEntityRegistry()
+    entity_registry_module.async_get = lambda hass: entity_registry
 
     util_module = types.ModuleType("homeassistant.util")
     util_module.__path__ = []
@@ -509,6 +550,9 @@ def blockheat_env(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
     monkeypatch.setitem(sys.modules, "homeassistant.helpers.selector", selector_module)
     monkeypatch.setitem(sys.modules, "homeassistant.helpers.storage", storage_module)
     monkeypatch.setitem(
+        sys.modules, "homeassistant.helpers.entity_registry", entity_registry_module
+    )
+    monkeypatch.setitem(
         sys.modules, "homeassistant.helpers.entity_platform", entity_platform_module
     )
     monkeypatch.setitem(
@@ -557,6 +601,7 @@ def blockheat_env(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
         runtime=runtime,
         config_flow=config_flow,
         engine=engine,
+        entity_registry=entity_registry,
         FakeHass=FakeHass,
         FakeConfigEntry=FakeConfigEntry,
         service_not_found_cls=service_not_found_cls,
