@@ -112,6 +112,19 @@ config UI and stripped from saved config/options on save. Runtime still seeds
 from those legacy entities when no persisted internal state exists, to keep
 existing installs migration-safe.
 
+On first reload after upgrading, Blockheat attempts a one-time entity-registry
+migration from the pre-v1 public IDs:
+
+- `binary_sensor.energy_saving_active`
+- `sensor.target_saving`
+- `sensor.target_comfort`
+- `sensor.target_final`
+
+Each exact old ID is renamed to the canonical `blockheat_*` ID only when the
+canonical target is free. Custom user-renamed entity IDs are left untouched. If
+the canonical target is already occupied, Blockheat keeps the old ID and logs a
+warning so you can do manual cleanup.
+
 Compatibility events:
 - `energy_saving_state_changed` (legacy compatibility)
 - `blockheat_policy_changed` (namespaced event)
@@ -127,7 +140,11 @@ Pre-cutover:
 Cutover:
 1. Disable all legacy Blockheat automations at once.
 2. Enable the Blockheat config entry.
-3. Verify helper writes and control number writes for at least one full periodic cycle.
+3. Reload the config entry once so any exact pre-v1 public IDs can migrate to the
+   canonical `blockheat_*` entity IDs.
+4. Update any dashboard or automation references that still point at
+   `binary_sensor.energy_saving_active` or `sensor.target_*`.
+5. Verify helper writes and control number writes for at least one full periodic cycle.
 
 Rollback:
 1. Disable the Blockheat config entry.

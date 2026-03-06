@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Blockheat entities",
-        "description": "Map external inputs and writable outputs. Legacy helper/boolean mappings are internal-only. Read-only internal state entities: binary_sensor.blockheat_energy_saving_active, sensor.blockheat_target_saving, sensor.blockheat_target_comfort, sensor.blockheat_target_final.",
+        "description": "Map external inputs and writable outputs. Legacy helper/boolean mappings are internal-only. Read-only internal state entities use the canonical blockheat_* IDs. On first reload, exact pre-v1 public IDs (binary_sensor.energy_saving_active, sensor.target_saving, sensor.target_comfort, sensor.target_final) are auto-migrated when the canonical target is free; otherwise the old ID remains and manual cleanup is required.",
         "data": {
           "nordpool_price": "Core - Nordpool price sensor",
           "comfort_room_1_sensor": "Core - Comfort room 1 sensor",
@@ -147,7 +147,7 @@
     "step": {
       "init": {
         "title": "Blockheat entities",
-        "description": "Map external inputs and writable outputs. Legacy helper/boolean mappings are internal-only. Read-only internal state entities: binary_sensor.blockheat_energy_saving_active, sensor.blockheat_target_saving, sensor.blockheat_target_comfort, sensor.blockheat_target_final.",
+        "description": "Map external inputs and writable outputs. Legacy helper/boolean mappings are internal-only. Read-only internal state entities use the canonical blockheat_* IDs. On first reload, exact pre-v1 public IDs (binary_sensor.energy_saving_active, sensor.target_saving, sensor.target_comfort, sensor.target_final) are auto-migrated when the canonical target is free; otherwise the old ID remains and manual cleanup is required.",
         "data": {
           "nordpool_price": "Core - Nordpool price sensor",
           "comfort_room_1_sensor": "Core - Comfort room 1 sensor",
