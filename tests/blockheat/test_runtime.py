@@ -187,15 +187,24 @@ async def test_snapshot_exposes_daikin_config_debug_views(
         seed_runtime_states,
     )
     disabled_snapshot = await disabled_ctx.runtime.async_recompute("config_debug_off")
-    assert disabled_snapshot["config_debug"]["entry_data"][
-        disabled_ctx.const.CONF_ENABLE_DAIKIN_CONSUMER
-    ] is False
-    assert disabled_snapshot["config_debug"]["entry_options"][
-        disabled_ctx.const.CONF_ENABLE_DAIKIN_CONSUMER
-    ] is None
-    assert disabled_snapshot["config_debug"]["effective"][
-        disabled_ctx.const.CONF_ENABLE_DAIKIN_CONSUMER
-    ] is False
+    assert (
+        disabled_snapshot["config_debug"]["entry_data"][
+            disabled_ctx.const.CONF_ENABLE_DAIKIN_CONSUMER
+        ]
+        is False
+    )
+    assert (
+        disabled_snapshot["config_debug"]["entry_options"][
+            disabled_ctx.const.CONF_ENABLE_DAIKIN_CONSUMER
+        ]
+        is None
+    )
+    assert (
+        disabled_snapshot["config_debug"]["effective"][
+            disabled_ctx.const.CONF_ENABLE_DAIKIN_CONSUMER
+        ]
+        is False
+    )
 
     enabled_ctx = _make_runtime_context(
         blockheat_env,
@@ -226,12 +235,18 @@ async def test_snapshot_exposes_daikin_config_debug_views(
     )
     enabled_ctx.hass.states.set("sensor.daikin_outdoor", "5.0")
     enabled_snapshot = await enabled_ctx.runtime.async_recompute("config_debug_on")
-    assert enabled_snapshot["config_debug"]["entry_options"][
-        enabled_ctx.const.CONF_ENABLE_DAIKIN_CONSUMER
-    ] is True
-    assert enabled_snapshot["config_debug"]["effective"][
-        enabled_ctx.const.CONF_DAIKIN_CLIMATE_ENTITY
-    ] == "climate.daikin_upstairs"
+    assert (
+        enabled_snapshot["config_debug"]["entry_options"][
+            enabled_ctx.const.CONF_ENABLE_DAIKIN_CONSUMER
+        ]
+        is True
+    )
+    assert (
+        enabled_snapshot["config_debug"]["effective"][
+            enabled_ctx.const.CONF_DAIKIN_CLIMATE_ENTITY
+        ]
+        == "climate.daikin_upstairs"
+    )
 
 
 @pytest.mark.asyncio
