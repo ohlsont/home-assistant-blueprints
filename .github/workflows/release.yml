@@ -1,0 +1,128 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  mirror-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Sync dev dependencies
+        run: uv sync --group dev
+
+      - name: Check Blockheat mirror sync
+        run: uv run python scripts/check_component_mirror_sync.py
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Sync dev dependencies
+        run: uv sync --group dev
+
+      - name: Run test suite
+        run: uv run python -m pytest tests -q
+
+      - name: Enforce coverage gate
+        run: uv run python -m pytest tests -q --cov=homeassistant.custom_components.blockheat --cov-branch --cov-report=term-missing --cov-fail-under=80
+
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Sync dev dependencies
+        run: uv sync --group dev
+
+      - name: Check formatting
+        run: uv run ruff format --check custom_components homeassistant scripts tests
+
+      - name: Lint
+        run: uv run ruff check custom_components homeassistant scripts tests
+
+      - name: Type check
+        run: uv run mypy
+
+  release:
+    runs-on: ubuntu-latest
+    needs:
+      - mirror-sync
+      - test
+      - quality
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Sync dev dependencies
+        run: uv sync --group dev
+
+      - name: Resolve release version
+        id: version
+        run: |
+          version="$(uv run python scripts/validate_release_version.py)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch tags
+        run: git fetch --force --tags
+
+      - name: Ensure release tag is new
+        run: |
+          if git show-ref --verify --quiet "refs/tags/${{ steps.version.outputs.tag }}"; then
+            echo "Release tag ${{ steps.version.outputs.tag }} already exists." >&2
+            exit 1
+          fi
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ steps.version.outputs.tag }}" --target "$GITHUB_SHA" --title "${{ steps.version.outputs.tag }}" --generate-notes
