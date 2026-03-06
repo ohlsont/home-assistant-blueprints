@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from enum import Enum
 import importlib
 import sys
 import types
@@ -60,6 +61,7 @@ class FakeServices:
         self._hass = hass
         self._service_not_found_cls = service_not_found_cls
         self._handlers: dict[tuple[str, str], Any] = {}
+        self._supports_response: dict[tuple[str, str], Any] = {}
         self.calls: list[dict[str, Any]] = []
         self.register_calls: list[tuple[str, str]] = []
         self.remove_calls: list[tuple[str, str]] = []
@@ -76,8 +78,10 @@ class FakeServices:
         handler: Any,
         *,
         schema: Any = None,
+        supports_response: Any = None,
     ) -> None:
         self._handlers[(domain, service)] = handler
+        self._supports_response[(domain, service)] = supports_response
         self.available.add((domain, service))
         self.register_calls.append((domain, service))
 
@@ -93,13 +97,15 @@ class FakeServices:
         payload: dict[str, Any],
         *,
         blocking: bool = True,
-    ) -> None:
+        return_response: bool = False,
+    ) -> Any:
         self.calls.append(
             {
                 "domain": domain,
                 "service": service,
                 "payload": dict(payload),
                 "blocking": blocking,
+                "return_response": return_response,
             }
         )
 
@@ -107,12 +113,16 @@ class FakeServices:
             raise self._service_not_found_cls()
 
         handler = self._handlers.get((domain, service))
+        response = None
         if handler is not None:
-            result = handler(FakeServiceCall(data=dict(payload)))
-            if asyncio.iscoroutine(result):
-                await result
+            response = handler(FakeServiceCall(data=dict(payload)))
+            if asyncio.iscoroutine(response):
+                response = await response
 
         self._apply_side_effects(domain, service, payload)
+        if return_response:
+            return response
+        return None
 
     def _apply_side_effects(
         self, domain: str, service: str, payload: dict[str, Any]
@@ -409,6 +419,13 @@ def blockheat_env(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
     core_module.State = FakeState
     core_module.ServiceCall = FakeServiceCall
     core_module.callback = lambda fn: fn
+
+    class FakeSupportsResponse(Enum):
+        NONE = "none"
+        OPTIONAL = "optional"
+        ONLY = "only"
+
+    core_module.SupportsResponse = FakeSupportsResponse
 
     exceptions_module = types.ModuleType("homeassistant.exceptions")
     exceptions_module.ServiceNotFound = service_not_found_cls

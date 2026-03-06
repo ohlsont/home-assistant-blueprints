@@ -91,6 +91,16 @@ _SELF_WRITTEN_ENTITY_KEYS: tuple[str, ...] = (
     CONF_DAIKIN_CLIMATE_ENTITY,
 )
 
+_DAIKIN_CONFIG_DEBUG_KEYS: tuple[str, ...] = (
+    CONF_ENABLE_DAIKIN_CONSUMER,
+    CONF_DAIKIN_CLIMATE_ENTITY,
+    CONF_DAIKIN_OUTDOOR_TEMP_SENSOR,
+    CONF_DAIKIN_NORMAL_TEMPERATURE,
+    CONF_DAIKIN_SAVING_TEMPERATURE,
+    CONF_DAIKIN_OUTDOOR_TEMP_THRESHOLD,
+    CONF_DAIKIN_MIN_TEMP_CHANGE,
+)
+
 
 @dataclass
 class RuntimeState:
@@ -112,10 +122,15 @@ class BlockheatRuntime:
         entry_id: str,
         config: dict[str, Any],
         coordinator: BlockheatCoordinator,
+        *,
+        entry_data: dict[str, Any] | None = None,
+        entry_options: dict[str, Any] | None = None,
     ) -> None:
         self.hass = hass
         self._entry_id = entry_id
-        self._config = {**DEFAULTS, **config}
+        self._entry_data = dict(config if entry_data is None else entry_data)
+        self._entry_options = {} if entry_options is None else dict(entry_options)
+        self._config = {**DEFAULTS, **self._entry_data, **self._entry_options}
         self._coordinator = coordinator
         self._unsubscribers: list[Callable[[], None]] = []
         self._lock = asyncio.Lock()
@@ -126,6 +141,11 @@ class BlockheatRuntime:
         )
         self._state = RuntimeState()
         self._last_saved_state: dict[str, Any] | None = None
+
+    @property
+    def entry_id(self) -> str:
+        """Expose the owning config entry id."""
+        return self._entry_id
 
     async def async_setup(self) -> None:
         """Set up listeners and run initial compute."""
@@ -239,6 +259,7 @@ class BlockheatRuntime:
                 "final_target": final_target,
                 "final_debug": final_debug,
                 "daikin": daikin_result,
+                "config_debug": self._build_config_debug(),
                 "internal_state": internal_state,
             }
             self._coordinator.async_set_updated_data(snapshot)
@@ -671,6 +692,21 @@ class BlockheatRuntime:
             STATE_TARGET_SAVING: self._state.target_saving,
             STATE_TARGET_COMFORT: self._state.target_comfort,
             STATE_TARGET_FINAL: self._state.target_final,
+        }
+
+    def _build_config_debug(self) -> dict[str, dict[str, Any]]:
+        return {
+            "entry_data": self._config_debug_subset(self._entry_data),
+            "entry_options": self._config_debug_subset(self._entry_options),
+            "effective": {
+                key: self._config.get(key) for key in _DAIKIN_CONFIG_DEBUG_KEYS
+            },
+        }
+
+    def _config_debug_subset(self, source: dict[str, Any]) -> dict[str, Any]:
+        return {
+            key: source.get(key) if key in source else None
+            for key in _DAIKIN_CONFIG_DEBUG_KEYS
         }
 
     def _parse_datetime_value(self, value: Any) -> datetime | None:

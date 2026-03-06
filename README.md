@@ -130,6 +130,66 @@ Compatibility events:
 - `blockheat_policy_changed` (namespaced event)
 - `blockheat_snapshot` (diagnostics snapshot event)
 
+## Services And Live Diagnostics
+Blockheat exposes two services:
+
+- `blockheat.recompute`
+- `blockheat.dump_diagnostics`
+
+Both services still work as fire-and-forget actions, but callers can now also
+request a response payload. The response shape is:
+
+```json
+{
+  "entries": {
+    "<config_entry_id>": {
+      "... snapshot payload ...": "..."
+    }
+  }
+}
+```
+
+Each returned snapshot matches the coordinator/event snapshot and now includes a
+`config_debug` section for Daikin-related config visibility:
+
+```json
+{
+  "config_debug": {
+    "entry_data": {
+      "enable_daikin_consumer": false,
+      "daikin_climate_entity": "",
+      "daikin_outdoor_temp_sensor": "",
+      "daikin_normal_temperature": 22.0,
+      "daikin_saving_temperature": 20.0,
+      "daikin_outdoor_temp_threshold": -10.0,
+      "daikin_min_temp_change": 0.5
+    },
+    "entry_options": {
+      "enable_daikin_consumer": true,
+      "daikin_climate_entity": "climate.daikinap75809_room_temperature",
+      "daikin_outdoor_temp_sensor": "sensor.hue_outdoor_motion_sensor_1_temperature",
+      "daikin_normal_temperature": 22.0,
+      "daikin_saving_temperature": 20.0,
+      "daikin_outdoor_temp_threshold": -10.0,
+      "daikin_min_temp_change": 0.5
+    },
+    "effective": {
+      "enable_daikin_consumer": true,
+      "daikin_climate_entity": "climate.daikinap75809_room_temperature",
+      "daikin_outdoor_temp_sensor": "sensor.hue_outdoor_motion_sensor_1_temperature",
+      "daikin_normal_temperature": 22.0,
+      "daikin_saving_temperature": 20.0,
+      "daikin_outdoor_temp_threshold": -10.0,
+      "daikin_min_temp_change": 0.5
+    }
+  }
+}
+```
+
+Use this response path when debugging live config-entry state. `entry_options`
+shows what the options flow actually saved, while `effective` shows the merged
+runtime config after applying defaults plus `entry.data` plus `entry.options`.
+
 ## Migration / Cutover (Big-Bang)
 Pre-cutover:
 1. Backup current helper + automation YAML/state.

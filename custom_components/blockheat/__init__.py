@@ -7,7 +7,7 @@ from typing import Any
 
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.helpers import entity_registry as er
 
 from .const import (
@@ -52,7 +52,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     coordinator = BlockheatCoordinator(hass)
     config = {**entry.data, **entry.options}
-    runtime = BlockheatRuntime(hass, entry.entry_id, config, coordinator)
+    runtime = BlockheatRuntime(
+        hass,
+        entry.entry_id,
+        config,
+        coordinator,
+        entry_data=entry.data,
+        entry_options=entry.options,
+    )
     await runtime.async_setup()
 
     unsub_reload = entry.add_update_listener(async_reload_entry)
@@ -126,29 +133,39 @@ async def _async_register_services(hass: HomeAssistant) -> None:
     if hass.services.has_service(DOMAIN, SERVICE_RECOMPUTE):
         return
 
-    async def _handle_recompute(call: ServiceCall) -> None:
+    async def _handle_recompute(call: ServiceCall) -> dict[str, Any]:
         entry_id = call.data.get("entry_id")
         targets = _resolve_runtimes(hass, entry_id)
+        entries: dict[str, dict[str, Any]] = {}
         for runtime in targets:
-            await runtime.async_recompute("service_recompute")
+            entries[runtime.entry_id] = await runtime.async_recompute(
+                "service_recompute"
+            )
+        return {"entries": entries}
 
-    async def _handle_dump_diagnostics(call: ServiceCall) -> None:
+    async def _handle_dump_diagnostics(call: ServiceCall) -> dict[str, Any]:
         entry_id = call.data.get("entry_id")
         targets = _resolve_runtimes(hass, entry_id)
+        entries: dict[str, dict[str, Any]] = {}
         for runtime in targets:
-            await runtime.async_recompute("service_dump_diagnostics")
+            entries[runtime.entry_id] = await runtime.async_recompute(
+                "service_dump_diagnostics"
+            )
+        return {"entries": entries}
 
     hass.services.async_register(
         DOMAIN,
         SERVICE_RECOMPUTE,
         _handle_recompute,
         schema=SERVICE_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL,
     )
     hass.services.async_register(
         DOMAIN,
         SERVICE_DUMP_DIAGNOSTICS,
         _handle_dump_diagnostics,
         schema=SERVICE_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL,
     )
 
 

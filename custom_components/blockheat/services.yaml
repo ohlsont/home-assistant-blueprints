@@ -1,6 +1,6 @@
 recompute:
   name: Recompute Blockheat
-  description: Force an immediate policy/target recompute and write pass.
+  description: Force an immediate policy/target recompute and write pass. When called with response enabled, returns snapshots keyed by config entry id.
   fields:
     entry_id:
       name: Config entry id
@@ -11,7 +11,7 @@ recompute:
 
 dump_diagnostics:
   name: Dump Blockheat diagnostics
-  description: Recompute and emit a snapshot event with full diagnostics payload.
+  description: Recompute and emit a snapshot event with full diagnostics payload. When called with response enabled, returns snapshots keyed by config entry id.
   fields:
     entry_id:
       name: Config entry id
