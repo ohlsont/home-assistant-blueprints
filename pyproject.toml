@@ -1,6 +1,6 @@
 [project]
 name = "blockheat"
-version = "0.1.0"
+version = "0.2.0"
 description = "Blockheat Home Assistant integration"
 requires-python = ">=3.12"
 dependencies = [
@@ -25,14 +25,14 @@ asyncio_mode = "auto"
 [tool.ruff]
 target-version = "py312"
 line-length = 88
-src = ["custom_components", "homeassistant", "tests"]
+src = ["custom_components", "homeassistant", "scripts", "tests"]
 
 [tool.ruff.lint]
 select = ["F", "I", "UP"]
 
 [tool.mypy]
 python_version = "3.12"
-files = ["custom_components/blockheat", "homeassistant/custom_components/blockheat"]
+files = ["custom_components/blockheat", "homeassistant/custom_components/blockheat", "scripts"]
 explicit_package_bases = true
 ignore_missing_imports = true
 warn_unused_ignores = true
