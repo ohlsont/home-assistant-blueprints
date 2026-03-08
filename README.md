@@ -25,7 +25,7 @@ Daikin consumer control.
 4. Restart Home Assistant.
 5. Go to **Settings -> Devices & Services -> Add Integration** and add **Blockheat**.
 6. Complete both config steps:
-   - Step 1: entity mapping with searchable, domain-filtered entity pickers for external inputs, control output, optional signals, and optional consumers. Legacy helper/boolean mappings are internal-only.
+   - Step 1: entity mapping with searchable, domain-filtered entity pickers for external inputs, control output, optional signals, and optional consumers. Legacy helper/boolean mappings are internal-only. For `storage_room_sensor`, prefer a direct pipe-temperature sensor when available because it is the best proxy for system energy in the hydronic loop.
    - Step 2: tuning wizard split into sections:
      - Policy window and guards
      - Saving target
@@ -47,7 +47,7 @@ Then in Home Assistant:
 2. Go to **Settings -> Devices & Services -> Add Integration**.
 3. Add **Blockheat**.
 4. Complete both config steps:
-   - Step 1: entity mapping with searchable, domain-filtered entity pickers for external inputs, control output, optional signals, and optional consumers. Legacy helper/boolean mappings are internal-only.
+   - Step 1: entity mapping with searchable, domain-filtered entity pickers for external inputs, control output, optional signals, and optional consumers. Legacy helper/boolean mappings are internal-only. For `storage_room_sensor`, prefer a direct pipe-temperature sensor when available because it is the best proxy for system energy in the hydronic loop.
    - Step 2: tuning wizard split into sections:
      - Policy window and guards
      - Saving target
@@ -75,6 +75,13 @@ Quick adjustment rails:
 - Comfort tightness: lower `comfort_margin_c` to `0.15-0.2` for tighter control, or increase to `0.3` to reduce churn.
 - Cold-weather response: lower `boost_slope_c` to `3.0` for stronger recovery, or raise to `5.0-6.0` if too aggressive.
 - Write frequency: increase `control_write_delta_c` to `0.25-0.3` only if control writes are too frequent.
+
+## Buffer Sensor Guidance
+Treat `storage_room_sensor` as Blockheat's buffer/system-energy input, not strictly as a literal room sensor.
+
+- Best source: a direct hydronic pipe-temperature sensor, such as a washroom floor-heating pipe sensor, because it tracks how much heat is currently stored in the loop.
+- Supported fallback: a storage tank sensor or a stable storage-room temperature sensor if no direct pipe sensor is available.
+- Validation path: map the pipe sensor to `storage_room_sensor` and run the existing integration unchanged. Compare behavior during expensive periods with high pipe temperature, expensive periods with low pipe temperature, cold versus mild weather, control-write frequency, and resulting room comfort drift.
 
 ## Testing
 Install dev dependencies once:
