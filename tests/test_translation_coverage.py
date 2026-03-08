@@ -79,3 +79,17 @@ def test_policy_copy_is_explicit() -> None:
 
     assert "Skip blocking" in config_step["tuning_policy"]["data"]["price_ignore_below"]
     assert "Skip blocking" in config_step["tuning_policy"]["data"]["pv_ignore_above_w"]
+
+
+def test_storage_sensor_copy_prefers_buffer_pipe_temperature() -> None:
+    translations = _load_json(CUSTOM_STRINGS)
+    config_step = translations["config"]["step"]["user"]
+    options_step = translations["options"]["step"]["init"]
+
+    for step in (config_step, options_step):
+        label = step["data"]["storage_room_sensor"]
+        description = step["data_description"]["storage_room_sensor"]
+
+        assert "Buffer" in label
+        assert "pipe temperature" in description
+        assert "system energy" in description
