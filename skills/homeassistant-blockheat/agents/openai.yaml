@@ -1,0 +1,4 @@
+interface:
+  display_name: "Home Assistant Blockheat"
+  short_description: "Edit and validate Blockheat Home Assistant YAML"
+  default_prompt: "Update Blockheat Home Assistant blueprints and package YAML with safe, minimal changes."
