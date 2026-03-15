@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any
 
 from homeassistant.const import EVENT_HOMEASSISTANT_START
 from homeassistant.core import Event, HomeAssistant, callback
-from homeassistant.exceptions import ServiceNotFound
+from homeassistant.exceptions import HomeAssistantError, ServiceNotFound
 from homeassistant.helpers import event as event_helper
 from homeassistant.helpers import storage
 from homeassistant.util import dt as dt_util
@@ -622,8 +622,21 @@ class BlockheatRuntime:
         entity_id: str,
         **data: Any,
     ) -> None:
+        if not self.hass.services.has_service(domain, service):
+            _LOGGER.warning(
+                "Service %s.%s not available, skipping write to %s",
+                domain,
+                service,
+                entity_id,
+            )
+            return
         payload = {"entity_id": entity_id, **data}
-        await self.hass.services.async_call(domain, service, payload, blocking=True)
+        try:
+            await self.hass.services.async_call(domain, service, payload, blocking=True)
+        except (ServiceNotFound, HomeAssistantError) as exc:
+            _LOGGER.warning(
+                "Failed to call %s.%s on %s: %s", domain, service, entity_id, exc
+            )
 
     async def _async_log(self, name: str, message: str) -> None:
         if not self.hass.services.has_service("logbook", "log"):
