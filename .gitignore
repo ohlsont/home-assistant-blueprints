@@ -5,3 +5,13 @@ __pycache__/
 .venv/
 
 .worktrees/
+
+# Scratch / temp files
+*.xlsx
+_tmp_*
+
+# OS artifacts
+.DS_Store
+
+# Empty blueprint stub (not ready to ship)
+blueprints/
