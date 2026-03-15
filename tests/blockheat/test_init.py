@@ -320,8 +320,10 @@ async def test_options_flow_saved_daikin_options_survive_reload_and_recompute(
     result = await flow.async_step_tuning_daikin(
         {
             const.CONF_DAIKIN_NORMAL_TEMPERATURE: 22.0,
-            const.CONF_DAIKIN_SAVING_TEMPERATURE: 20.0,
-            const.CONF_DAIKIN_OUTDOOR_TEMP_THRESHOLD: -10.0,
+            const.CONF_DAIKIN_PREHEAT_OFFSET: 2.0,
+            const.CONF_DAIKIN_MILD_THRESHOLD: 5.0,
+            const.CONF_DAIKIN_COLD_THRESHOLD: -5.0,
+            const.CONF_DAIKIN_DISABLE_THRESHOLD: -22.0,
             const.CONF_DAIKIN_MIN_TEMP_CHANGE: 0.5,
         }
     )
@@ -352,7 +354,7 @@ async def test_options_flow_saved_daikin_options_survive_reload_and_recompute(
         entity_id="climate.daikin_upstairs",
     )
     assert daikin_calls
-    assert daikin_calls[-1]["payload"]["temperature"] == 22.0
+    assert daikin_calls[-1]["payload"]["temperature"] == 24.0
 
 
 @pytest.mark.asyncio

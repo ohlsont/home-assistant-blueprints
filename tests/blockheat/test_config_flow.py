@@ -89,8 +89,10 @@ def _tuning_input(const: Any, step_id: str) -> dict[str, Any]:
         },
         "tuning_daikin": {
             const.CONF_DAIKIN_NORMAL_TEMPERATURE: 22.0,
-            const.CONF_DAIKIN_SAVING_TEMPERATURE: 20.0,
-            const.CONF_DAIKIN_OUTDOOR_TEMP_THRESHOLD: -10.0,
+            const.CONF_DAIKIN_PREHEAT_OFFSET: 2.0,
+            const.CONF_DAIKIN_MILD_THRESHOLD: 5.0,
+            const.CONF_DAIKIN_COLD_THRESHOLD: -5.0,
+            const.CONF_DAIKIN_DISABLE_THRESHOLD: -22.0,
             const.CONF_DAIKIN_MIN_TEMP_CHANGE: 0.5,
         },
     }
@@ -168,7 +170,7 @@ async def test_config_flow_routes_through_expected_steps(
     assert result["type"] == "create_entry"
     assert result["title"] == "Blockheat"
     assert result["data"][const.CONF_MINUTES_TO_BLOCK] == 210
-    assert result["data"][const.CONF_DAIKIN_SAVING_TEMPERATURE] == 20.0
+    assert result["data"][const.CONF_DAIKIN_PREHEAT_OFFSET] == 2.0
     assert result["data"][const.CONF_STORAGE_TARGET_C] == 24.5
     assert const.CONF_TARGET_BOOLEAN not in result["data"]
     assert const.CONF_TARGET_SAVING_HELPER not in result["data"]
@@ -257,10 +259,8 @@ async def test_config_flow_schema_defaults_reflect_new_baseline(
     daikin_step = await daikin_flow.async_step_tuning_limits({})
     assert daikin_step["step_id"] == "tuning_daikin"
     assert (
-        _schema_default(
-            daikin_step["data_schema"], const.CONF_DAIKIN_SAVING_TEMPERATURE
-        )
-        == 20.0
+        _schema_default(daikin_step["data_schema"], const.CONF_DAIKIN_PREHEAT_OFFSET)
+        == 2.0
     )
 
 
@@ -314,7 +314,7 @@ async def test_options_flow_routes_through_expected_steps(
 
     assert result["type"] == "create_entry"
     assert result["data"][const.CONF_STORAGE_TARGET_C] == 24.5
-    assert result["data"][const.CONF_DAIKIN_SAVING_TEMPERATURE] == 20.0
+    assert result["data"][const.CONF_DAIKIN_PREHEAT_OFFSET] == 2.0
     assert const.CONF_TARGET_BOOLEAN not in result["data"]
     assert const.CONF_TARGET_SAVING_HELPER not in result["data"]
     assert const.CONF_TARGET_COMFORT_HELPER not in result["data"]

@@ -218,8 +218,10 @@ async def test_snapshot_exposes_daikin_config_debug_views(
                 "sensor.daikin_outdoor"
             ),
             blockheat_env.const.CONF_DAIKIN_NORMAL_TEMPERATURE: 22.0,
-            blockheat_env.const.CONF_DAIKIN_SAVING_TEMPERATURE: 20.0,
-            blockheat_env.const.CONF_DAIKIN_OUTDOOR_TEMP_THRESHOLD: -10.0,
+            blockheat_env.const.CONF_DAIKIN_PREHEAT_OFFSET: 2.0,
+            blockheat_env.const.CONF_DAIKIN_MILD_THRESHOLD: 5.0,
+            blockheat_env.const.CONF_DAIKIN_COLD_THRESHOLD: -5.0,
+            blockheat_env.const.CONF_DAIKIN_DISABLE_THRESHOLD: -22.0,
             blockheat_env.const.CONF_DAIKIN_MIN_TEMP_CHANGE: 0.5,
         },
         seed_kwargs={
@@ -346,24 +348,24 @@ async def test_optional_consumers_disabled_missing_and_write_paths(
         },
         seed_kwargs={
             "policy_state": "off",
-            "price": 9.0,
-            "prices_today": [1.0, 2.0, 9.0, 8.0],
+            "price": 2.5,
+            "prices_today": [1.0, 2.0, 3.0, 4.0],
         },
     )
     write_ctx.hass.states.set(
         "climate.daikin_upstairs",
-        "heat",
-        attributes={"temperature": 22.0},
+        "off",
+        attributes={"temperature": 19.0},
     )
     await write_ctx.runtime.async_recompute("consumers_write")
 
-    daikin_calls = _service_calls_for(
+    daikin_temp_calls = _service_calls_for(
         write_ctx.hass.services.calls,
         "climate",
         "set_temperature",
         entity_id="climate.daikin_upstairs",
     )
-    assert daikin_calls
+    assert daikin_temp_calls
 
 
 @pytest.mark.asyncio
@@ -514,7 +516,7 @@ async def test_recompute_tolerates_service_error_on_entity(
     build_config: Any,
     seed_runtime_states: Any,
 ) -> None:
-    """Recompute completes when climate.set_temperature raises HomeAssistantError."""
+    """Recompute completes when climate.turn_off raises HomeAssistantError."""
     ctx = _make_runtime_context(
         blockheat_env,
         fake_hass,
@@ -537,11 +539,11 @@ async def test_recompute_tolerates_service_error_on_entity(
         "heat",
         attributes={"temperature": 22.0},
     )
-    ctx.hass.services.raise_ha_error.add(("climate", "set_temperature"))
+    ctx.hass.services.raise_ha_error.add(("climate", "turn_off"))
 
     snapshot = await ctx.runtime.async_recompute("bad_entity")
     assert snapshot["daikin"]["enabled"] is True
-    assert snapshot["daikin"]["written"] is True
+    assert snapshot["daikin"]["mode_written"] is True
     assert snapshot["final_target"] is not None
 
 

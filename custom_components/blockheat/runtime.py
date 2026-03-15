@@ -29,11 +29,13 @@ from .const import (
     CONF_CONTROL_NUMBER_ENTITY,
     CONF_CONTROL_WRITE_DELTA_C,
     CONF_DAIKIN_CLIMATE_ENTITY,
+    CONF_DAIKIN_COLD_THRESHOLD,
+    CONF_DAIKIN_DISABLE_THRESHOLD,
+    CONF_DAIKIN_MILD_THRESHOLD,
     CONF_DAIKIN_MIN_TEMP_CHANGE,
     CONF_DAIKIN_NORMAL_TEMPERATURE,
     CONF_DAIKIN_OUTDOOR_TEMP_SENSOR,
-    CONF_DAIKIN_OUTDOOR_TEMP_THRESHOLD,
-    CONF_DAIKIN_SAVING_TEMPERATURE,
+    CONF_DAIKIN_PREHEAT_OFFSET,
     CONF_ENABLE_DAIKIN_CONSUMER,
     CONF_ENERGY_SAVING_WARM_SHUTDOWN_OUTDOOR,
     CONF_FINAL_HELPER_WRITE_DELTA_C,
@@ -79,6 +81,7 @@ from .engine import (
     compute_daikin,
     compute_final_target,
     compute_policy,
+    compute_price_quartile,
     compute_saving_target,
 )
 
@@ -99,8 +102,10 @@ _DAIKIN_CONFIG_DEBUG_KEYS: tuple[str, ...] = (
     CONF_DAIKIN_CLIMATE_ENTITY,
     CONF_DAIKIN_OUTDOOR_TEMP_SENSOR,
     CONF_DAIKIN_NORMAL_TEMPERATURE,
-    CONF_DAIKIN_SAVING_TEMPERATURE,
-    CONF_DAIKIN_OUTDOOR_TEMP_THRESHOLD,
+    CONF_DAIKIN_PREHEAT_OFFSET,
+    CONF_DAIKIN_MILD_THRESHOLD,
+    CONF_DAIKIN_COLD_THRESHOLD,
+    CONF_DAIKIN_DISABLE_THRESHOLD,
     CONF_DAIKIN_MIN_TEMP_CHANGE,
 )
 
@@ -234,7 +239,11 @@ class BlockheatRuntime:
             if trigger:
                 trigger_context.update(trigger)
 
-            policy_result = await self._async_apply_policy(now, trigger_context)
+            prices_today = self._read_prices_today()
+
+            policy_result = await self._async_apply_policy(
+                now, trigger_context, prices_today=prices_today
+            )
             policy_on_effective = policy_result["policy_on_effective"]
 
             saving_target, saving_debug = await self._async_apply_saving_target()
@@ -247,7 +256,9 @@ class BlockheatRuntime:
                 trigger_context=trigger_context,
             )
 
-            daikin_result = await self._async_apply_daikin(policy_on_effective)
+            daikin_result = await self._async_apply_daikin(
+                policy_on_effective, prices_today=prices_today
+            )
 
             internal_state = self._serialize_state()
             snapshot = {
@@ -270,20 +281,27 @@ class BlockheatRuntime:
             await self._async_save_state()
             return snapshot
 
+    def _read_prices_today(self) -> list[float]:
+        nordpool_price = self._cfg_str(CONF_NORDPOOL_PRICE)
+        price_state = self.hass.states.get(nordpool_price)
+        if not price_state:
+            return []
+        attr = price_state.attributes.get("today")
+        if not isinstance(attr, (list, tuple)):
+            return []
+        return [value for item in attr if (value := as_float(item)) is not None]
+
     async def _async_apply_policy(
-        self, now: datetime, trigger_context: dict[str, Any]
+        self,
+        now: datetime,
+        trigger_context: dict[str, Any],
+        *,
+        prices_today: list[float],
     ) -> dict[str, Any]:
         nordpool_price = self._cfg_str(CONF_NORDPOOL_PRICE)
 
         price_state = self.hass.states.get(nordpool_price)
         price = as_float(price_state.state, 0.0) if price_state else 0.0
-        prices_today: list[float] = []
-        if price_state:
-            attr = price_state.attributes.get("today")
-            if isinstance(attr, (list, tuple)):
-                prices_today = [
-                    value for item in attr if (value := as_float(item)) is not None
-                ]
 
         pv_sensor = self._cfg_str(CONF_PV_SENSOR)
         pv_now = self._state_float(pv_sensor, default=0.0) if pv_sensor else 0.0
@@ -551,7 +569,9 @@ class BlockheatRuntime:
         }
         return final.target, debug
 
-    async def _async_apply_daikin(self, policy_on_effective: bool) -> dict[str, Any]:
+    async def _async_apply_daikin(
+        self, policy_on_effective: bool, *, prices_today: list[float]
+    ) -> dict[str, Any]:
         if not self._cfg_bool(CONF_ENABLE_DAIKIN_CONSUMER, False):
             return {"enabled": False}
 
@@ -561,24 +581,43 @@ class BlockheatRuntime:
 
         climate_state = self.hass.states.get(climate_entity)
         current_temp = None
+        current_hvac_mode: str | None = None
         if climate_state:
             current_temp = as_float(climate_state.attributes.get("temperature"))
+            current_hvac_mode = climate_state.state
+
+        nordpool_price = self._cfg_str(CONF_NORDPOOL_PRICE)
+        price_state = self.hass.states.get(nordpool_price)
+        current_price = as_float(price_state.state, 0.0) if price_state else 0.0
+        current_price = current_price or 0.0
+        price_quartile = compute_price_quartile(current_price, prices_today)
 
         outdoor_sensor = self._cfg_str(CONF_DAIKIN_OUTDOOR_TEMP_SENSOR)
         computation = compute_daikin(
-            policy_on=policy_on_effective,
             current_temp=current_temp,
+            current_hvac_mode=current_hvac_mode,
             normal_temperature=self._cfg_float(CONF_DAIKIN_NORMAL_TEMPERATURE, 22.0),
-            saving_temperature=self._cfg_float(CONF_DAIKIN_SAVING_TEMPERATURE, 19.0),
+            preheat_offset=self._cfg_float(CONF_DAIKIN_PREHEAT_OFFSET, 2.0),
             min_temp_change=self._cfg_float(CONF_DAIKIN_MIN_TEMP_CHANGE, 0.5),
             outdoor_temp=self._state_float(outdoor_sensor) if outdoor_sensor else None,
-            outdoor_temp_threshold=self._cfg_float(
-                CONF_DAIKIN_OUTDOOR_TEMP_THRESHOLD, -10.0
-            ),
+            mild_threshold=self._cfg_float(CONF_DAIKIN_MILD_THRESHOLD, 5.0),
+            cold_threshold=self._cfg_float(CONF_DAIKIN_COLD_THRESHOLD, -5.0),
+            disable_threshold=self._cfg_float(CONF_DAIKIN_DISABLE_THRESHOLD, -22.0),
             outdoor_sensor_defined=bool(outdoor_sensor),
+            price_quartile=price_quartile,
         )
 
-        if computation.should_write and computation.target_temp is not None:
+        if computation.should_write_mode and computation.target_hvac_mode is not None:
+            if computation.target_hvac_mode == "off":
+                await self._async_call_entity_service(
+                    "climate", "turn_off", climate_entity
+                )
+            else:
+                await self._async_call_entity_service(
+                    "climate", "turn_on", climate_entity
+                )
+
+        if computation.should_write_temp and computation.target_temp is not None:
             await self._async_call_entity_service(
                 "climate",
                 "set_temperature",
@@ -588,8 +627,12 @@ class BlockheatRuntime:
 
         return {
             "enabled": True,
-            "target": computation.target_temp,
-            "written": computation.should_write,
+            "mode": computation.mode,
+            "price_quartile": computation.price_quartile,
+            "target_temp": computation.target_temp,
+            "target_hvac_mode": computation.target_hvac_mode,
+            "temp_written": computation.should_write_temp,
+            "mode_written": computation.should_write_mode,
             "outdoor_ok": computation.outdoor_ok,
         }
 

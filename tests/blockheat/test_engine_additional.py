@@ -375,15 +375,18 @@ def test_final_target_policy_off_missing_all_uses_control_min() -> None:
 
 def test_daikin_without_outdoor_sensor_uses_default_allow_path() -> None:
     result = compute_daikin(
-        policy_on=True,
         current_temp=22.0,
+        current_hvac_mode="off",
         normal_temperature=22.0,
-        saving_temperature=19.0,
+        preheat_offset=2.0,
         min_temp_change=0.5,
         outdoor_temp=None,
-        outdoor_temp_threshold=-10.0,
+        mild_threshold=5.0,
+        cold_threshold=-5.0,
+        disable_threshold=-22.0,
         outdoor_sensor_defined=False,
+        price_quartile="low",
     )
     assert result.outdoor_ok is True
-    assert result.target_temp == 19.0
-    assert result.should_write is True
+    assert result.mode == "normal"
+    assert result.target_hvac_mode == "heat"

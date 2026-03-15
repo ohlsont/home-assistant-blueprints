@@ -50,9 +50,11 @@ CONF_CONTROL_WRITE_DELTA_C = "control_write_delta_c"
 CONF_ENABLE_DAIKIN_CONSUMER = "enable_daikin_consumer"
 CONF_DAIKIN_CLIMATE_ENTITY = "daikin_climate_entity"
 CONF_DAIKIN_NORMAL_TEMPERATURE = "daikin_normal_temperature"
-CONF_DAIKIN_SAVING_TEMPERATURE = "daikin_saving_temperature"
+CONF_DAIKIN_PREHEAT_OFFSET = "daikin_preheat_offset"
 CONF_DAIKIN_OUTDOOR_TEMP_SENSOR = "daikin_outdoor_temp_sensor"
-CONF_DAIKIN_OUTDOOR_TEMP_THRESHOLD = "daikin_outdoor_temp_threshold"
+CONF_DAIKIN_MILD_THRESHOLD = "daikin_mild_threshold"
+CONF_DAIKIN_COLD_THRESHOLD = "daikin_cold_threshold"
+CONF_DAIKIN_DISABLE_THRESHOLD = "daikin_disable_threshold"
 CONF_DAIKIN_MIN_TEMP_CHANGE = "daikin_min_temp_change"
 
 EVENT_ENERGY_SAVING_STATE_CHANGED = "energy_saving_state_changed"
@@ -115,9 +117,11 @@ DEFAULTS: dict[str, object] = {
     CONF_ENABLE_DAIKIN_CONSUMER: False,
     CONF_DAIKIN_CLIMATE_ENTITY: "",
     CONF_DAIKIN_NORMAL_TEMPERATURE: 22.0,
-    CONF_DAIKIN_SAVING_TEMPERATURE: 20.0,
+    CONF_DAIKIN_PREHEAT_OFFSET: 2.0,
     CONF_DAIKIN_OUTDOOR_TEMP_SENSOR: "",
-    CONF_DAIKIN_OUTDOOR_TEMP_THRESHOLD: -10.0,
+    CONF_DAIKIN_MILD_THRESHOLD: 5.0,
+    CONF_DAIKIN_COLD_THRESHOLD: -5.0,
+    CONF_DAIKIN_DISABLE_THRESHOLD: -22.0,
     CONF_DAIKIN_MIN_TEMP_CHANGE: 0.5,
 }
 

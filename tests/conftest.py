@@ -172,6 +172,24 @@ class FakeServices:
             )
             return
 
+        if domain == "climate" and service == "turn_on":
+            self._hass.states.set(
+                entity_id,
+                "heat",
+                attributes=attributes,
+                last_changed=last_changed,
+            )
+            return
+
+        if domain == "climate" and service == "turn_off":
+            self._hass.states.set(
+                entity_id,
+                "off",
+                attributes=attributes,
+                last_changed=last_changed,
+            )
+            return
+
         if domain == "climate" and service == "set_temperature":
             attributes["temperature"] = payload.get("temperature")
             self._hass.states.set(
@@ -638,6 +656,8 @@ def fake_hass(blockheat_env: SimpleNamespace) -> FakeHass:
     hass = blockheat_env.FakeHass(blockheat_env.service_not_found_cls)
     hass.services.available.add(("number", "set_value"))
     hass.services.available.add(("climate", "set_temperature"))
+    hass.services.available.add(("climate", "turn_on"))
+    hass.services.available.add(("climate", "turn_off"))
     return hass
 
 

@@ -76,9 +76,14 @@ class FinalTargetComputation:
 @dataclass(slots=True)
 class DaikinComputation:
     target_temp: float | None
-    should_write: bool
+    target_hvac_mode: str | None
+    should_write_temp: bool
+    should_write_mode: bool
     outdoor_ok: bool
     current_temp: float
+    current_hvac_mode: str
+    mode: str
+    price_quartile: str
 
 
 def compute_policy(
@@ -259,44 +264,98 @@ def compute_final_target(
     )
 
 
+def compute_price_quartile(current_price: float, prices: Sequence[float]) -> str:
+    """Return price quartile based on position in today's prices.
+
+    Returns 'very_low', 'low', 'high', or 'very_high'.
+    """
+    if not prices:
+        return "low"
+
+    sorted_prices = sorted(prices)
+    n = len(sorted_prices)
+    q25 = sorted_prices[n // 4]
+    q75 = sorted_prices[(3 * n) // 4]
+
+    if current_price <= q25:
+        return "very_low"
+    if current_price >= q75:
+        return "very_high"
+    median = sorted_prices[n // 2]
+    if current_price <= median:
+        return "low"
+    return "high"
+
+
 def compute_daikin(
     *,
-    policy_on: bool,
     current_temp: float | None,
+    current_hvac_mode: str | None,
     normal_temperature: float,
-    saving_temperature: float,
+    preheat_offset: float,
     min_temp_change: float,
     outdoor_temp: float | None,
-    outdoor_temp_threshold: float,
+    mild_threshold: float,
+    cold_threshold: float,
+    disable_threshold: float,
     outdoor_sensor_defined: bool,
+    price_quartile: str,
 ) -> DaikinComputation:
-    """Compute optional Daikin consumer action."""
+    """Compute Daikin consumer action based on price quartile and outdoor temp."""
     cur_temp = as_float(current_temp, 0.0) or 0.0
+    cur_mode = current_hvac_mode or "off"
+
     if outdoor_sensor_defined:
-        out_temp = (
-            as_float(outdoor_temp, DEFAULT_MISSING_OUTDOOR) or DEFAULT_MISSING_OUTDOOR
-        )
+        parsed = as_float(outdoor_temp)
+        out_temp = parsed if parsed is not None else DEFAULT_MISSING_OUTDOOR
     else:
         out_temp = DEFAULT_MISSING_OUTDOOR
 
-    outdoor_ok = (
-        out_temp >= outdoor_temp_threshold or out_temp == DEFAULT_MISSING_OUTDOOR
-    )
+    outdoor_ok = out_temp >= disable_threshold or out_temp == DEFAULT_MISSING_OUTDOOR
 
-    if policy_on and outdoor_ok:
-        target_temp = saving_temperature
-    elif not policy_on:
+    target_temp: float | None = None
+    target_hvac_mode: str | None = None
+    mode: str = "off"
+
+    if price_quartile == "very_high":
+        target_hvac_mode = "off"
+        mode = "off"
+    elif price_quartile == "very_low":
+        target_temp = normal_temperature + preheat_offset
+        target_hvac_mode = "heat"
+        mode = "preheat"
+    elif not outdoor_ok:
+        target_hvac_mode = "off"
+        mode = "off"
+    elif out_temp == DEFAULT_MISSING_OUTDOOR:
         target_temp = normal_temperature
+        target_hvac_mode = "heat"
+        mode = "normal"
+    elif out_temp > mild_threshold:
+        target_hvac_mode = "off"
+        mode = "off"
+    elif out_temp > cold_threshold:
+        target_temp = normal_temperature
+        target_hvac_mode = "heat"
+        mode = "normal"
     else:
-        target_temp = None
+        target_temp = normal_temperature
+        target_hvac_mode = "heat"
+        mode = "capacity_assist"
 
-    should_write = (
+    should_write_temp = (
         target_temp is not None and abs(cur_temp - target_temp) >= min_temp_change
     )
+    should_write_mode = target_hvac_mode is not None and target_hvac_mode != cur_mode
 
     return DaikinComputation(
         target_temp=target_temp,
-        should_write=should_write,
+        target_hvac_mode=target_hvac_mode,
+        should_write_temp=should_write_temp,
+        should_write_mode=should_write_mode,
         outdoor_ok=outdoor_ok,
         current_temp=cur_temp,
+        current_hvac_mode=cur_mode,
+        mode=mode,
+        price_quartile=price_quartile,
     )
