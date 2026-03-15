@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
 from homeassistant import config_entries
@@ -52,6 +51,9 @@ from .const import (
     DOMAIN,
     normalize_entry_data,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 TUNING_POLICY_STEP = "tuning_policy"
 TUNING_SAVING_STEP = "tuning_saving"
@@ -350,16 +352,16 @@ class BlockheatConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ig
             current = self._current_state()
             next_step = _next_tuning_step(current, step_id)
             if next_step is None:
-                return self.async_create_entry(
+                return self.async_create_entry(  # type: ignore[no-any-return]
                     title="Blockheat",
                     data=normalize_entry_data(current),
                 )
-            return self.async_show_form(
+            return self.async_show_form(  # type: ignore[no-any-return]
                 step_id=next_step,
                 data_schema=_tuning_schema_for_step(next_step, current),
             )
 
-        return self.async_show_form(
+        return self.async_show_form(  # type: ignore[no-any-return]
             step_id=step_id,
             data_schema=_tuning_schema_for_step(step_id, current),
         )
@@ -370,7 +372,7 @@ class BlockheatConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ig
         errors: dict[str, str] = {}
 
         if self._async_current_entries():
-            return self.async_abort(reason="single_instance_allowed")
+            return self.async_abort(reason="single_instance_allowed")  # type: ignore[no-any-return]
 
         if user_input is not None:
             if not _validate_required_entities(user_input):
@@ -382,7 +384,7 @@ class BlockheatConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ig
                 self._tuning_data = {}
                 return await self.async_step_tuning_policy()
 
-        return self.async_show_form(
+        return self.async_show_form(  # type: ignore[no-any-return]
             step_id="user",
             data_schema=_user_schema(self._current_state()),
             errors=errors,
@@ -450,16 +452,16 @@ class BlockheatOptionsFlow(config_entries.OptionsFlow):
             current = self._current_state()
             next_step = _next_tuning_step(current, step_id)
             if next_step is None:
-                return self.async_create_entry(
+                return self.async_create_entry(  # type: ignore[no-any-return]
                     title="",
                     data=normalize_entry_data(current),
                 )
-            return self.async_show_form(
+            return self.async_show_form(  # type: ignore[no-any-return]
                 step_id=next_step,
                 data_schema=_tuning_schema_for_step(next_step, current),
             )
 
-        return self.async_show_form(
+        return self.async_show_form(  # type: ignore[no-any-return]
             step_id=step_id,
             data_schema=_tuning_schema_for_step(step_id, current),
         )
@@ -471,7 +473,7 @@ class BlockheatOptionsFlow(config_entries.OptionsFlow):
 
         if user_input is not None:
             if not _validate_required_entities(user_input):
-                return self.async_show_form(
+                return self.async_show_form(  # type: ignore[no-any-return]
                     step_id="init",
                     data_schema=_user_schema(current),
                     errors={"base": "invalid_required_entities"},
@@ -480,7 +482,10 @@ class BlockheatOptionsFlow(config_entries.OptionsFlow):
             self._tuning_data = {}
             return await self.async_step_tuning_policy()
 
-        return self.async_show_form(step_id="init", data_schema=_user_schema(current))
+        return self.async_show_form(  # type: ignore[no-any-return]
+            step_id="init",
+            data_schema=_user_schema(current),
+        )
 
     async def async_step_tuning_policy(
         self, user_input: dict[str, Any] | None = None

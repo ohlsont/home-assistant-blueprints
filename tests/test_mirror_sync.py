@@ -6,7 +6,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "check_component_mirror_sync.py"
 SPEC = importlib.util.spec_from_file_location("mirror_sync", SCRIPT_PATH)
-assert SPEC and SPEC.loader
+assert SPEC
+assert SPEC.loader
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 compare_trees = MODULE.compare_trees
@@ -24,7 +25,7 @@ class MirrorSyncTests(unittest.TestCase):
             (right / "a.txt").write_text("same", encoding="utf-8")
 
             ok, _ = compare_trees(left, right)
-            self.assertTrue(ok)
+            assert ok
 
     def test_compare_trees_detects_missing_and_changed_files(self):
         with (
@@ -38,10 +39,10 @@ class MirrorSyncTests(unittest.TestCase):
             (left / "only_left.txt").write_text("x", encoding="utf-8")
 
             ok, details = compare_trees(left, right)
-            self.assertFalse(ok)
+            assert not ok
             joined = "\n".join(details)
-            self.assertIn("only_left.txt", joined)
-            self.assertIn("a.txt", joined)
+            assert "only_left.txt" in joined
+            assert "a.txt" in joined
 
 
 if __name__ == "__main__":

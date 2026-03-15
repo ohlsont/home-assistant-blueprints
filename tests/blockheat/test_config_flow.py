@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
+
+if TYPE_CHECKING:
+    from types import SimpleNamespace
 
 
 def _schema_value(data_schema: Any, key: str) -> Any:

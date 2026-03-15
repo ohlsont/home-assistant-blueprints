@@ -9,6 +9,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+  "codespell>=2.4.1",
   "mypy>=1.19.1",
   "pre-commit>=4.5.1",
   "pytest>=9.0.0",
@@ -28,7 +29,26 @@ line-length = 88
 src = ["custom_components", "homeassistant", "scripts", "tests"]
 
 [tool.ruff.lint]
-select = ["F", "I", "UP"]
+select = [
+    "F",      # pyflakes
+    "I",      # isort
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear — common Python gotchas
+    "SIM",    # flake8-simplify — unnecessary complexity
+    "C4",     # flake8-comprehensions — better comprehensions
+    "PIE",    # flake8-pie — misc lints
+    "T20",    # flake8-print — flag print() in production code
+    "RUF",    # ruff-specific rules
+    "PT",     # flake8-pytest-style — consistent test patterns
+    "DTZ",    # flake8-datetimez — timezone-aware datetime usage
+    "A",      # flake8-builtins — don't shadow builtins
+    "RSE",    # flake8-raise — cleaner raise statements
+    "TCH",    # flake8-type-checking — TYPE_CHECKING block imports
+]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/**" = ["T20"]
+"tests/**" = ["T20"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -39,3 +59,9 @@ warn_unused_ignores = true
 disallow_untyped_defs = true
 no_implicit_optional = true
 strict_equality = true
+warn_return_any = true
+warn_unreachable = true
+
+[tool.codespell]
+skip = "*.json,*.xlsx"
+ignore-words-list = "hass"

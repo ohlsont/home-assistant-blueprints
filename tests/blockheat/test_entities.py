@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import importlib
-from types import SimpleNamespace
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
+
+if TYPE_CHECKING:
+    from types import SimpleNamespace
 
 
 def _setup_entry_data(

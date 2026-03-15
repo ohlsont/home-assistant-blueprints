@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import importlib
-from types import SimpleNamespace
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from types import SimpleNamespace
 
 
 def _validate(blockheat_env: SimpleNamespace, values: dict[str, object]) -> str | None:

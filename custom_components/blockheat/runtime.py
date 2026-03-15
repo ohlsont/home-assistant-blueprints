@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.const import EVENT_HOMEASSISTANT_START
 from homeassistant.core import Event, HomeAssistant, callback
@@ -73,7 +72,6 @@ from .const import (
     STATE_TARGET_FINAL,
     STATE_TARGET_SAVING,
 )
-from .coordinator import BlockheatCoordinator
 from .engine import (
     as_float,
     as_int,
@@ -83,6 +81,11 @@ from .engine import (
     compute_policy,
     compute_saving_target,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from .coordinator import BlockheatCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -712,7 +715,7 @@ class BlockheatRuntime:
     def _parse_datetime_value(self, value: Any) -> datetime | None:
         parsed = dt_util.parse_datetime(str(value)) if value is not None else None
         if parsed is not None:
-            return dt_util.as_utc(parsed)
+            return dt_util.as_utc(parsed)  # type: ignore[no-any-return]
 
         ts = as_float(value)
         if ts is not None:
