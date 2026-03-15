@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from datetime import datetime
 
 DEFAULT_POLICY_CUTOFF = 9999.0
 DEFAULT_MISSING_OUTDOOR = 999.0

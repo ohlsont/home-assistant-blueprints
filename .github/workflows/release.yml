@@ -27,6 +27,13 @@ jobs:
         with:
           python-version: "3.14"
 
+      - name: Cache uv
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: uv-${{ runner.os }}-
+
       - name: Sync dev dependencies
         run: uv sync --group dev
 
@@ -46,6 +53,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.14"
+
+      - name: Cache uv
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: uv-${{ runner.os }}-
 
       - name: Sync dev dependencies
         run: uv sync --group dev
@@ -70,6 +84,13 @@ jobs:
         with:
           python-version: "3.14"
 
+      - name: Cache uv
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: uv-${{ runner.os }}-
+
       - name: Sync dev dependencies
         run: uv sync --group dev
 
@@ -81,6 +102,9 @@ jobs:
 
       - name: Type check
         run: uv run mypy
+
+      - name: Spell check
+        run: uv run codespell custom_components homeassistant scripts tests
 
   release:
     runs-on: ubuntu-latest
@@ -101,6 +125,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.14"
+
+      - name: Cache uv
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: uv-${{ runner.os }}-
 
       - name: Sync dev dependencies
         run: uv sync --group dev

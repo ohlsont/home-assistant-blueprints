@@ -9,7 +9,8 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "validate_release_version.py"
 SPEC = importlib.util.spec_from_file_location("release_version_validation", SCRIPT_PATH)
-assert SPEC and SPEC.loader
+assert SPEC
+assert SPEC.loader
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 

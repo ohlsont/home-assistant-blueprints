@@ -7,6 +7,8 @@ import sys
 import unittest
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[2]
 ENGINE_MODULE = "homeassistant.custom_components.blockheat.engine"
 ENGINE_PATH = ROOT / "homeassistant" / "custom_components" / "blockheat" / "engine.py"
@@ -15,7 +17,8 @@ if ENGINE_MODULE in sys.modules:
     engine = sys.modules[ENGINE_MODULE]
 else:
     spec = importlib.util.spec_from_file_location(ENGINE_MODULE, ENGINE_PATH)
-    assert spec and spec.loader
+    assert spec
+    assert spec.loader
     engine = importlib.util.module_from_spec(spec)
     sys.modules[ENGINE_MODULE] = engine
     spec.loader.exec_module(engine)
@@ -44,8 +47,8 @@ class ParitySuite(unittest.TestCase):
             control_min_c=10.0,
             control_max_c=26.0,
         )
-        self.assertEqual(saving, 20.0)
-        self.assertEqual(final.target, 20.0)
+        assert saving == 20.0
+        assert final.target == 20.0
 
     def test_policy_on_cold_saving_path(self) -> None:
         saving = compute_saving_target(
@@ -57,7 +60,7 @@ class ParitySuite(unittest.TestCase):
             control_min_c=10.0,
             control_max_c=26.0,
         )
-        self.assertEqual(saving, 19.0)
+        assert saving == 19.0
 
     def test_policy_off_comfort_unsatisfied(self) -> None:
         comfort = compute_comfort_target(
@@ -85,7 +88,7 @@ class ParitySuite(unittest.TestCase):
             control_min_c=10.0,
             control_max_c=26.0,
         )
-        self.assertAlmostEqual(final.target, comfort.target)
+        assert final.target == pytest.approx(comfort.target)
 
     def test_policy_off_storage_needs_heat(self) -> None:
         comfort = compute_comfort_target(
@@ -105,7 +108,7 @@ class ParitySuite(unittest.TestCase):
             control_min_c=10.0,
             control_max_c=26.0,
         )
-        self.assertGreaterEqual(comfort.target, 23.0)
+        assert comfort.target >= 23.0
 
     def test_policy_off_storage_ok(self) -> None:
         comfort = compute_comfort_target(
@@ -125,7 +128,7 @@ class ParitySuite(unittest.TestCase):
             control_min_c=10.0,
             control_max_c=26.0,
         )
-        self.assertEqual(comfort.target, 20.0)
+        assert comfort.target == 20.0
 
     def test_extreme_clamp_behavior(self) -> None:
         comfort = compute_comfort_target(
@@ -145,7 +148,7 @@ class ParitySuite(unittest.TestCase):
             control_min_c=10.0,
             control_max_c=26.0,
         )
-        self.assertEqual(comfort.target, 26.0)
+        assert comfort.target == 26.0
 
     def test_cold_boost_raises_target_below_threshold(self) -> None:
         at_threshold = compute_comfort_target(
@@ -182,9 +185,9 @@ class ParitySuite(unittest.TestCase):
             control_min_c=10.0,
             control_max_c=26.0,
         )
-        self.assertEqual(at_threshold.boost_clamped, 0.0)
-        self.assertGreater(colder.boost_clamped, 0.0)
-        self.assertGreater(colder.target, at_threshold.target)
+        assert at_threshold.boost_clamped == 0.0
+        assert colder.boost_clamped > 0.0
+        assert colder.target > at_threshold.target
 
 
 if __name__ == "__main__":

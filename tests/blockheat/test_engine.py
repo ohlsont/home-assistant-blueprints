@@ -8,6 +8,8 @@ import unittest
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[2]
 ENGINE_MODULE = "homeassistant.custom_components.blockheat.engine"
 ENGINE_PATH = ROOT / "homeassistant" / "custom_components" / "blockheat" / "engine.py"
@@ -16,7 +18,8 @@ if ENGINE_MODULE in sys.modules:
     engine = sys.modules[ENGINE_MODULE]
 else:
     spec = importlib.util.spec_from_file_location(ENGINE_MODULE, ENGINE_PATH)
-    assert spec and spec.loader
+    assert spec
+    assert spec.loader
     engine = importlib.util.module_from_spec(spec)
     sys.modules[ENGINE_MODULE] = engine
     spec.loader.exec_module(engine)
@@ -43,8 +46,8 @@ class PolicyTests(unittest.TestCase):
             now=now,
             min_toggle_interval_min=15,
         )
-        self.assertTrue(result.target_on)
-        self.assertTrue(result.should_turn_on)
+        assert result.target_on
+        assert result.should_turn_on
 
     def test_policy_respects_debounce(self) -> None:
         now = datetime(2026, 2, 18, 10, 0, tzinfo=UTC)
@@ -60,8 +63,8 @@ class PolicyTests(unittest.TestCase):
             now=now,
             min_toggle_interval_min=15,
         )
-        self.assertTrue(result.target_on)
-        self.assertFalse(result.should_turn_on)
+        assert result.target_on
+        assert not result.should_turn_on
 
 
 class SavingTargetTests(unittest.TestCase):
@@ -75,7 +78,7 @@ class SavingTargetTests(unittest.TestCase):
             control_min_c=10.0,
             control_max_c=26.0,
         )
-        self.assertEqual(target, 17.0)
+        assert target == 17.0
 
     def test_saving_cold_mode_uses_setpoint_offset(self) -> None:
         target = compute_saving_target(
@@ -87,7 +90,7 @@ class SavingTargetTests(unittest.TestCase):
             control_min_c=10.0,
             control_max_c=26.0,
         )
-        self.assertEqual(target, 19.0)
+        assert target == 19.0
 
 
 class ComfortTargetTests(unittest.TestCase):
@@ -109,7 +112,7 @@ class ComfortTargetTests(unittest.TestCase):
             control_min_c=10.0,
             control_max_c=26.0,
         )
-        self.assertAlmostEqual(result.target, 20.0)
+        assert result.target == pytest.approx(20.0)
 
     def test_comfort_satisfied_storage_needs_heat_prefers_storage_path(self) -> None:
         result = compute_comfort_target(
@@ -129,7 +132,7 @@ class ComfortTargetTests(unittest.TestCase):
             control_min_c=10.0,
             control_max_c=26.0,
         )
-        self.assertAlmostEqual(result.target, 23.0)
+        assert result.target == pytest.approx(23.0)
 
     def test_comfort_satisfied_storage_ok_uses_maintenance(self) -> None:
         result = compute_comfort_target(
@@ -149,7 +152,7 @@ class ComfortTargetTests(unittest.TestCase):
             control_min_c=10.0,
             control_max_c=26.0,
         )
-        self.assertAlmostEqual(result.target, 20.0)
+        assert result.target == pytest.approx(20.0)
 
 
 class FinalTargetTests(unittest.TestCase):
@@ -162,8 +165,8 @@ class FinalTargetTests(unittest.TestCase):
             control_min_c=10.0,
             control_max_c=26.0,
         )
-        self.assertEqual(result.target, 18.0)
-        self.assertEqual(result.source, "saving")
+        assert result.target == 18.0
+        assert result.source == "saving"
 
     def test_final_prefers_comfort_when_policy_off(self) -> None:
         result = compute_final_target(
@@ -174,8 +177,8 @@ class FinalTargetTests(unittest.TestCase):
             control_min_c=10.0,
             control_max_c=26.0,
         )
-        self.assertEqual(result.target, 23.0)
-        self.assertEqual(result.source, "comfort")
+        assert result.target == 23.0
+        assert result.source == "comfort"
 
     def test_final_uses_default_min_when_policy_off_targets_missing(self) -> None:
         result = compute_final_target(
@@ -186,8 +189,8 @@ class FinalTargetTests(unittest.TestCase):
             control_min_c=10.0,
             control_max_c=26.0,
         )
-        self.assertEqual(result.target, 10.0)
-        self.assertEqual(result.source, "control_min_default")
+        assert result.target == 10.0
+        assert result.source == "control_min_default"
 
 
 class ConsumerTests(unittest.TestCase):
@@ -202,8 +205,8 @@ class ConsumerTests(unittest.TestCase):
             outdoor_temp_threshold=-10.0,
             outdoor_sensor_defined=True,
         )
-        self.assertFalse(result.should_write)
-        self.assertIsNone(result.target_temp)
+        assert not result.should_write
+        assert result.target_temp is None
 
 
 if __name__ == "__main__":

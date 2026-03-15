@@ -9,7 +9,7 @@ from datetime import UTC, datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, ClassVar
 
 import pytest
 
@@ -396,7 +396,8 @@ def _parse_datetime(value: Any) -> datetime | None:
 
 @pytest.fixture
 def blockheat_env(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
-    service_not_found_cls = type("ServiceNotFound", (Exception,), {})
+    home_assistant_error_cls = type("HomeAssistantError", (Exception,), {})
+    service_not_found_cls = type("ServiceNotFound", (home_assistant_error_cls,), {})
 
     homeassistant_module = types.ModuleType("homeassistant")
     homeassistant_module.__path__ = [str(HOMEASSISTANT_DIR)]
@@ -428,6 +429,7 @@ def blockheat_env(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
     core_module.SupportsResponse = FakeSupportsResponse
 
     exceptions_module = types.ModuleType("homeassistant.exceptions")
+    exceptions_module.HomeAssistantError = home_assistant_error_cls
     exceptions_module.ServiceNotFound = service_not_found_cls
 
     helpers_module = types.ModuleType("homeassistant.helpers")
@@ -486,7 +488,7 @@ def blockheat_env(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
         def __class_getitem__(cls, item: Any) -> type[FakeStore]:
             return cls
 
-        _items: dict[str, Any] = {}
+        _items: ClassVar[dict[str, Any]] = {}
 
         def __init__(self, hass: FakeHass, version: int, key: str) -> None:
             self.hass = hass
@@ -627,7 +629,10 @@ def blockheat_env(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
 
 @pytest.fixture
 def fake_hass(blockheat_env: SimpleNamespace) -> FakeHass:
-    return blockheat_env.FakeHass(blockheat_env.service_not_found_cls)
+    hass = blockheat_env.FakeHass(blockheat_env.service_not_found_cls)
+    hass.services.available.add(("number", "set_value"))
+    hass.services.available.add(("climate", "set_temperature"))
+    return hass
 
 
 @pytest.fixture

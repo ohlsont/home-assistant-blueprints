@@ -17,7 +17,8 @@ if ENGINE_MODULE in sys.modules:
     engine = sys.modules[ENGINE_MODULE]
 else:
     spec = importlib.util.spec_from_file_location(ENGINE_MODULE, ENGINE_PATH)
-    assert spec and spec.loader
+    assert spec
+    assert spec.loader
     engine = importlib.util.module_from_spec(spec)
     sys.modules[ENGINE_MODULE] = engine
     spec.loader.exec_module(engine)

@@ -6,8 +6,11 @@ import json
 import re
 import sys
 import tomllib
-from collections.abc import Iterable
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
 
