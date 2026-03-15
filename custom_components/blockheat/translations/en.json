@@ -14,8 +14,7 @@
           "control_number_entity": "Control output - Writable control number entity",
           "pv_sensor": "Optional signal - PV production sensor",
           "enable_daikin_consumer": "Optional consumer - Enable Daikin control",
-          "daikin_climate_entity": "Optional consumer - Daikin climate entity",
-          "daikin_outdoor_temp_sensor": "Optional consumer - Daikin outdoor temperature sensor"
+          "daikin_climate_entity": "Optional consumer - Daikin climate entity"
         },
         "data_description": {
           "nordpool_price": "Current price sensor with optional `today` attribute for slot ranking.",
@@ -26,117 +25,56 @@
           "control_number_entity": "Numeric control endpoint Blockheat writes final target values to.",
           "pv_sensor": "Optional PV power sensor used to suppress blocking when production is high.",
           "enable_daikin_consumer": "Enable optional Daikin consumer writes in tuning and runtime.",
-          "daikin_climate_entity": "Target Daikin climate entity for optional consumer writes.",
-          "daikin_outdoor_temp_sensor": "Optional outdoor sensor for Daikin cold-weather guard."
+          "daikin_climate_entity": "Target Daikin climate entity for optional consumer writes."
         }
       },
-      "tuning_policy": {
-        "title": "Tuning: Policy window",
-        "description": "Configure expensive-slot policy and policy safety guards.",
+      "tuning_targets": {
+        "title": "Tuning: Policy & targets",
+        "description": "Configure policy window, saving/comfort targets, and cold boost.",
         "data": {
           "minutes_to_block": "Block window per day (minutes)",
           "price_ignore_below": "Skip blocking when price is below (SEK/kWh)",
           "pv_ignore_above_w": "Skip blocking when PV is at/above (W)",
-          "min_toggle_interval_min": "Minimum policy toggle interval (min)"
+          "heatpump_setpoint": "Heatpump setpoint (°C)",
+          "saving_cold_offset_c": "Saving cold offset (°C)",
+          "energy_saving_warm_shutdown_outdoor": "Warm shutdown outdoor threshold (°C)",
+          "comfort_target_c": "Comfort target (°C)",
+          "storage_target_c": "Storage target (°C)",
+          "heatpump_offset_c": "Heatpump offset (°C)",
+          "cold_threshold": "Cold threshold (°C)",
+          "max_boost": "Maximum boost (°C)"
         },
         "data_description": {
           "minutes_to_block": "Daily total minutes considered expensive and routed to saving mode (top-N 15-minute slots).",
           "price_ignore_below": "If current price is below this value, policy is forced OFF even if the slot is in top-N.",
           "pv_ignore_above_w": "If current PV production is at or above this value, policy is forced OFF even if the slot is in top-N.",
-          "min_toggle_interval_min": "Debounce interval that enforces a minimum time between policy ON/OFF transitions."
-        }
-      },
-      "tuning_saving": {
-        "title": "Tuning: Saving target",
-        "description": "Set saving-mode target behavior for warm and cold conditions.",
-        "data": {
-          "heatpump_setpoint": "Heatpump setpoint (°C)",
-          "saving_cold_offset_c": "Saving cold offset (°C)",
-          "virtual_temperature": "Virtual temperature (°C)",
-          "energy_saving_warm_shutdown_outdoor": "Warm shutdown outdoor threshold (°C)"
-        },
-        "data_description": {
-          "heatpump_setpoint": "Base heat pump setpoint used when saving mode is active in colder conditions.",
+          "heatpump_setpoint": "Base heat pump setpoint used in saving and maintenance modes.",
           "saving_cold_offset_c": "Degrees subtracted from heatpump setpoint when computing saving target.",
-          "virtual_temperature": "Fallback saving target used during warm outdoor conditions.",
-          "energy_saving_warm_shutdown_outdoor": "Outdoor temperature threshold where saving target switches to virtual temperature."
-        }
-      },
-      "tuning_comfort": {
-        "title": "Tuning: Comfort target",
-        "description": "Set comfort, storage, and maintenance target behavior.",
-        "data": {
-          "comfort_target_c": "Comfort target (°C)",
-          "comfort_to_heatpump_offset_c": "Comfort-to-heatpump offset (°C)",
-          "storage_target_c": "Storage target (°C)",
-          "storage_to_heatpump_offset_c": "Storage-to-heatpump offset (°C)",
-          "maintenance_target_c": "Maintenance target (°C)",
-          "comfort_margin_c": "Comfort margin (°C)"
-        },
-        "data_description": {
+          "energy_saving_warm_shutdown_outdoor": "Outdoor temperature threshold where saving target switches to heatpump setpoint.",
           "comfort_target_c": "Desired comfort-room temperature before offsets and boost are applied.",
-          "comfort_to_heatpump_offset_c": "Degrees subtracted from comfort target to derive heat pump comfort target.",
           "storage_target_c": "Desired storage temperature target before offsets and boost are applied.",
-          "storage_to_heatpump_offset_c": "Degrees subtracted from storage target to derive heat pump storage target.",
-          "maintenance_target_c": "Fallback target used when comfort is satisfied and storage does not need heat.",
-          "comfort_margin_c": "Allowed margin below targets before comfort and storage are treated as unmet."
-        }
-      },
-      "tuning_boost": {
-        "title": "Tuning: Cold boost",
-        "description": "Configure cold-weather boost pull-down behavior.",
-        "data": {
-          "cold_threshold": "Cold threshold (°C)",
-          "max_boost": "Maximum boost (°C)",
-          "boost_slope_c": "Boost slope (°C per outdoor delta)"
-        },
-        "data_description": {
+          "heatpump_offset_c": "Degrees subtracted from comfort/storage targets to derive heat pump targets.",
           "cold_threshold": "Outdoor temperature below which cold-weather boost starts applying.",
-          "max_boost": "Maximum additional boost degrees that can be added in cold weather.",
-          "boost_slope_c": "Slope controlling how fast boost increases as outdoor temperature drops."
-        }
-      },
-      "tuning_limits": {
-        "title": "Tuning: Limits and deadbands",
-        "description": "Set control clamp limits and helper/control write deadbands.",
-        "data": {
-          "control_min_c": "Control minimum (°C)",
-          "control_max_c": "Control maximum (°C)",
-          "saving_helper_write_delta_c": "Saving helper write delta (°C)",
-          "comfort_helper_write_delta_c": "Comfort helper write delta (°C)",
-          "final_helper_write_delta_c": "Final helper write delta (°C)",
-          "control_write_delta_c": "Control write delta (°C)"
-        },
-        "data_description": {
-          "control_min_c": "Lower clamp limit for all computed control targets.",
-          "control_max_c": "Upper clamp limit for all computed control targets.",
-          "saving_helper_write_delta_c": "Minimum target delta required before updating internal saving target state.",
-          "comfort_helper_write_delta_c": "Minimum target delta required before updating internal comfort target state.",
-          "final_helper_write_delta_c": "Minimum target delta required before updating internal final target state.",
-          "control_write_delta_c": "Minimum delta required before writing a new value to the external control number entity."
+          "max_boost": "Maximum additional boost degrees that can be added in cold weather."
         }
       },
       "tuning_daikin": {
         "title": "Tuning: Daikin consumer",
-        "description": "Set optional Daikin consumer temperatures and write threshold.",
+        "description": "Set optional Daikin consumer temperatures.",
         "data": {
           "daikin_normal_temperature": "Daikin normal temperature (°C)",
           "daikin_saving_temperature": "Daikin saving temperature (°C)",
-          "daikin_outdoor_temp_threshold": "Daikin outdoor threshold (°C)",
-          "daikin_min_temp_change": "Daikin minimum write delta (°C)"
+          "daikin_outdoor_temp_threshold": "Daikin outdoor threshold (°C)"
         },
         "data_description": {
           "daikin_normal_temperature": "Daikin target temperature when policy is OFF (comfort mode).",
           "daikin_saving_temperature": "Daikin target temperature when policy is ON (saving mode).",
-          "daikin_outdoor_temp_threshold": "Outdoor guard threshold; Daikin writes are blocked below this temperature.",
-          "daikin_min_temp_change": "Minimum delta required before sending a new Daikin setpoint."
+          "daikin_outdoor_temp_threshold": "Outdoor guard threshold; Daikin writes are blocked below this temperature."
         }
       }
     },
     "error": {
       "invalid_required_entities": "Required entity id values cannot be empty.",
-      "invalid_control_range": "Control minimum must be less than or equal to control maximum.",
-      "invalid_boost_slope": "Cold boost slope must be greater than zero.",
       "invalid_non_negative": "Intervals and deltas must be non-negative."
     },
     "abort": {
@@ -157,8 +95,7 @@
           "control_number_entity": "Control output - Writable control number entity",
           "pv_sensor": "Optional signal - PV production sensor",
           "enable_daikin_consumer": "Optional consumer - Enable Daikin control",
-          "daikin_climate_entity": "Optional consumer - Daikin climate entity",
-          "daikin_outdoor_temp_sensor": "Optional consumer - Daikin outdoor temperature sensor"
+          "daikin_climate_entity": "Optional consumer - Daikin climate entity"
         },
         "data_description": {
           "nordpool_price": "Current price sensor with optional `today` attribute for slot ranking.",
@@ -169,117 +106,56 @@
           "control_number_entity": "Numeric control endpoint Blockheat writes final target values to.",
           "pv_sensor": "Optional PV power sensor used to suppress blocking when production is high.",
           "enable_daikin_consumer": "Enable optional Daikin consumer writes in tuning and runtime.",
-          "daikin_climate_entity": "Target Daikin climate entity for optional consumer writes.",
-          "daikin_outdoor_temp_sensor": "Optional outdoor sensor for Daikin cold-weather guard."
+          "daikin_climate_entity": "Target Daikin climate entity for optional consumer writes."
         }
       },
-      "tuning_policy": {
-        "title": "Tuning: Policy window",
-        "description": "Configure expensive-slot policy and policy safety guards.",
+      "tuning_targets": {
+        "title": "Tuning: Policy & targets",
+        "description": "Configure policy window, saving/comfort targets, and cold boost.",
         "data": {
           "minutes_to_block": "Block window per day (minutes)",
           "price_ignore_below": "Skip blocking when price is below (SEK/kWh)",
           "pv_ignore_above_w": "Skip blocking when PV is at/above (W)",
-          "min_toggle_interval_min": "Minimum policy toggle interval (min)"
+          "heatpump_setpoint": "Heatpump setpoint (°C)",
+          "saving_cold_offset_c": "Saving cold offset (°C)",
+          "energy_saving_warm_shutdown_outdoor": "Warm shutdown outdoor threshold (°C)",
+          "comfort_target_c": "Comfort target (°C)",
+          "storage_target_c": "Storage target (°C)",
+          "heatpump_offset_c": "Heatpump offset (°C)",
+          "cold_threshold": "Cold threshold (°C)",
+          "max_boost": "Maximum boost (°C)"
         },
         "data_description": {
           "minutes_to_block": "Daily total minutes considered expensive and routed to saving mode (top-N 15-minute slots).",
           "price_ignore_below": "If current price is below this value, policy is forced OFF even if the slot is in top-N.",
           "pv_ignore_above_w": "If current PV production is at or above this value, policy is forced OFF even if the slot is in top-N.",
-          "min_toggle_interval_min": "Debounce interval that enforces a minimum time between policy ON/OFF transitions."
-        }
-      },
-      "tuning_saving": {
-        "title": "Tuning: Saving target",
-        "description": "Set saving-mode target behavior for warm and cold conditions.",
-        "data": {
-          "heatpump_setpoint": "Heatpump setpoint (°C)",
-          "saving_cold_offset_c": "Saving cold offset (°C)",
-          "virtual_temperature": "Virtual temperature (°C)",
-          "energy_saving_warm_shutdown_outdoor": "Warm shutdown outdoor threshold (°C)"
-        },
-        "data_description": {
-          "heatpump_setpoint": "Base heat pump setpoint used when saving mode is active in colder conditions.",
+          "heatpump_setpoint": "Base heat pump setpoint used in saving and maintenance modes.",
           "saving_cold_offset_c": "Degrees subtracted from heatpump setpoint when computing saving target.",
-          "virtual_temperature": "Fallback saving target used during warm outdoor conditions.",
-          "energy_saving_warm_shutdown_outdoor": "Outdoor temperature threshold where saving target switches to virtual temperature."
-        }
-      },
-      "tuning_comfort": {
-        "title": "Tuning: Comfort target",
-        "description": "Set comfort, storage, and maintenance target behavior.",
-        "data": {
-          "comfort_target_c": "Comfort target (°C)",
-          "comfort_to_heatpump_offset_c": "Comfort-to-heatpump offset (°C)",
-          "storage_target_c": "Storage target (°C)",
-          "storage_to_heatpump_offset_c": "Storage-to-heatpump offset (°C)",
-          "maintenance_target_c": "Maintenance target (°C)",
-          "comfort_margin_c": "Comfort margin (°C)"
-        },
-        "data_description": {
+          "energy_saving_warm_shutdown_outdoor": "Outdoor temperature threshold where saving target switches to heatpump setpoint.",
           "comfort_target_c": "Desired comfort-room temperature before offsets and boost are applied.",
-          "comfort_to_heatpump_offset_c": "Degrees subtracted from comfort target to derive heat pump comfort target.",
           "storage_target_c": "Desired storage temperature target before offsets and boost are applied.",
-          "storage_to_heatpump_offset_c": "Degrees subtracted from storage target to derive heat pump storage target.",
-          "maintenance_target_c": "Fallback target used when comfort is satisfied and storage does not need heat.",
-          "comfort_margin_c": "Allowed margin below targets before comfort and storage are treated as unmet."
-        }
-      },
-      "tuning_boost": {
-        "title": "Tuning: Cold boost",
-        "description": "Configure cold-weather boost pull-down behavior.",
-        "data": {
-          "cold_threshold": "Cold threshold (°C)",
-          "max_boost": "Maximum boost (°C)",
-          "boost_slope_c": "Boost slope (°C per outdoor delta)"
-        },
-        "data_description": {
+          "heatpump_offset_c": "Degrees subtracted from comfort/storage targets to derive heat pump targets.",
           "cold_threshold": "Outdoor temperature below which cold-weather boost starts applying.",
-          "max_boost": "Maximum additional boost degrees that can be added in cold weather.",
-          "boost_slope_c": "Slope controlling how fast boost increases as outdoor temperature drops."
-        }
-      },
-      "tuning_limits": {
-        "title": "Tuning: Limits and deadbands",
-        "description": "Set control clamp limits and helper/control write deadbands.",
-        "data": {
-          "control_min_c": "Control minimum (°C)",
-          "control_max_c": "Control maximum (°C)",
-          "saving_helper_write_delta_c": "Saving helper write delta (°C)",
-          "comfort_helper_write_delta_c": "Comfort helper write delta (°C)",
-          "final_helper_write_delta_c": "Final helper write delta (°C)",
-          "control_write_delta_c": "Control write delta (°C)"
-        },
-        "data_description": {
-          "control_min_c": "Lower clamp limit for all computed control targets.",
-          "control_max_c": "Upper clamp limit for all computed control targets.",
-          "saving_helper_write_delta_c": "Minimum target delta required before updating internal saving target state.",
-          "comfort_helper_write_delta_c": "Minimum target delta required before updating internal comfort target state.",
-          "final_helper_write_delta_c": "Minimum target delta required before updating internal final target state.",
-          "control_write_delta_c": "Minimum delta required before writing a new value to the external control number entity."
+          "max_boost": "Maximum additional boost degrees that can be added in cold weather."
         }
       },
       "tuning_daikin": {
         "title": "Tuning: Daikin consumer",
-        "description": "Set optional Daikin consumer temperatures and write threshold.",
+        "description": "Set optional Daikin consumer temperatures.",
         "data": {
           "daikin_normal_temperature": "Daikin normal temperature (°C)",
           "daikin_saving_temperature": "Daikin saving temperature (°C)",
-          "daikin_outdoor_temp_threshold": "Daikin outdoor threshold (°C)",
-          "daikin_min_temp_change": "Daikin minimum write delta (°C)"
+          "daikin_outdoor_temp_threshold": "Daikin outdoor threshold (°C)"
         },
         "data_description": {
           "daikin_normal_temperature": "Daikin target temperature when policy is OFF (comfort mode).",
           "daikin_saving_temperature": "Daikin target temperature when policy is ON (saving mode).",
-          "daikin_outdoor_temp_threshold": "Outdoor guard threshold; Daikin writes are blocked below this temperature.",
-          "daikin_min_temp_change": "Minimum delta required before sending a new Daikin setpoint."
+          "daikin_outdoor_temp_threshold": "Outdoor guard threshold; Daikin writes are blocked below this temperature."
         }
       }
     },
     "error": {
       "invalid_required_entities": "Required entity id values cannot be empty.",
-      "invalid_control_range": "Control minimum must be less than or equal to control maximum.",
-      "invalid_boost_slope": "Cold boost slope must be greater than zero.",
       "invalid_non_negative": "Intervals and deltas must be non-negative."
     }
   }

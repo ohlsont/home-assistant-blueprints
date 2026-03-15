@@ -16,31 +16,20 @@ from homeassistant.helpers import storage
 from homeassistant.util import dt as dt_util
 
 from .const import (
-    CONF_BOOST_SLOPE_C,
     CONF_COLD_THRESHOLD,
-    CONF_COMFORT_HELPER_WRITE_DELTA_C,
-    CONF_COMFORT_MARGIN_C,
     CONF_COMFORT_ROOM_1_SENSOR,
     CONF_COMFORT_ROOM_2_SENSOR,
     CONF_COMFORT_TARGET_C,
-    CONF_COMFORT_TO_HEATPUMP_OFFSET_C,
-    CONF_CONTROL_MAX_C,
-    CONF_CONTROL_MIN_C,
     CONF_CONTROL_NUMBER_ENTITY,
-    CONF_CONTROL_WRITE_DELTA_C,
     CONF_DAIKIN_CLIMATE_ENTITY,
-    CONF_DAIKIN_MIN_TEMP_CHANGE,
     CONF_DAIKIN_NORMAL_TEMPERATURE,
-    CONF_DAIKIN_OUTDOOR_TEMP_SENSOR,
     CONF_DAIKIN_OUTDOOR_TEMP_THRESHOLD,
     CONF_DAIKIN_SAVING_TEMPERATURE,
     CONF_ENABLE_DAIKIN_CONSUMER,
     CONF_ENERGY_SAVING_WARM_SHUTDOWN_OUTDOOR,
-    CONF_FINAL_HELPER_WRITE_DELTA_C,
+    CONF_HEATPUMP_OFFSET_C,
     CONF_HEATPUMP_SETPOINT,
-    CONF_MAINTENANCE_TARGET_C,
     CONF_MAX_BOOST,
-    CONF_MIN_TOGGLE_INTERVAL_MIN,
     CONF_MINUTES_TO_BLOCK,
     CONF_NORDPOOL_PRICE,
     CONF_OUTDOOR_TEMPERATURE_SENSOR,
@@ -48,20 +37,18 @@ from .const import (
     CONF_PV_IGNORE_ABOVE_W,
     CONF_PV_SENSOR,
     CONF_SAVING_COLD_OFFSET_C,
-    CONF_SAVING_HELPER_WRITE_DELTA_C,
     CONF_STORAGE_ROOM_SENSOR,
     CONF_STORAGE_TARGET_C,
-    CONF_STORAGE_TO_HEATPUMP_OFFSET_C,
     CONF_TARGET_BOOLEAN,
     CONF_TARGET_COMFORT_HELPER,
     CONF_TARGET_FINAL_HELPER,
     CONF_TARGET_SAVING_HELPER,
-    CONF_VIRTUAL_TEMPERATURE,
     DEFAULT_RECOMPUTE_MINUTES,
     DEFAULTS,
     EVENT_BLOCKHEAT_POLICY_CHANGED,
     EVENT_BLOCKHEAT_SNAPSHOT,
     EVENT_ENERGY_SAVING_STATE_CHANGED,
+    HARDCODED,
     OPTIONAL_ENTITY_KEYS,
     REQUIRED_ENTITY_KEYS,
     STATE_POLICY_LAST_CHANGED,
@@ -97,11 +84,9 @@ _SELF_WRITTEN_ENTITY_KEYS: tuple[str, ...] = (
 _DAIKIN_CONFIG_DEBUG_KEYS: tuple[str, ...] = (
     CONF_ENABLE_DAIKIN_CONSUMER,
     CONF_DAIKIN_CLIMATE_ENTITY,
-    CONF_DAIKIN_OUTDOOR_TEMP_SENSOR,
     CONF_DAIKIN_NORMAL_TEMPERATURE,
     CONF_DAIKIN_SAVING_TEMPERATURE,
     CONF_DAIKIN_OUTDOOR_TEMP_THRESHOLD,
-    CONF_DAIKIN_MIN_TEMP_CHANGE,
 )
 
 
@@ -133,7 +118,12 @@ class BlockheatRuntime:
         self._entry_id = entry_id
         self._entry_data = dict(config if entry_data is None else entry_data)
         self._entry_options = {} if entry_options is None else dict(entry_options)
-        self._config = {**DEFAULTS, **self._entry_data, **self._entry_options}
+        self._config = {
+            **DEFAULTS,
+            **HARDCODED,
+            **self._entry_data,
+            **self._entry_options,
+        }
         self._coordinator = coordinator
         self._unsubscribers: list[Callable[[], None]] = []
         self._lock = asyncio.Lock()
@@ -291,6 +281,8 @@ class BlockheatRuntime:
         current_on = self._state.policy_on
         last_changed = self._state.policy_last_changed
 
+        min_toggle = int(HARDCODED["min_toggle_interval_min"])  # type: ignore[call-overload]
+
         computation = compute_policy(
             price=price,
             prices_today=prices_today,
@@ -301,7 +293,7 @@ class BlockheatRuntime:
             current_on=current_on,
             last_changed=last_changed,
             now=now,
-            min_toggle_interval_min=self._cfg_int(CONF_MIN_TOGGLE_INTERVAL_MIN, 15),
+            min_toggle_interval_min=min_toggle,
         )
 
         policy_on_effective = current_on
@@ -371,22 +363,22 @@ class BlockheatRuntime:
         outdoor_temp = self._state_float(self._cfg_str(CONF_OUTDOOR_TEMPERATURE_SENSOR))
         heatpump_setpoint = self._cfg_float(CONF_HEATPUMP_SETPOINT, 20.0)
         saving_cold_offset_c = self._cfg_float(CONF_SAVING_COLD_OFFSET_C, 1.0)
-        virtual_temperature = self._cfg_float(CONF_VIRTUAL_TEMPERATURE, 20.0)
         warm_shutdown_outdoor = self._cfg_float(
             CONF_ENERGY_SAVING_WARM_SHUTDOWN_OUTDOOR,
             7.0,
         )
+        control_min_c = float(HARDCODED["control_min_c"])  # type: ignore[arg-type]
+        control_max_c = float(HARDCODED["control_max_c"])  # type: ignore[arg-type]
         target = compute_saving_target(
             outdoor_temp=outdoor_temp,
             heatpump_setpoint=heatpump_setpoint,
             saving_cold_offset_c=saving_cold_offset_c,
-            virtual_temperature=virtual_temperature,
             warm_shutdown_outdoor=warm_shutdown_outdoor,
-            control_min_c=self._cfg_float(CONF_CONTROL_MIN_C, 10.0),
-            control_max_c=self._cfg_float(CONF_CONTROL_MAX_C, 26.0),
+            control_min_c=control_min_c,
+            control_max_c=control_max_c,
         )
 
-        write_delta_c = self._cfg_float(CONF_SAVING_HELPER_WRITE_DELTA_C, 0.05)
+        write_delta_c = float(HARDCODED["saving_helper_write_delta_c"])  # type: ignore[arg-type]
         write_performed = self._delta_ok(
             target,
             target_current,
@@ -397,7 +389,7 @@ class BlockheatRuntime:
 
         debug = {
             "source": (
-                "virtual_temperature"
+                "heatpump_setpoint"
                 if outdoor_temp is not None and outdoor_temp >= warm_shutdown_outdoor
                 else "setpoint_minus_offset"
             ),
@@ -410,12 +402,18 @@ class BlockheatRuntime:
             "write_performed": write_performed,
             "heatpump_setpoint": heatpump_setpoint,
             "saving_cold_offset_c": saving_cold_offset_c,
-            "virtual_temperature": virtual_temperature,
         }
         return target, debug
 
     async def _async_apply_comfort_target(self) -> tuple[float, dict[str, Any]]:
         target_current = self._state.target_comfort
+
+        heatpump_setpoint = self._cfg_float(CONF_HEATPUMP_SETPOINT, 20.0)
+        heatpump_offset_c = self._cfg_float(CONF_HEATPUMP_OFFSET_C, 2.0)
+        comfort_margin_c = float(HARDCODED["comfort_margin_c"])  # type: ignore[arg-type]
+        boost_slope_c = float(HARDCODED["boost_slope_c"])  # type: ignore[arg-type]
+        control_min_c = float(HARDCODED["control_min_c"])  # type: ignore[arg-type]
+        control_max_c = float(HARDCODED["control_max_c"])  # type: ignore[arg-type]
 
         computation = compute_comfort_target(
             room1_temp=self._state_float(self._cfg_str(CONF_COMFORT_ROOM_1_SENSOR)),
@@ -425,25 +423,18 @@ class BlockheatRuntime:
                 self._cfg_str(CONF_OUTDOOR_TEMPERATURE_SENSOR)
             ),
             comfort_target_c=self._cfg_float(CONF_COMFORT_TARGET_C, 22.0),
-            comfort_to_heatpump_offset_c=self._cfg_float(
-                CONF_COMFORT_TO_HEATPUMP_OFFSET_C,
-                2.0,
-            ),
             storage_target_c=self._cfg_float(CONF_STORAGE_TARGET_C, 25.0),
-            storage_to_heatpump_offset_c=self._cfg_float(
-                CONF_STORAGE_TO_HEATPUMP_OFFSET_C,
-                2.0,
-            ),
-            maintenance_target_c=self._cfg_float(CONF_MAINTENANCE_TARGET_C, 20.0),
-            comfort_margin_c=self._cfg_float(CONF_COMFORT_MARGIN_C, 0.2),
+            heatpump_offset_c=heatpump_offset_c,
+            heatpump_setpoint=heatpump_setpoint,
+            comfort_margin_c=comfort_margin_c,
             cold_threshold=self._cfg_float(CONF_COLD_THRESHOLD, 0.0),
             max_boost=self._cfg_float(CONF_MAX_BOOST, 3.0),
-            boost_slope_c=self._cfg_float(CONF_BOOST_SLOPE_C, 5.0),
-            control_min_c=self._cfg_float(CONF_CONTROL_MIN_C, 10.0),
-            control_max_c=self._cfg_float(CONF_CONTROL_MAX_C, 26.0),
+            boost_slope_c=boost_slope_c,
+            control_min_c=control_min_c,
+            control_max_c=control_max_c,
         )
 
-        write_delta_c = self._cfg_float(CONF_COMFORT_HELPER_WRITE_DELTA_C, 0.05)
+        write_delta_c = float(HARDCODED["comfort_helper_write_delta_c"])  # type: ignore[arg-type]
         write_performed = self._delta_ok(
             computation.target,
             target_current,
@@ -487,19 +478,20 @@ class BlockheatRuntime:
         final_current = self._state.target_final
         control_current = self._state_float(control_number)
 
+        control_min_c = float(HARDCODED["control_min_c"])  # type: ignore[arg-type]
+        control_max_c = float(HARDCODED["control_max_c"])  # type: ignore[arg-type]
+
         final = compute_final_target(
             policy_on=policy_on_effective,
             saving_target=saving_target,
             comfort_target=comfort_target,
             control_current=control_current,
-            control_min_c=self._cfg_float(CONF_CONTROL_MIN_C, 10.0),
-            control_max_c=self._cfg_float(CONF_CONTROL_MAX_C, 26.0),
+            control_min_c=control_min_c,
+            control_max_c=control_max_c,
         )
 
-        final_helper_write_delta_c = self._cfg_float(
-            CONF_FINAL_HELPER_WRITE_DELTA_C, 0.05
-        )
-        control_write_delta_c = self._cfg_float(CONF_CONTROL_WRITE_DELTA_C, 0.2)
+        final_helper_write_delta_c = float(HARDCODED["final_helper_write_delta_c"])  # type: ignore[arg-type]
+        control_write_delta_c = float(HARDCODED["control_write_delta_c"])  # type: ignore[arg-type]
 
         final_helper_write_performed = self._delta_ok(
             final.target,
@@ -564,18 +556,19 @@ class BlockheatRuntime:
         if climate_state:
             current_temp = as_float(climate_state.attributes.get("temperature"))
 
-        outdoor_sensor = self._cfg_str(CONF_DAIKIN_OUTDOOR_TEMP_SENSOR)
+        outdoor_sensor = self._cfg_str(CONF_OUTDOOR_TEMPERATURE_SENSOR)
+        min_temp_change = float(HARDCODED["daikin_min_temp_change"])  # type: ignore[arg-type]
         computation = compute_daikin(
             policy_on=policy_on_effective,
             current_temp=current_temp,
             normal_temperature=self._cfg_float(CONF_DAIKIN_NORMAL_TEMPERATURE, 22.0),
             saving_temperature=self._cfg_float(CONF_DAIKIN_SAVING_TEMPERATURE, 19.0),
-            min_temp_change=self._cfg_float(CONF_DAIKIN_MIN_TEMP_CHANGE, 0.5),
+            min_temp_change=min_temp_change,
             outdoor_temp=self._state_float(outdoor_sensor) if outdoor_sensor else None,
             outdoor_temp_threshold=self._cfg_float(
                 CONF_DAIKIN_OUTDOOR_TEMP_THRESHOLD, -10.0
             ),
-            outdoor_sensor_defined=bool(outdoor_sensor),
+            outdoor_sensor_defined=True,
         )
 
         if computation.should_write and computation.target_temp is not None:

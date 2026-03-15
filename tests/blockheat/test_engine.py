@@ -68,24 +68,22 @@ class PolicyTests(unittest.TestCase):
 
 
 class SavingTargetTests(unittest.TestCase):
-    def test_saving_warm_shutdown_uses_virtual_temperature(self) -> None:
+    def test_saving_warm_shutdown_uses_heatpump_setpoint(self) -> None:
         target = compute_saving_target(
             outdoor_temp=8.0,
             heatpump_setpoint=20.0,
             saving_cold_offset_c=1.0,
-            virtual_temperature=17.0,
             warm_shutdown_outdoor=7.0,
             control_min_c=10.0,
             control_max_c=26.0,
         )
-        assert target == 17.0
+        assert target == 20.0
 
     def test_saving_cold_mode_uses_setpoint_offset(self) -> None:
         target = compute_saving_target(
             outdoor_temp=0.0,
             heatpump_setpoint=20.0,
             saving_cold_offset_c=1.0,
-            virtual_temperature=17.0,
             warm_shutdown_outdoor=7.0,
             control_min_c=10.0,
             control_max_c=26.0,
@@ -101,10 +99,9 @@ class ComfortTargetTests(unittest.TestCase):
             storage_temp=25.0,
             outdoor_temp=2.0,
             comfort_target_c=22.0,
-            comfort_to_heatpump_offset_c=2.0,
             storage_target_c=25.0,
-            storage_to_heatpump_offset_c=2.0,
-            maintenance_target_c=20.0,
+            heatpump_offset_c=2.0,
+            heatpump_setpoint=20.0,
             comfort_margin_c=0.2,
             cold_threshold=0.0,
             max_boost=3.0,
@@ -121,10 +118,9 @@ class ComfortTargetTests(unittest.TestCase):
             storage_temp=24.0,
             outdoor_temp=2.0,
             comfort_target_c=22.0,
-            comfort_to_heatpump_offset_c=2.0,
             storage_target_c=25.0,
-            storage_to_heatpump_offset_c=2.0,
-            maintenance_target_c=20.0,
+            heatpump_offset_c=2.0,
+            heatpump_setpoint=20.0,
             comfort_margin_c=0.2,
             cold_threshold=0.0,
             max_boost=3.0,
@@ -141,10 +137,9 @@ class ComfortTargetTests(unittest.TestCase):
             storage_temp=25.5,
             outdoor_temp=2.0,
             comfort_target_c=22.0,
-            comfort_to_heatpump_offset_c=2.0,
             storage_target_c=25.0,
-            storage_to_heatpump_offset_c=2.0,
-            maintenance_target_c=20.0,
+            heatpump_offset_c=2.0,
+            heatpump_setpoint=20.0,
             comfort_margin_c=0.2,
             cold_threshold=0.0,
             max_boost=3.0,

@@ -13,7 +13,6 @@ CONF_PV_SENSOR = "pv_sensor"
 CONF_PV_IGNORE_ABOVE_W = "pv_ignore_above_w"
 CONF_MINUTES_TO_BLOCK = "minutes_to_block"
 CONF_PRICE_IGNORE_BELOW = "price_ignore_below"
-CONF_MIN_TOGGLE_INTERVAL_MIN = "min_toggle_interval_min"
 
 CONF_COMFORT_ROOM_1_SENSOR = "comfort_room_1_sensor"
 CONF_COMFORT_ROOM_2_SENSOR = "comfort_room_2_sensor"
@@ -27,33 +26,19 @@ CONF_CONTROL_NUMBER_ENTITY = "control_number_entity"
 
 CONF_HEATPUMP_SETPOINT = "heatpump_setpoint"
 CONF_SAVING_COLD_OFFSET_C = "saving_cold_offset_c"
-CONF_VIRTUAL_TEMPERATURE = "virtual_temperature"
 CONF_ENERGY_SAVING_WARM_SHUTDOWN_OUTDOOR = "energy_saving_warm_shutdown_outdoor"
 
 CONF_COMFORT_TARGET_C = "comfort_target_c"
-CONF_COMFORT_TO_HEATPUMP_OFFSET_C = "comfort_to_heatpump_offset_c"
 CONF_STORAGE_TARGET_C = "storage_target_c"
-CONF_STORAGE_TO_HEATPUMP_OFFSET_C = "storage_to_heatpump_offset_c"
-CONF_MAINTENANCE_TARGET_C = "maintenance_target_c"
-CONF_COMFORT_MARGIN_C = "comfort_margin_c"
+CONF_HEATPUMP_OFFSET_C = "heatpump_offset_c"
 CONF_COLD_THRESHOLD = "cold_threshold"
 CONF_MAX_BOOST = "max_boost"
-CONF_BOOST_SLOPE_C = "boost_slope_c"
-
-CONF_CONTROL_MIN_C = "control_min_c"
-CONF_CONTROL_MAX_C = "control_max_c"
-CONF_SAVING_HELPER_WRITE_DELTA_C = "saving_helper_write_delta_c"
-CONF_COMFORT_HELPER_WRITE_DELTA_C = "comfort_helper_write_delta_c"
-CONF_FINAL_HELPER_WRITE_DELTA_C = "final_helper_write_delta_c"
-CONF_CONTROL_WRITE_DELTA_C = "control_write_delta_c"
 
 CONF_ENABLE_DAIKIN_CONSUMER = "enable_daikin_consumer"
 CONF_DAIKIN_CLIMATE_ENTITY = "daikin_climate_entity"
 CONF_DAIKIN_NORMAL_TEMPERATURE = "daikin_normal_temperature"
 CONF_DAIKIN_SAVING_TEMPERATURE = "daikin_saving_temperature"
-CONF_DAIKIN_OUTDOOR_TEMP_SENSOR = "daikin_outdoor_temp_sensor"
 CONF_DAIKIN_OUTDOOR_TEMP_THRESHOLD = "daikin_outdoor_temp_threshold"
-CONF_DAIKIN_MIN_TEMP_CHANGE = "daikin_min_temp_change"
 
 EVENT_ENERGY_SAVING_STATE_CHANGED = "energy_saving_state_changed"
 EVENT_BLOCKHEAT_POLICY_CHANGED = "blockheat_policy_changed"
@@ -63,8 +48,19 @@ SERVICE_RECOMPUTE = "recompute"
 SERVICE_DUMP_DIAGNOSTICS = "dump_diagnostics"
 
 DEFAULT_RECOMPUTE_MINUTES = 5
-DEFAULT_HELPER_WRITE_DELTA_C = 0.05
-DEFAULT_CONTROL_WRITE_DELTA_C = 0.2
+
+HARDCODED: dict[str, object] = {
+    "min_toggle_interval_min": 15,
+    "comfort_margin_c": 0.25,
+    "boost_slope_c": 4.0,
+    "control_min_c": 10.0,
+    "control_max_c": 26.0,
+    "saving_helper_write_delta_c": 0.05,
+    "comfort_helper_write_delta_c": 0.05,
+    "final_helper_write_delta_c": 0.05,
+    "control_write_delta_c": 0.2,
+    "daikin_min_temp_change": 0.5,
+}
 
 LEGACY_INTERNAL_ENTITY_KEYS: tuple[str, ...] = (
     CONF_TARGET_BOOLEAN,
@@ -92,33 +88,19 @@ DEFAULTS: dict[str, object] = {
     CONF_PRICE_IGNORE_BELOW: 0.6,
     CONF_PV_SENSOR: "",
     CONF_PV_IGNORE_ABOVE_W: 0.0,
-    CONF_MIN_TOGGLE_INTERVAL_MIN: 15,
     CONF_HEATPUMP_SETPOINT: 20.0,
     CONF_SAVING_COLD_OFFSET_C: 1.0,
-    CONF_VIRTUAL_TEMPERATURE: 20.0,
     CONF_ENERGY_SAVING_WARM_SHUTDOWN_OUTDOOR: 8.0,
     CONF_COMFORT_TARGET_C: 22.0,
-    CONF_COMFORT_TO_HEATPUMP_OFFSET_C: 2.0,
     CONF_STORAGE_TARGET_C: 24.5,
-    CONF_STORAGE_TO_HEATPUMP_OFFSET_C: 2.0,
-    CONF_MAINTENANCE_TARGET_C: 20.0,
-    CONF_COMFORT_MARGIN_C: 0.25,
+    CONF_HEATPUMP_OFFSET_C: 2.0,
     CONF_COLD_THRESHOLD: 1.0,
     CONF_MAX_BOOST: 3.0,
-    CONF_BOOST_SLOPE_C: 4.0,
-    CONF_CONTROL_MIN_C: 10.0,
-    CONF_CONTROL_MAX_C: 26.0,
-    CONF_SAVING_HELPER_WRITE_DELTA_C: DEFAULT_HELPER_WRITE_DELTA_C,
-    CONF_COMFORT_HELPER_WRITE_DELTA_C: DEFAULT_HELPER_WRITE_DELTA_C,
-    CONF_FINAL_HELPER_WRITE_DELTA_C: DEFAULT_HELPER_WRITE_DELTA_C,
-    CONF_CONTROL_WRITE_DELTA_C: DEFAULT_CONTROL_WRITE_DELTA_C,
     CONF_ENABLE_DAIKIN_CONSUMER: False,
     CONF_DAIKIN_CLIMATE_ENTITY: "",
     CONF_DAIKIN_NORMAL_TEMPERATURE: 22.0,
     CONF_DAIKIN_SAVING_TEMPERATURE: 20.0,
-    CONF_DAIKIN_OUTDOOR_TEMP_SENSOR: "",
     CONF_DAIKIN_OUTDOOR_TEMP_THRESHOLD: -10.0,
-    CONF_DAIKIN_MIN_TEMP_CHANGE: 0.5,
 }
 
 REQUIRED_ENTITY_KEYS: tuple[str, ...] = (
@@ -133,13 +115,48 @@ REQUIRED_ENTITY_KEYS: tuple[str, ...] = (
 OPTIONAL_ENTITY_KEYS: tuple[str, ...] = (
     CONF_PV_SENSOR,
     CONF_DAIKIN_CLIMATE_ENTITY,
-    CONF_DAIKIN_OUTDOOR_TEMP_SENSOR,
+)
+
+# Legacy config keys that may exist in saved entries and need migration.
+_LEGACY_OFFSET_KEYS = ("comfort_to_heatpump_offset_c", "storage_to_heatpump_offset_c")
+_LEGACY_REMOVED_KEYS = (
+    "min_toggle_interval_min",
+    "virtual_temperature",
+    "maintenance_target_c",
+    "comfort_margin_c",
+    "boost_slope_c",
+    "control_min_c",
+    "control_max_c",
+    "saving_helper_write_delta_c",
+    "comfort_helper_write_delta_c",
+    "final_helper_write_delta_c",
+    "control_write_delta_c",
+    "daikin_min_temp_change",
+    "daikin_outdoor_temp_sensor",
 )
 
 
 def normalize_entry_data(data: dict[str, Any]) -> dict[str, Any]:
     """Normalize entry/options data for runtime use and future saves."""
     normalized = {**DEFAULTS, **data}
+
+    # Migrate old dual-offset keys to single heatpump_offset_c.
+    if "comfort_to_heatpump_offset_c" in normalized:
+        if CONF_HEATPUMP_OFFSET_C not in data:
+            normalized[CONF_HEATPUMP_OFFSET_C] = normalized[
+                "comfort_to_heatpump_offset_c"
+            ]
+        del normalized["comfort_to_heatpump_offset_c"]
+    if "storage_to_heatpump_offset_c" in normalized:
+        normalized.pop("storage_to_heatpump_offset_c")
+
+    # Strip legacy keys that are now hardcoded or removed.
+    for key in _LEGACY_REMOVED_KEYS:
+        normalized.pop(key, None)
+
+    # Inject hardcoded values so runtime always sees them.
+    normalized.update(HARDCODED)
+
     for key in LEGACY_INTERNAL_ENTITY_KEYS:
         normalized.pop(key, None)
     return normalized

@@ -22,11 +22,7 @@ MIRROR_EN = (
 )
 
 TUNING_STEPS = (
-    "tuning_policy",
-    "tuning_saving",
-    "tuning_comfort",
-    "tuning_boost",
-    "tuning_limits",
+    "tuning_targets",
     "tuning_daikin",
 )
 
@@ -73,12 +69,14 @@ def test_all_tuning_steps_have_labels_and_descriptions_in_config_and_options() -
             _assert_step_field_explanations(translations, root_key, step_id)
 
 
-def test_policy_copy_is_explicit() -> None:
+def test_targets_copy_is_explicit() -> None:
     translations = _load_json(CUSTOM_STRINGS)
     config_step = translations["config"]["step"]
 
-    assert "Skip blocking" in config_step["tuning_policy"]["data"]["price_ignore_below"]
-    assert "Skip blocking" in config_step["tuning_policy"]["data"]["pv_ignore_above_w"]
+    assert (
+        "Skip blocking" in config_step["tuning_targets"]["data"]["price_ignore_below"]
+    )
+    assert "Skip blocking" in config_step["tuning_targets"]["data"]["pv_ignore_above_w"]
 
 
 def test_storage_sensor_copy_prefers_buffer_pipe_temperature() -> None:
