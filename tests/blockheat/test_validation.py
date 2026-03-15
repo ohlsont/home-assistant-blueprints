@@ -16,28 +16,10 @@ def _validate(blockheat_env: SimpleNamespace, values: dict[str, object]) -> str 
     return validation.validate_tuning_values(values)
 
 
-def test_validate_tuning_values_rejects_invalid_control_range(
-    blockheat_env: SimpleNamespace,
-) -> None:
-    assert (
-        _validate(blockheat_env, {"control_min_c": 25.0, "control_max_c": 20.0})
-        == "invalid_control_range"
-    )
-
-
-def test_validate_tuning_values_rejects_invalid_boost_slope(
-    blockheat_env: SimpleNamespace,
-) -> None:
-    assert _validate(blockheat_env, {"boost_slope_c": 0}) == "invalid_boost_slope"
-
-
 def test_validate_tuning_values_rejects_negative_non_negative_field(
     blockheat_env: SimpleNamespace,
 ) -> None:
-    assert (
-        _validate(blockheat_env, {"control_write_delta_c": -1})
-        == "invalid_non_negative"
-    )
+    assert _validate(blockheat_env, {"minutes_to_block": -1}) == "invalid_non_negative"
 
 
 def test_validate_tuning_values_accepts_valid_and_blank_values(
@@ -47,10 +29,9 @@ def test_validate_tuning_values_accepts_valid_and_blank_values(
         _validate(
             blockheat_env,
             {
-                "control_min_c": 18,
-                "control_max_c": 24,
-                "boost_slope_c": 5,
-                "control_write_delta_c": "",
+                "minutes_to_block": 240,
+                "price_ignore_below": 0.6,
+                "pv_ignore_above_w": "",
             },
         )
         is None

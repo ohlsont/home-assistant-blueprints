@@ -265,55 +265,22 @@ async def test_options_flow_saved_daikin_options_survive_reload_and_recompute(
             const.CONF_PV_SENSOR: "",
             const.CONF_ENABLE_DAIKIN_CONSUMER: True,
             const.CONF_DAIKIN_CLIMATE_ENTITY: "climate.daikin_upstairs",
-            const.CONF_DAIKIN_OUTDOOR_TEMP_SENSOR: "sensor.daikin_outdoor",
         }
     )
-    assert result["step_id"] == "tuning_policy"
-    result = await flow.async_step_tuning_policy(
+    assert result["step_id"] == "tuning_targets"
+    result = await flow.async_step_tuning_targets(
         {
             const.CONF_MINUTES_TO_BLOCK: 210,
             const.CONF_PRICE_IGNORE_BELOW: 0.6,
             const.CONF_PV_IGNORE_ABOVE_W: 0.0,
-            const.CONF_MIN_TOGGLE_INTERVAL_MIN: 15,
-        }
-    )
-    assert result["step_id"] == "tuning_saving"
-    result = await flow.async_step_tuning_saving(
-        {
             const.CONF_HEATPUMP_SETPOINT: 20.0,
             const.CONF_SAVING_COLD_OFFSET_C: 1.0,
-            const.CONF_VIRTUAL_TEMPERATURE: 20.0,
             const.CONF_ENERGY_SAVING_WARM_SHUTDOWN_OUTDOOR: 8.0,
-        }
-    )
-    assert result["step_id"] == "tuning_comfort"
-    result = await flow.async_step_tuning_comfort(
-        {
             const.CONF_COMFORT_TARGET_C: 22.0,
-            const.CONF_COMFORT_TO_HEATPUMP_OFFSET_C: 2.0,
             const.CONF_STORAGE_TARGET_C: 24.5,
-            const.CONF_STORAGE_TO_HEATPUMP_OFFSET_C: 2.0,
-            const.CONF_MAINTENANCE_TARGET_C: 20.0,
-            const.CONF_COMFORT_MARGIN_C: 0.25,
-        }
-    )
-    assert result["step_id"] == "tuning_boost"
-    result = await flow.async_step_tuning_boost(
-        {
+            const.CONF_HEATPUMP_OFFSET_C: 2.0,
             const.CONF_COLD_THRESHOLD: 1.0,
             const.CONF_MAX_BOOST: 3.0,
-            const.CONF_BOOST_SLOPE_C: 4.0,
-        }
-    )
-    assert result["step_id"] == "tuning_limits"
-    result = await flow.async_step_tuning_limits(
-        {
-            const.CONF_CONTROL_MIN_C: 10.0,
-            const.CONF_CONTROL_MAX_C: 26.0,
-            const.CONF_SAVING_HELPER_WRITE_DELTA_C: 0.05,
-            const.CONF_COMFORT_HELPER_WRITE_DELTA_C: 0.05,
-            const.CONF_FINAL_HELPER_WRITE_DELTA_C: 0.05,
-            const.CONF_CONTROL_WRITE_DELTA_C: 0.2,
         }
     )
     assert result["step_id"] == "tuning_daikin"
@@ -324,7 +291,6 @@ async def test_options_flow_saved_daikin_options_survive_reload_and_recompute(
             const.CONF_DAIKIN_MILD_THRESHOLD: 5.0,
             const.CONF_DAIKIN_COLD_THRESHOLD: -5.0,
             const.CONF_DAIKIN_DISABLE_THRESHOLD: -22.0,
-            const.CONF_DAIKIN_MIN_TEMP_CHANGE: 0.5,
         }
     )
     assert result["type"] == "create_entry"
