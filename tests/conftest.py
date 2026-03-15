@@ -67,6 +67,7 @@ class FakeServices:
         self.remove_calls: list[tuple[str, str]] = []
         self.available: set[tuple[str, str]] = set()
         self.raise_not_found: set[tuple[str, str]] = set()
+        self.raise_ha_error: set[tuple[str, str]] = set()
 
     def has_service(self, domain: str, service: str) -> bool:
         return (domain, service) in self.available
@@ -111,6 +112,11 @@ class FakeServices:
 
         if (domain, service) in self.raise_not_found:
             raise self._service_not_found_cls()
+
+        if (domain, service) in self.raise_ha_error:
+            raise self._service_not_found_cls.__bases__[0](
+                f"Entity does not support action {domain}.{service}"
+            )
 
         handler = self._handlers.get((domain, service))
         response = None
