@@ -150,14 +150,13 @@ def compute_saving_target(
     outdoor_temp: float | None,
     heatpump_setpoint: float,
     saving_cold_offset_c: float,
-    virtual_temperature: float,
     warm_shutdown_outdoor: float,
     control_min_c: float,
     control_max_c: float,
 ) -> float:
     """Compute saving mode target."""
     if outdoor_temp is not None and outdoor_temp >= warm_shutdown_outdoor:
-        target_unclamped = virtual_temperature
+        target_unclamped = heatpump_setpoint
     else:
         target_unclamped = heatpump_setpoint - saving_cold_offset_c
     return clamp(target_unclamped, control_min_c, control_max_c)
@@ -170,10 +169,9 @@ def compute_comfort_target(
     storage_temp: float | None,
     outdoor_temp: float | None,
     comfort_target_c: float,
-    comfort_to_heatpump_offset_c: float,
     storage_target_c: float,
-    storage_to_heatpump_offset_c: float,
-    maintenance_target_c: float,
+    heatpump_offset_c: float,
+    heatpump_setpoint: float,
     comfort_margin_c: float,
     cold_threshold: float,
     max_boost: float,
@@ -198,12 +196,8 @@ def compute_comfort_target(
         boost_raw = 0.0
     boost_clamped = clamp(boost_raw, 0.0, max_boost)
 
-    comfort_target_unclamped = (
-        comfort_target_c - comfort_to_heatpump_offset_c
-    ) + boost_clamped
-    storage_target_unclamped = (
-        storage_target_c - storage_to_heatpump_offset_c
-    ) + boost_clamped
+    comfort_target_unclamped = (comfort_target_c - heatpump_offset_c) + boost_clamped
+    storage_target_unclamped = (storage_target_c - heatpump_offset_c) + boost_clamped
 
     storage_needs_heat = storage_temp is not None and storage_temp < (
         storage_target_c - comfort_margin_c
@@ -212,7 +206,7 @@ def compute_comfort_target(
     if comfort_satisfied and storage_needs_heat:
         target_unclamped = max(storage_target_unclamped, comfort_target_unclamped)
     elif comfort_satisfied:
-        target_unclamped = maintenance_target_c
+        target_unclamped = heatpump_setpoint
     else:
         target_unclamped = comfort_target_unclamped
 

@@ -10,33 +10,22 @@ from homeassistant.core import callback
 from homeassistant.helpers import selector
 
 from .const import (
-    CONF_BOOST_SLOPE_C,
     CONF_COLD_THRESHOLD,
-    CONF_COMFORT_HELPER_WRITE_DELTA_C,
-    CONF_COMFORT_MARGIN_C,
     CONF_COMFORT_ROOM_1_SENSOR,
     CONF_COMFORT_ROOM_2_SENSOR,
     CONF_COMFORT_TARGET_C,
-    CONF_COMFORT_TO_HEATPUMP_OFFSET_C,
-    CONF_CONTROL_MAX_C,
-    CONF_CONTROL_MIN_C,
     CONF_CONTROL_NUMBER_ENTITY,
-    CONF_CONTROL_WRITE_DELTA_C,
     CONF_DAIKIN_CLIMATE_ENTITY,
     CONF_DAIKIN_COLD_THRESHOLD,
     CONF_DAIKIN_DISABLE_THRESHOLD,
     CONF_DAIKIN_MILD_THRESHOLD,
-    CONF_DAIKIN_MIN_TEMP_CHANGE,
     CONF_DAIKIN_NORMAL_TEMPERATURE,
-    CONF_DAIKIN_OUTDOOR_TEMP_SENSOR,
     CONF_DAIKIN_PREHEAT_OFFSET,
     CONF_ENABLE_DAIKIN_CONSUMER,
     CONF_ENERGY_SAVING_WARM_SHUTDOWN_OUTDOOR,
-    CONF_FINAL_HELPER_WRITE_DELTA_C,
+    CONF_HEATPUMP_OFFSET_C,
     CONF_HEATPUMP_SETPOINT,
-    CONF_MAINTENANCE_TARGET_C,
     CONF_MAX_BOOST,
-    CONF_MIN_TOGGLE_INTERVAL_MIN,
     CONF_MINUTES_TO_BLOCK,
     CONF_NORDPOOL_PRICE,
     CONF_OUTDOOR_TEMPERATURE_SENSOR,
@@ -44,11 +33,8 @@ from .const import (
     CONF_PV_IGNORE_ABOVE_W,
     CONF_PV_SENSOR,
     CONF_SAVING_COLD_OFFSET_C,
-    CONF_SAVING_HELPER_WRITE_DELTA_C,
     CONF_STORAGE_ROOM_SENSOR,
     CONF_STORAGE_TARGET_C,
-    CONF_STORAGE_TO_HEATPUMP_OFFSET_C,
-    CONF_VIRTUAL_TEMPERATURE,
     DEFAULTS,
     DOMAIN,
     normalize_entry_data,
@@ -57,11 +43,7 @@ from .const import (
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-TUNING_POLICY_STEP = "tuning_policy"
-TUNING_SAVING_STEP = "tuning_saving"
-TUNING_COMFORT_STEP = "tuning_comfort"
-TUNING_BOOST_STEP = "tuning_boost"
-TUNING_LIMITS_STEP = "tuning_limits"
+TUNING_TARGETS_STEP = "tuning_targets"
 TUNING_DAIKIN_STEP = "tuning_daikin"
 
 _REQUIRED_USER_SCHEMA_KEYS: tuple[str, ...] = (
@@ -113,13 +95,7 @@ def _is_enabled(value: Any) -> bool:
 
 
 def _ordered_tuning_steps(current: dict[str, Any]) -> list[str]:
-    steps = [
-        TUNING_POLICY_STEP,
-        TUNING_SAVING_STEP,
-        TUNING_COMFORT_STEP,
-        TUNING_BOOST_STEP,
-        TUNING_LIMITS_STEP,
-    ]
+    steps = [TUNING_TARGETS_STEP]
     if _is_enabled(current.get(CONF_ENABLE_DAIKIN_CONSUMER, False)):
         steps.append(TUNING_DAIKIN_STEP)
     return steps
@@ -161,14 +137,11 @@ def _user_schema(current: dict[str, Any]) -> vol.Schema:
             _optional_marker(current, CONF_DAIKIN_CLIMATE_ENTITY): _entity_selector(
                 "climate"
             ),
-            _optional_marker(
-                current, CONF_DAIKIN_OUTDOOR_TEMP_SENSOR
-            ): _entity_selector("sensor"),
         }
     )
 
 
-def _tuning_policy_schema(current: dict[str, Any]) -> vol.Schema:
+def _tuning_targets_schema(current: dict[str, Any]) -> vol.Schema:
     return vol.Schema(
         {
             vol.Required(
@@ -184,17 +157,6 @@ def _tuning_policy_schema(current: dict[str, Any]) -> vol.Schema:
                 default=_cfg_value(current, CONF_PV_IGNORE_ABOVE_W),
             ): _bounded_float(0, 1_000_000),
             vol.Required(
-                CONF_MIN_TOGGLE_INTERVAL_MIN,
-                default=_cfg_value(current, CONF_MIN_TOGGLE_INTERVAL_MIN),
-            ): _bounded_int(0, 720),
-        }
-    )
-
-
-def _tuning_saving_schema(current: dict[str, Any]) -> vol.Schema:
-    return vol.Schema(
-        {
-            vol.Required(
                 CONF_HEATPUMP_SETPOINT,
                 default=_cfg_value(current, CONF_HEATPUMP_SETPOINT),
             ): _bounded_float(0, 50),
@@ -203,89 +165,27 @@ def _tuning_saving_schema(current: dict[str, Any]) -> vol.Schema:
                 default=_cfg_value(current, CONF_SAVING_COLD_OFFSET_C),
             ): _bounded_float(0, 20),
             vol.Required(
-                CONF_VIRTUAL_TEMPERATURE,
-                default=_cfg_value(current, CONF_VIRTUAL_TEMPERATURE),
-            ): _bounded_float(0, 50),
-            vol.Required(
                 CONF_ENERGY_SAVING_WARM_SHUTDOWN_OUTDOOR,
                 default=_cfg_value(current, CONF_ENERGY_SAVING_WARM_SHUTDOWN_OUTDOOR),
             ): _bounded_float(-50, 50),
-        }
-    )
-
-
-def _tuning_comfort_schema(current: dict[str, Any]) -> vol.Schema:
-    return vol.Schema(
-        {
             vol.Required(
                 CONF_COMFORT_TARGET_C,
                 default=_cfg_value(current, CONF_COMFORT_TARGET_C),
             ): _bounded_float(0, 50),
             vol.Required(
-                CONF_COMFORT_TO_HEATPUMP_OFFSET_C,
-                default=_cfg_value(current, CONF_COMFORT_TO_HEATPUMP_OFFSET_C),
-            ): _bounded_float(0, 20),
-            vol.Required(
                 CONF_STORAGE_TARGET_C,
                 default=_cfg_value(current, CONF_STORAGE_TARGET_C),
             ): _bounded_float(0, 60),
             vol.Required(
-                CONF_STORAGE_TO_HEATPUMP_OFFSET_C,
-                default=_cfg_value(current, CONF_STORAGE_TO_HEATPUMP_OFFSET_C),
+                CONF_HEATPUMP_OFFSET_C,
+                default=_cfg_value(current, CONF_HEATPUMP_OFFSET_C),
             ): _bounded_float(0, 20),
-            vol.Required(
-                CONF_MAINTENANCE_TARGET_C,
-                default=_cfg_value(current, CONF_MAINTENANCE_TARGET_C),
-            ): _bounded_float(0, 50),
-            vol.Required(
-                CONF_COMFORT_MARGIN_C,
-                default=_cfg_value(current, CONF_COMFORT_MARGIN_C),
-            ): _bounded_float(0, 5),
-        }
-    )
-
-
-def _tuning_boost_schema(current: dict[str, Any]) -> vol.Schema:
-    return vol.Schema(
-        {
             vol.Required(
                 CONF_COLD_THRESHOLD, default=_cfg_value(current, CONF_COLD_THRESHOLD)
             ): _bounded_float(-50, 30),
             vol.Required(
                 CONF_MAX_BOOST, default=_cfg_value(current, CONF_MAX_BOOST)
             ): _bounded_float(0, 20),
-            vol.Required(
-                CONF_BOOST_SLOPE_C, default=_cfg_value(current, CONF_BOOST_SLOPE_C)
-            ): _bounded_float(0.01, 100),
-        }
-    )
-
-
-def _tuning_limits_schema(current: dict[str, Any]) -> vol.Schema:
-    return vol.Schema(
-        {
-            vol.Required(
-                CONF_CONTROL_MIN_C, default=_cfg_value(current, CONF_CONTROL_MIN_C)
-            ): _bounded_float(0, 50),
-            vol.Required(
-                CONF_CONTROL_MAX_C, default=_cfg_value(current, CONF_CONTROL_MAX_C)
-            ): _bounded_float(0, 50),
-            vol.Required(
-                CONF_SAVING_HELPER_WRITE_DELTA_C,
-                default=_cfg_value(current, CONF_SAVING_HELPER_WRITE_DELTA_C),
-            ): _bounded_float(0, 5),
-            vol.Required(
-                CONF_COMFORT_HELPER_WRITE_DELTA_C,
-                default=_cfg_value(current, CONF_COMFORT_HELPER_WRITE_DELTA_C),
-            ): _bounded_float(0, 5),
-            vol.Required(
-                CONF_FINAL_HELPER_WRITE_DELTA_C,
-                default=_cfg_value(current, CONF_FINAL_HELPER_WRITE_DELTA_C),
-            ): _bounded_float(0, 5),
-            vol.Required(
-                CONF_CONTROL_WRITE_DELTA_C,
-                default=_cfg_value(current, CONF_CONTROL_WRITE_DELTA_C),
-            ): _bounded_float(0, 5),
         }
     )
 
@@ -313,20 +213,12 @@ def _tuning_daikin_schema(current: dict[str, Any]) -> vol.Schema:
                 CONF_DAIKIN_DISABLE_THRESHOLD,
                 default=_cfg_value(current, CONF_DAIKIN_DISABLE_THRESHOLD),
             ): _bounded_float(-50, 50),
-            vol.Required(
-                CONF_DAIKIN_MIN_TEMP_CHANGE,
-                default=_cfg_value(current, CONF_DAIKIN_MIN_TEMP_CHANGE),
-            ): _bounded_float(0, 20),
         }
     )
 
 
 _STEP_SCHEMAS: dict[str, Callable[[dict[str, Any]], vol.Schema]] = {
-    TUNING_POLICY_STEP: _tuning_policy_schema,
-    TUNING_SAVING_STEP: _tuning_saving_schema,
-    TUNING_COMFORT_STEP: _tuning_comfort_schema,
-    TUNING_BOOST_STEP: _tuning_boost_schema,
-    TUNING_LIMITS_STEP: _tuning_limits_schema,
+    TUNING_TARGETS_STEP: _tuning_targets_schema,
     TUNING_DAIKIN_STEP: _tuning_daikin_schema,
 }
 
@@ -392,7 +284,7 @@ class BlockheatConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ig
                 self._abort_if_unique_id_configured()
                 self._entity_data = user_input
                 self._tuning_data = {}
-                return await self.async_step_tuning_policy()
+                return await self.async_step_tuning_targets()
 
         return self.async_show_form(  # type: ignore[no-any-return]
             step_id="user",
@@ -400,30 +292,10 @@ class BlockheatConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ig
             errors=errors,
         )
 
-    async def async_step_tuning_policy(
+    async def async_step_tuning_targets(
         self, user_input: dict[str, Any] | None = None
     ) -> dict[str, Any]:
-        return await self._async_handle_tuning_step(TUNING_POLICY_STEP, user_input)
-
-    async def async_step_tuning_saving(
-        self, user_input: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
-        return await self._async_handle_tuning_step(TUNING_SAVING_STEP, user_input)
-
-    async def async_step_tuning_comfort(
-        self, user_input: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
-        return await self._async_handle_tuning_step(TUNING_COMFORT_STEP, user_input)
-
-    async def async_step_tuning_boost(
-        self, user_input: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
-        return await self._async_handle_tuning_step(TUNING_BOOST_STEP, user_input)
-
-    async def async_step_tuning_limits(
-        self, user_input: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
-        return await self._async_handle_tuning_step(TUNING_LIMITS_STEP, user_input)
+        return await self._async_handle_tuning_step(TUNING_TARGETS_STEP, user_input)
 
     async def async_step_tuning_daikin(
         self, user_input: dict[str, Any] | None = None
@@ -490,37 +362,17 @@ class BlockheatOptionsFlow(config_entries.OptionsFlow):
                 )
             self._entity_data = user_input
             self._tuning_data = {}
-            return await self.async_step_tuning_policy()
+            return await self.async_step_tuning_targets()
 
         return self.async_show_form(  # type: ignore[no-any-return]
             step_id="init",
             data_schema=_user_schema(current),
         )
 
-    async def async_step_tuning_policy(
+    async def async_step_tuning_targets(
         self, user_input: dict[str, Any] | None = None
     ) -> dict[str, Any]:
-        return await self._async_handle_tuning_step(TUNING_POLICY_STEP, user_input)
-
-    async def async_step_tuning_saving(
-        self, user_input: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
-        return await self._async_handle_tuning_step(TUNING_SAVING_STEP, user_input)
-
-    async def async_step_tuning_comfort(
-        self, user_input: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
-        return await self._async_handle_tuning_step(TUNING_COMFORT_STEP, user_input)
-
-    async def async_step_tuning_boost(
-        self, user_input: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
-        return await self._async_handle_tuning_step(TUNING_BOOST_STEP, user_input)
-
-    async def async_step_tuning_limits(
-        self, user_input: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
-        return await self._async_handle_tuning_step(TUNING_LIMITS_STEP, user_input)
+        return await self._async_handle_tuning_step(TUNING_TARGETS_STEP, user_input)
 
     async def async_step_tuning_daikin(
         self, user_input: dict[str, Any] | None = None

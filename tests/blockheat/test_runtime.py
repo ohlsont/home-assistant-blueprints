@@ -94,7 +94,6 @@ async def test_async_recompute_writes_expected_targets_then_skips_small_deltas(
         seed_runtime_states,
         overrides={
             blockheat_env.const.CONF_MINUTES_TO_BLOCK: 0,
-            blockheat_env.const.CONF_MIN_TOGGLE_INTERVAL_MIN: 0,
         },
         seed_kwargs={
             "saving_target": 0.0,
@@ -148,7 +147,6 @@ async def test_snapshot_contains_causal_debug_payload(
         build_config,
         seed_runtime_states,
         overrides={
-            blockheat_env.const.CONF_MIN_TOGGLE_INTERVAL_MIN: 0,
             blockheat_env.const.CONF_MINUTES_TO_BLOCK: 30,
         },
         seed_kwargs={
@@ -161,7 +159,7 @@ async def test_snapshot_contains_causal_debug_payload(
     snapshot = await ctx.runtime.async_recompute("snapshot_debug")
     assert snapshot["trigger"] == {"reason": "snapshot_debug"}
     assert snapshot["saving_debug"]["source"] in {
-        "virtual_temperature",
+        "heatpump_setpoint",
         "setpoint_minus_offset",
     }
     assert snapshot["comfort_debug"]["route"] in {
@@ -214,15 +212,11 @@ async def test_snapshot_exposes_daikin_config_debug_views(
         entry_options={
             blockheat_env.const.CONF_ENABLE_DAIKIN_CONSUMER: True,
             blockheat_env.const.CONF_DAIKIN_CLIMATE_ENTITY: "climate.daikin_upstairs",
-            blockheat_env.const.CONF_DAIKIN_OUTDOOR_TEMP_SENSOR: (
-                "sensor.daikin_outdoor"
-            ),
             blockheat_env.const.CONF_DAIKIN_NORMAL_TEMPERATURE: 22.0,
             blockheat_env.const.CONF_DAIKIN_PREHEAT_OFFSET: 2.0,
             blockheat_env.const.CONF_DAIKIN_MILD_THRESHOLD: 5.0,
             blockheat_env.const.CONF_DAIKIN_COLD_THRESHOLD: -5.0,
             blockheat_env.const.CONF_DAIKIN_DISABLE_THRESHOLD: -22.0,
-            blockheat_env.const.CONF_DAIKIN_MIN_TEMP_CHANGE: 0.5,
         },
         seed_kwargs={
             "policy_state": "off",
@@ -264,7 +258,6 @@ async def test_policy_transition_fires_events_and_toggles_boolean(
         build_config,
         seed_runtime_states,
         overrides={
-            blockheat_env.const.CONF_MIN_TOGGLE_INTERVAL_MIN: 0,
             blockheat_env.const.CONF_MINUTES_TO_BLOCK: 30,
         },
         seed_kwargs={
@@ -289,6 +282,8 @@ async def test_policy_transition_fires_events_and_toggles_boolean(
         "0.0",
         attributes={"today": [1.0, 2.0, 9.0, 8.0]},
     )
+    # Push last_changed back so the hardcoded 15-min debounce is satisfied.
+    ctx.runtime._state.policy_last_changed = datetime.now(UTC) - timedelta(hours=1)
     off_snapshot = await ctx.runtime.async_recompute("policy_turn_off")
     assert (
         _service_calls_for(ctx.hass.services.calls, "input_boolean", "turn_off") == []
@@ -343,7 +338,6 @@ async def test_optional_consumers_disabled_missing_and_write_paths(
         overrides={
             blockheat_env.const.CONF_ENABLE_DAIKIN_CONSUMER: True,
             blockheat_env.const.CONF_DAIKIN_CLIMATE_ENTITY: "climate.daikin_upstairs",
-            blockheat_env.const.CONF_MIN_TOGGLE_INTERVAL_MIN: 0,
             blockheat_env.const.CONF_MINUTES_TO_BLOCK: 30,
         },
         seed_kwargs={
@@ -425,7 +419,6 @@ async def test_logbook_only_records_meaningful_changes(
         build_config,
         seed_runtime_states,
         overrides={
-            blockheat_env.const.CONF_MIN_TOGGLE_INTERVAL_MIN: 0,
             blockheat_env.const.CONF_MINUTES_TO_BLOCK: 30,
         },
         seed_kwargs={
@@ -463,7 +456,6 @@ async def test_logbook_service_not_found_is_tolerated(
         build_config,
         seed_runtime_states,
         overrides={
-            blockheat_env.const.CONF_MIN_TOGGLE_INTERVAL_MIN: 0,
             blockheat_env.const.CONF_MINUTES_TO_BLOCK: 30,
         },
         seed_kwargs={
@@ -494,7 +486,6 @@ async def test_recompute_tolerates_unavailable_service(
         build_config,
         seed_runtime_states,
         overrides={
-            blockheat_env.const.CONF_MIN_TOGGLE_INTERVAL_MIN: 0,
             blockheat_env.const.CONF_MINUTES_TO_BLOCK: 30,
         },
         seed_kwargs={
@@ -525,7 +516,6 @@ async def test_recompute_tolerates_service_error_on_entity(
         overrides={
             blockheat_env.const.CONF_ENABLE_DAIKIN_CONSUMER: True,
             blockheat_env.const.CONF_DAIKIN_CLIMATE_ENTITY: "climate.daikin_upstairs",
-            blockheat_env.const.CONF_MIN_TOGGLE_INTERVAL_MIN: 0,
             blockheat_env.const.CONF_MINUTES_TO_BLOCK: 30,
         },
         seed_kwargs={
