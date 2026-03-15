@@ -1,7 +1,7 @@
 {
   "domain": "blockheat",
   "name": "Blockheat",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "integration_type": "hub",
   "config_flow": true,
   "documentation": "https://github.com/ohlsont/home-assistant-blueprints",
