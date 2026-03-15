@@ -28,6 +28,7 @@ compute_comfort_target = engine.compute_comfort_target
 compute_daikin = engine.compute_daikin
 compute_final_target = engine.compute_final_target
 compute_policy = engine.compute_policy
+compute_price_quartile = engine.compute_price_quartile
 compute_saving_target = engine.compute_saving_target
 
 
@@ -193,20 +194,104 @@ class FinalTargetTests(unittest.TestCase):
         assert result.source == "control_min_default"
 
 
+_DAIKIN_DEFAULTS: dict[str, object] = {
+    "current_temp": 22.0,
+    "current_hvac_mode": "off",
+    "normal_temperature": 22.0,
+    "preheat_offset": 2.0,
+    "min_temp_change": 0.5,
+    "outdoor_temp": 0.0,
+    "mild_threshold": 5.0,
+    "cold_threshold": -5.0,
+    "disable_threshold": -22.0,
+    "outdoor_sensor_defined": True,
+    "price_quartile": "low",
+}
+
+
+def _daikin(**overrides: object) -> object:
+    kwargs = {**_DAIKIN_DEFAULTS, **overrides}
+    return compute_daikin(**kwargs)
+
+
+class PriceQuartileTests(unittest.TestCase):
+    def test_very_low(self) -> None:
+        assert compute_price_quartile(0.5, [0.5, 1.0, 1.5, 2.0]) == "very_low"
+
+    def test_very_high(self) -> None:
+        assert compute_price_quartile(2.0, [0.5, 1.0, 1.5, 2.0]) == "very_high"
+
+    def test_low(self) -> None:
+        prices = [float(i) for i in range(1, 25)]
+        assert compute_price_quartile(8.0, prices) == "low"
+
+    def test_high(self) -> None:
+        prices = [float(i) for i in range(1, 25)]
+        assert compute_price_quartile(18.0, prices) == "high"
+
+    def test_empty_prices_returns_low(self) -> None:
+        assert compute_price_quartile(1.0, []) == "low"
+
+
 class ConsumerTests(unittest.TestCase):
-    def test_daikin_blocks_action_if_too_cold(self) -> None:
-        result = compute_daikin(
-            policy_on=True,
+    def test_very_high_price_turns_off(self) -> None:
+        result = _daikin(price_quartile="very_high", current_hvac_mode="heat")
+        assert result.mode == "off"
+        assert result.target_hvac_mode == "off"
+        assert result.should_write_mode is True
+
+    def test_very_low_price_preheats(self) -> None:
+        result = _daikin(price_quartile="very_low", outdoor_temp=0.0)
+        assert result.mode == "preheat"
+        assert result.target_temp == 24.0  # 22 + 2
+        assert result.target_hvac_mode == "heat"
+
+    def test_mild_weather_turns_off(self) -> None:
+        result = _daikin(outdoor_temp=10.0)
+        assert result.mode == "off"
+        assert result.target_hvac_mode == "off"
+
+    def test_cool_weather_normal_mode(self) -> None:
+        result = _daikin(outdoor_temp=0.0)
+        assert result.mode == "normal"
+        assert result.target_temp == 22.0
+        assert result.target_hvac_mode == "heat"
+
+    def test_cold_weather_capacity_assist(self) -> None:
+        result = _daikin(outdoor_temp=-10.0)
+        assert result.mode == "capacity_assist"
+        assert result.target_temp == 22.0
+        assert result.target_hvac_mode == "heat"
+
+    def test_extreme_cold_below_disable_turns_off(self) -> None:
+        result = _daikin(outdoor_temp=-25.0)
+        assert result.mode == "off"
+        assert result.target_hvac_mode == "off"
+        assert not result.outdoor_ok
+
+    def test_no_outdoor_sensor_defaults_to_normal(self) -> None:
+        result = _daikin(outdoor_sensor_defined=False)
+        assert result.mode == "normal"
+        assert result.target_hvac_mode == "heat"
+        assert result.target_temp == 22.0
+
+    def test_no_mode_write_when_already_correct(self) -> None:
+        result = _daikin(
+            outdoor_temp=0.0,
+            current_hvac_mode="heat",
             current_temp=22.0,
-            normal_temperature=22.0,
-            saving_temperature=19.0,
-            min_temp_change=0.5,
-            outdoor_temp=-20.0,
-            outdoor_temp_threshold=-10.0,
-            outdoor_sensor_defined=True,
         )
-        assert not result.should_write
-        assert result.target_temp is None
+        assert result.mode == "normal"
+        assert not result.should_write_mode
+        assert not result.should_write_temp
+
+    def test_mode_write_when_switching_on(self) -> None:
+        result = _daikin(
+            outdoor_temp=0.0,
+            current_hvac_mode="off",
+        )
+        assert result.should_write_mode is True
+        assert result.target_hvac_mode == "heat"
 
 
 if __name__ == "__main__":
