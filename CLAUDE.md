@@ -39,6 +39,20 @@ uv run codespell custom_components homeassistant scripts tests
 
 Always use `uv run` instead of bare `python` or `python3`.
 
+## Releasing
+
+```bash
+# Bump version across all files
+uv run python scripts/bump_version.py X.Y.Z
+
+# Commit, tag, and push
+git add pyproject.toml custom_components/blockheat/manifest.json homeassistant/custom_components/blockheat/manifest.json
+git commit -m "chore: bump version to X.Y.Z"
+git tag vX.Y.Z
+git push && git push --tags
+# → release.yml creates GitHub release with HACS zip automatically
+```
+
 ## Architecture
 
 ### Dual-directory mirror
