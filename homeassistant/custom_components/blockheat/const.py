@@ -147,14 +147,11 @@ def normalize_entry_data(data: dict[str, Any]) -> dict[str, Any]:
     normalized = {**DEFAULTS, **data}
 
     # Migrate old dual-offset keys to single heatpump_offset_c.
-    if "comfort_to_heatpump_offset_c" in normalized:
-        if CONF_HEATPUMP_OFFSET_C not in data:
-            normalized[CONF_HEATPUMP_OFFSET_C] = normalized[
-                "comfort_to_heatpump_offset_c"
-            ]
-        del normalized["comfort_to_heatpump_offset_c"]
-    if "storage_to_heatpump_offset_c" in normalized:
-        normalized.pop("storage_to_heatpump_offset_c")
+    # Check raw data (not normalized) so DEFAULTS don't mask the legacy value.
+    if "comfort_to_heatpump_offset_c" in data:
+        normalized[CONF_HEATPUMP_OFFSET_C] = data["comfort_to_heatpump_offset_c"]
+    normalized.pop("comfort_to_heatpump_offset_c", None)
+    normalized.pop("storage_to_heatpump_offset_c", None)
 
     # Strip legacy keys that are now hardcoded or removed.
     for key in _LEGACY_REMOVED_KEYS:

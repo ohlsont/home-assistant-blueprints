@@ -444,3 +444,33 @@ async def test_setup_entry_leaves_user_custom_entity_ids_untouched(
     assert custom_entry is not None
     assert custom_entry.unique_id == f"{entry_id}_{const.STATE_TARGET_FINAL}"
     assert registry.update_calls == []
+
+
+def test_normalize_entry_data_migrates_legacy_offset_when_defaults_present(
+    blockheat_env: SimpleNamespace,
+) -> None:
+    """Legacy comfort_to_heatpump_offset_c migrates even when DEFAULTS seed the new key."""
+    const = blockheat_env.const
+
+    # Simulate options flow: data is pre-merged with DEFAULTS (has heatpump_offset_c=2.0)
+    # plus legacy key from stored entry.
+    data = {
+        **const.DEFAULTS,
+        "comfort_to_heatpump_offset_c": 3.5,
+        "storage_to_heatpump_offset_c": 1.0,
+    }
+    result = const.normalize_entry_data(data)
+    assert result[const.CONF_HEATPUMP_OFFSET_C] == 3.5
+    assert "comfort_to_heatpump_offset_c" not in result
+    assert "storage_to_heatpump_offset_c" not in result
+
+
+def test_normalize_entry_data_keeps_explicit_new_offset(
+    blockheat_env: SimpleNamespace,
+) -> None:
+    """When raw data has only the new key, it is preserved."""
+    const = blockheat_env.const
+
+    data = {**const.DEFAULTS, const.CONF_HEATPUMP_OFFSET_C: 4.0}
+    result = const.normalize_entry_data(data)
+    assert result[const.CONF_HEATPUMP_OFFSET_C] == 4.0
