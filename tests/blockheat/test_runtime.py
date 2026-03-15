@@ -478,6 +478,74 @@ async def test_logbook_service_not_found_is_tolerated(
 
 
 @pytest.mark.asyncio
+async def test_recompute_tolerates_unavailable_service(
+    blockheat_env: SimpleNamespace,
+    fake_hass: Any,
+    build_config: Any,
+    seed_runtime_states: Any,
+) -> None:
+    """Setup completes when number.set_value is not yet registered (boot race)."""
+    fake_hass.services.available.discard(("number", "set_value"))
+    ctx = _make_runtime_context(
+        blockheat_env,
+        fake_hass,
+        build_config,
+        seed_runtime_states,
+        overrides={
+            blockheat_env.const.CONF_MIN_TOGGLE_INTERVAL_MIN: 0,
+            blockheat_env.const.CONF_MINUTES_TO_BLOCK: 30,
+        },
+        seed_kwargs={
+            "policy_state": "off",
+            "price": 9.0,
+            "prices_today": [1.0, 2.0, 9.0, 8.0],
+        },
+    )
+
+    snapshot = await ctx.runtime.async_recompute("boot_race")
+    assert snapshot["final_target"] is not None
+    assert _service_calls_for(ctx.hass.services.calls, "number", "set_value") == []
+
+
+@pytest.mark.asyncio
+async def test_recompute_tolerates_service_error_on_entity(
+    blockheat_env: SimpleNamespace,
+    fake_hass: Any,
+    build_config: Any,
+    seed_runtime_states: Any,
+) -> None:
+    """Recompute completes when climate.set_temperature raises HomeAssistantError."""
+    ctx = _make_runtime_context(
+        blockheat_env,
+        fake_hass,
+        build_config,
+        seed_runtime_states,
+        overrides={
+            blockheat_env.const.CONF_ENABLE_DAIKIN_CONSUMER: True,
+            blockheat_env.const.CONF_DAIKIN_CLIMATE_ENTITY: "climate.daikin_upstairs",
+            blockheat_env.const.CONF_MIN_TOGGLE_INTERVAL_MIN: 0,
+            blockheat_env.const.CONF_MINUTES_TO_BLOCK: 30,
+        },
+        seed_kwargs={
+            "policy_state": "off",
+            "price": 9.0,
+            "prices_today": [1.0, 2.0, 9.0, 8.0],
+        },
+    )
+    ctx.hass.states.set(
+        "climate.daikin_upstairs",
+        "heat",
+        attributes={"temperature": 22.0},
+    )
+    ctx.hass.services.raise_ha_error.add(("climate", "set_temperature"))
+
+    snapshot = await ctx.runtime.async_recompute("bad_entity")
+    assert snapshot["daikin"]["enabled"] is True
+    assert snapshot["daikin"]["written"] is True
+    assert snapshot["final_target"] is not None
+
+
+@pytest.mark.asyncio
 async def test_async_unload_clears_timers_and_subscriptions(
     blockheat_env: SimpleNamespace,
     fake_hass: Any,
