@@ -49,7 +49,13 @@ def _step1_user_input(
     }
 
 
-def _tuning_input(const: Any, step_id: str) -> dict[str, Any]:
+def _tuning_input(
+    const: Any,
+    step_id: str,
+    *,
+    enable_forecast: bool = False,
+    weather_entity: str = "",
+) -> dict[str, Any]:
     by_step: dict[str, dict[str, Any]] = {
         "tuning_targets": {
             const.CONF_MINUTES_TO_BLOCK: 210,
@@ -63,6 +69,8 @@ def _tuning_input(const: Any, step_id: str) -> dict[str, Any]:
             const.CONF_HEATPUMP_OFFSET_C: 2.0,
             const.CONF_COLD_THRESHOLD: 1.0,
             const.CONF_MAX_BOOST: 3.0,
+            const.CONF_ENABLE_FORECAST_OPTIMIZATION: enable_forecast,
+            const.CONF_WEATHER_ENTITY: weather_entity,
         },
         "tuning_daikin": {
             const.CONF_DAIKIN_NORMAL_TEMPERATURE: 22.0,
@@ -296,3 +304,26 @@ async def test_options_flow_strips_legacy_internal_entity_keys_on_save(
     assert const.CONF_TARGET_SAVING_HELPER not in result["data"]
     assert const.CONF_TARGET_COMFORT_HELPER not in result["data"]
     assert const.CONF_TARGET_FINAL_HELPER not in result["data"]
+
+
+@pytest.mark.asyncio
+async def test_config_flow_round_trip_with_forecast_optimization(
+    blockheat_env: SimpleNamespace,
+) -> None:
+    """Forecast optimization fields survive a full config flow round-trip."""
+    const = blockheat_env.const
+    flow = blockheat_env.config_flow.BlockheatConfigFlow()
+
+    await flow.async_step_user(_step1_user_input(const))
+    result = await flow.async_step_tuning_targets(
+        _tuning_input(
+            const,
+            "tuning_targets",
+            enable_forecast=True,
+            weather_entity="weather.smhi",
+        )
+    )
+
+    assert result["type"] == "create_entry"
+    assert result["data"][const.CONF_ENABLE_FORECAST_OPTIMIZATION] is True
+    assert result["data"][const.CONF_WEATHER_ENTITY] == "weather.smhi"
