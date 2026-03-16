@@ -24,7 +24,7 @@ def _as_float(value: Any) -> float | None:
 
 
 def validate_tuning_values(values: dict[str, Any]) -> str | None:
-    """Return an error key when cross-field tuning values are invalid."""
+    """Return an error key when tuning values are invalid."""
     for key in _NON_NEGATIVE_KEYS:
         value = _as_float(values.get(key))
         if value is not None and value < 0:
