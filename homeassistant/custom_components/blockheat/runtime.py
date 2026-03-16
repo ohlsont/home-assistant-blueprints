@@ -389,7 +389,7 @@ class BlockheatRuntime:
         outdoor_temp = self._state_float(self._cfg_str(CONF_OUTDOOR_TEMPERATURE_SENSOR))
         heatpump_setpoint = self._cfg_float(CONF_HEATPUMP_SETPOINT, 20.0)
         saving_cold_offset_c = self._cfg_float(CONF_SAVING_COLD_OFFSET_C, 1.0)
-        virtual_temperature = self._cfg_float(CONF_VIRTUAL_TEMPERATURE, 20.0)
+        virtual_temperature = self._cfg_float(CONF_VIRTUAL_TEMPERATURE, 21.0)
         warm_shutdown_outdoor = self._cfg_float(
             CONF_ENERGY_SAVING_WARM_SHUTDOWN_OUTDOOR,
             7.0,

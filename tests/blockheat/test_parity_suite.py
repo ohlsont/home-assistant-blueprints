@@ -34,7 +34,7 @@ class ParitySuite(unittest.TestCase):
             outdoor_temp=10.0,
             heatpump_setpoint=20.0,
             saving_cold_offset_c=1.0,
-            virtual_temperature=20.0,
+            virtual_temperature=21.0,
             warm_shutdown_outdoor=7.0,
             control_min_c=10.0,
             control_max_c=26.0,
@@ -47,15 +47,15 @@ class ParitySuite(unittest.TestCase):
             control_min_c=10.0,
             control_max_c=26.0,
         )
-        assert saving == 20.0
-        assert final.target == 20.0
+        assert saving == 21.0
+        assert final.target == 21.0
 
     def test_policy_on_cold_saving_path(self) -> None:
         saving = compute_saving_target(
             outdoor_temp=-5.0,
             heatpump_setpoint=20.0,
             saving_cold_offset_c=1.0,
-            virtual_temperature=20.0,
+            virtual_temperature=21.0,
             warm_shutdown_outdoor=7.0,
             control_min_c=10.0,
             control_max_c=26.0,
