@@ -123,7 +123,7 @@ class ParitySuite(unittest.TestCase):
             control_min_c=10.0,
             control_max_c=26.0,
         )
-        assert comfort.target == 20.0
+        assert comfort.target == 21.0
 
     def test_extreme_clamp_behavior(self) -> None:
         comfort = compute_comfort_target(

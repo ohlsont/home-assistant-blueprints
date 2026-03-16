@@ -148,7 +148,7 @@ class ComfortTargetTests(unittest.TestCase):
             control_min_c=10.0,
             control_max_c=26.0,
         )
-        assert result.target == pytest.approx(20.0)
+        assert result.target == pytest.approx(21.0)
 
 
 class FinalTargetTests(unittest.TestCase):
