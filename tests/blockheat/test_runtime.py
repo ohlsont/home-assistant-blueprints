@@ -153,6 +153,7 @@ async def test_snapshot_contains_causal_debug_payload(
             "policy_state": "off",
             "price": 9.0,
             "prices_today": [1.0, 2.0, 9.0, 8.0],
+            "control_value": 18.0,
         },
     )
 

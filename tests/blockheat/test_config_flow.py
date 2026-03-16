@@ -61,13 +61,13 @@ def _tuning_input(
             const.CONF_MINUTES_TO_BLOCK: 210,
             const.CONF_PRICE_IGNORE_BELOW: 0.6,
             const.CONF_PV_IGNORE_ABOVE_W: 0.0,
-            const.CONF_HEATPUMP_SETPOINT: 20.0,
+            const.CONF_HEATPUMP_SETPOINT: 21.0,
             const.CONF_SAVING_COLD_OFFSET_C: 1.0,
             const.CONF_ENERGY_SAVING_WARM_SHUTDOWN_OUTDOOR: 8.0,
             const.CONF_COMFORT_TARGET_C: 22.0,
-            const.CONF_STORAGE_TARGET_C: 24.5,
-            const.CONF_HEATPUMP_OFFSET_C: 2.0,
-            const.CONF_COLD_THRESHOLD: 1.0,
+            const.CONF_STORAGE_TARGET_C: 25.0,
+            const.CONF_HEATPUMP_OFFSET_C: 1.0,
+            const.CONF_COLD_THRESHOLD: 2.0,
             const.CONF_MAX_BOOST: 3.0,
             const.CONF_ENABLE_FORECAST_OPTIMIZATION: enable_forecast,
             const.CONF_WEATHER_ENTITY: weather_entity,
@@ -142,7 +142,7 @@ async def test_config_flow_routes_through_expected_steps(
     assert result["title"] == "Blockheat"
     assert result["data"][const.CONF_MINUTES_TO_BLOCK] == 210
     assert result["data"][const.CONF_DAIKIN_PREHEAT_OFFSET] == 2.0
-    assert result["data"][const.CONF_STORAGE_TARGET_C] == 24.5
+    assert result["data"][const.CONF_STORAGE_TARGET_C] == 25.0
     assert const.CONF_TARGET_BOOLEAN not in result["data"]
     assert const.CONF_TARGET_SAVING_HELPER not in result["data"]
     assert const.CONF_TARGET_COMFORT_HELPER not in result["data"]
@@ -196,15 +196,15 @@ async def test_config_flow_schema_defaults_reflect_new_baseline(
     )
     assert (
         _schema_default(targets_step["data_schema"], const.CONF_STORAGE_TARGET_C)
-        == 24.5
+        == 25.0
     )
     assert (
-        _schema_default(targets_step["data_schema"], const.CONF_COLD_THRESHOLD) == 1.0
+        _schema_default(targets_step["data_schema"], const.CONF_COLD_THRESHOLD) == 2.0
     )
     assert _schema_default(targets_step["data_schema"], const.CONF_MAX_BOOST) == 3.0
     assert (
         _schema_default(targets_step["data_schema"], const.CONF_HEATPUMP_OFFSET_C)
-        == 2.0
+        == 1.0
     )
 
     daikin_flow = blockheat_env.config_flow.BlockheatConfigFlow()
@@ -269,7 +269,7 @@ async def test_options_flow_routes_through_expected_steps(
         )
 
     assert result["type"] == "create_entry"
-    assert result["data"][const.CONF_STORAGE_TARGET_C] == 24.5
+    assert result["data"][const.CONF_STORAGE_TARGET_C] == 25.0
     assert result["data"][const.CONF_DAIKIN_PREHEAT_OFFSET] == 2.0
     assert const.CONF_TARGET_BOOLEAN not in result["data"]
     assert const.CONF_TARGET_SAVING_HELPER not in result["data"]
