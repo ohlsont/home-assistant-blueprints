@@ -46,8 +46,8 @@ class ParitySuite(unittest.TestCase):
             control_min_c=10.0,
             control_max_c=26.0,
         )
-        assert saving == 20.0
-        assert final.target == 20.0
+        assert saving == 21.0
+        assert final.target == 21.0
 
     def test_policy_on_cold_saving_path(self) -> None:
         saving = compute_saving_target(

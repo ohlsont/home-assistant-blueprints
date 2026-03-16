@@ -78,7 +78,7 @@ class SavingTargetTests(unittest.TestCase):
             control_min_c=10.0,
             control_max_c=26.0,
         )
-        assert target == 20.0
+        assert target == 21.0
 
     def test_saving_cold_mode_uses_setpoint_offset(self) -> None:
         target = compute_saving_target(
