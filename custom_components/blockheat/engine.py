@@ -276,7 +276,7 @@ def compute_comfort_target(
     if comfort_satisfied and storage_needs_heat:
         target_unclamped = max(storage_target_unclamped, comfort_target_unclamped)
     elif comfort_satisfied:
-        target_unclamped = heatpump_setpoint
+        target_unclamped = heatpump_setpoint + 1.0
     else:
         target_unclamped = comfort_target_unclamped
 
