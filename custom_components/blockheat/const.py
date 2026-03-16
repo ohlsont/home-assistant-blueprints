@@ -122,7 +122,6 @@ OPTIONAL_ENTITY_KEYS: tuple[str, ...] = (
 )
 
 # Legacy config keys that may exist in saved entries and need migration.
-_LEGACY_OFFSET_KEYS = ("comfort_to_heatpump_offset_c", "storage_to_heatpump_offset_c")
 _LEGACY_REMOVED_KEYS = (
     "min_toggle_interval_min",
     "virtual_temperature",
