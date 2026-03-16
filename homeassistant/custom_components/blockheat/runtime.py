@@ -349,21 +349,24 @@ class BlockheatRuntime:
         prices_window = list(prices_today)
 
         if forecast_enabled and weather_entity:
-            prices_tomorrow: list[float] = []
-            if price_state:
-                attr_tmrw = price_state.attributes.get("tomorrow")
-                if isinstance(attr_tmrw, (list, tuple)):
-                    prices_tomorrow = [
-                        value
-                        for item in attr_tmrw
-                        if (value := as_float(item)) is not None
-                    ]
-
-            if prices_tomorrow:
-                prices_window = prices_today + prices_tomorrow
-
             forecast = await self._async_get_hourly_forecast(weather_entity)
             if forecast:
+                # Only extend the price window with tomorrow when the forecast
+                # is available — otherwise the non-COP fallback path would rank
+                # nslots against a 48-slot window, diluting the daily budget.
+                prices_tomorrow: list[float] = []
+                if price_state:
+                    attr_tmrw = price_state.attributes.get("tomorrow")
+                    if isinstance(attr_tmrw, (list, tuple)):
+                        prices_tomorrow = [
+                            value
+                            for item in attr_tmrw
+                            if (value := as_float(item)) is not None
+                        ]
+
+                if prices_tomorrow:
+                    prices_window = prices_today + prices_tomorrow
+
                 outdoor_temps_by_slot = self._build_outdoor_temps_by_slot(
                     forecast, now, len(prices_window)
                 )

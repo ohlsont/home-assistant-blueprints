@@ -225,18 +225,26 @@ class TestComputePolicyCopWeighting:
         assert not result.cop_weighting_active
 
     def test_cop_enabled_with_tomorrow_prices(self) -> None:
-        """Extended 48-slot window with tomorrow prices."""
-        prices_today = [1.0] * 24
+        """Extended 48-slot window with tomorrow prices.
+
+        minutes_to_block is a per-day budget: 15 min/day x 2 days = 2 slots
+        blocked total.  The two most expensive true-cost slots should be
+        blocked, and the current slot should not be among them.
+        """
+        prices_today = [0.5] * 24
+        prices_today[12] = 2.0  # expensive today slot (not current hour)
         prices_tomorrow = [0.5] * 24
         prices_tomorrow[2] = 3.0  # expensive tomorrow slot
+
         prices = prices_today + prices_tomorrow
 
         temps: list[float | None] = [0.0] * 48
+        temps[12] = -15.0  # cold at today 12:00
         temps[26] = -15.0  # cold at tomorrow 02:00
 
         kwargs = self._base_kwargs()
         result = compute_policy(
-            price=1.0,
+            price=0.5,
             prices_today=prices,
             minutes_to_block=15,
             use_cop_weighting=True,
@@ -245,7 +253,8 @@ class TestComputePolicyCopWeighting:
             **kwargs,
         )
         assert result.cop_weighting_active
-        # The expensive cold tomorrow slot should be blocked, not current
+        # Top-2 true costs: slot 26 (3.0/1.8) and slot 12 (2.0/1.8).
+        # Current slot 8: 0.5/3.0 ≈ 0.167, well below cutoff.
         assert not result.blocked_now
 
     def test_current_hour_index_out_of_range(self) -> None:

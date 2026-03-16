@@ -116,7 +116,12 @@ def rank_slots_true_cost(
         else:
             effective_costs.append(p)
 
-    nslots = as_int(minutes_to_block, 240) // 15
+    # minutes_to_block is a per-day budget.  When the price window spans
+    # more than 24 slots (today + tomorrow), scale the blocking budget
+    # proportionally so "block 4 h/day" stays 4 h/day, not 4 h across 2 days.
+    nslots_per_day = as_int(minutes_to_block, 240) // 15
+    num_days = max(1, len(effective_costs) // 24) if effective_costs else 1
+    nslots = nslots_per_day * num_days
     sorted_desc = sorted(effective_costs, reverse=True)
     if nslots > 0 and len(sorted_desc) >= nslots:
         cutoff = sorted_desc[nslots - 1]
