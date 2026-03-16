@@ -34,6 +34,9 @@ CONF_HEATPUMP_OFFSET_C = "heatpump_offset_c"
 CONF_COLD_THRESHOLD = "cold_threshold"
 CONF_MAX_BOOST = "max_boost"
 
+CONF_ENABLE_FORECAST_OPTIMIZATION = "enable_forecast_optimization"
+CONF_WEATHER_ENTITY = "weather_entity"
+
 CONF_ENABLE_DAIKIN_CONSUMER = "enable_daikin_consumer"
 CONF_DAIKIN_CLIMATE_ENTITY = "daikin_climate_entity"
 CONF_DAIKIN_NORMAL_TEMPERATURE = "daikin_normal_temperature"
@@ -98,6 +101,8 @@ DEFAULTS: dict[str, object] = {
     CONF_HEATPUMP_OFFSET_C: 2.0,
     CONF_COLD_THRESHOLD: 1.0,
     CONF_MAX_BOOST: 3.0,
+    CONF_ENABLE_FORECAST_OPTIMIZATION: False,
+    CONF_WEATHER_ENTITY: "",
     CONF_ENABLE_DAIKIN_CONSUMER: False,
     CONF_DAIKIN_CLIMATE_ENTITY: "",
     CONF_DAIKIN_NORMAL_TEMPERATURE: 22.0,
@@ -118,6 +123,7 @@ REQUIRED_ENTITY_KEYS: tuple[str, ...] = (
 
 OPTIONAL_ENTITY_KEYS: tuple[str, ...] = (
     CONF_PV_SENSOR,
+    CONF_WEATHER_ENTITY,
     CONF_DAIKIN_CLIMATE_ENTITY,
 )
 

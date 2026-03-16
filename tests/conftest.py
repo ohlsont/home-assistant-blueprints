@@ -535,6 +535,10 @@ def blockheat_env(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
     dt_module.UTC = UTC
     dt_module.utcnow = lambda: datetime.now(UTC)
     dt_module.parse_datetime = _parse_datetime
+    dt_module.as_local = lambda dt: dt  # tests run without a real HA timezone
+    dt_module.as_utc = lambda dt: (
+        dt.astimezone(UTC) if dt.tzinfo else dt.replace(tzinfo=UTC)
+    )
 
     config_entries_module = types.ModuleType("homeassistant.config_entries")
     config_entries_module.ConfigEntry = FakeConfigEntry

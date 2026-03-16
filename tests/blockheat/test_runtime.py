@@ -538,6 +538,134 @@ async def test_recompute_tolerates_service_error_on_entity(
 
 
 @pytest.mark.asyncio
+async def test_forecast_disabled_by_default(
+    blockheat_env: SimpleNamespace,
+    fake_hass: Any,
+    build_config: Any,
+    seed_runtime_states: Any,
+) -> None:
+    """Default config has forecast optimization off — COP weighting inactive."""
+    ctx = _make_runtime_context(
+        blockheat_env,
+        fake_hass,
+        build_config,
+        seed_runtime_states,
+        overrides={
+            blockheat_env.const.CONF_MINUTES_TO_BLOCK: 30,
+        },
+        seed_kwargs={
+            "price": 9.0,
+            "prices_today": [1.0, 2.0, 9.0, 8.0],
+            "policy_state": "off",
+        },
+    )
+
+    snapshot = await ctx.runtime.async_recompute("forecast_default")
+    assert snapshot["policy"]["cop_weighting_active"] is False
+    assert snapshot["policy"]["current_true_cost"] is None
+
+
+@pytest.mark.asyncio
+async def test_forecast_enabled_with_weather_entity(
+    blockheat_env: SimpleNamespace,
+    fake_hass: Any,
+    build_config: Any,
+    seed_runtime_states: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Forecast enabled + weather entity + forecast service -> COP weighting active."""
+    fixed_now = datetime(2026, 3, 16, 10, 0, tzinfo=UTC)
+    monkeypatch.setattr(blockheat_env.runtime.dt_util, "utcnow", lambda: fixed_now)
+
+    prices_today = [1.0] * 24
+    prices_today[10] = 9.0  # expensive at hour 10 (the current hour)
+
+    ctx = _make_runtime_context(
+        blockheat_env,
+        fake_hass,
+        build_config,
+        seed_runtime_states,
+        overrides={
+            blockheat_env.const.CONF_ENABLE_FORECAST_OPTIMIZATION: True,
+            blockheat_env.const.CONF_WEATHER_ENTITY: "weather.smhi",
+            blockheat_env.const.CONF_MINUTES_TO_BLOCK: 30,
+        },
+        seed_kwargs={
+            "price": 9.0,
+            "prices_today": prices_today,
+            "policy_state": "off",
+        },
+    )
+
+    # Seed nordpool tomorrow prices so the window extends.
+    ctx.hass.states.set(
+        ctx.config[ctx.const.CONF_NORDPOOL_PRICE],
+        "9.0",
+        attributes={
+            "today": prices_today,
+            "tomorrow": [1.0] * 24,
+        },
+    )
+
+    # Build forecast entries for all 48 hours.
+    forecast_entries = [
+        {
+            "datetime": f"2026-03-16T{h:02d}:00:00+00:00",
+            "temperature": 0.0,
+        }
+        for h in range(24)
+    ] + [
+        {
+            "datetime": f"2026-03-17T{h:02d}:00:00+00:00",
+            "temperature": 0.0,
+        }
+        for h in range(24)
+    ]
+
+    def _forecast_handler(call: Any) -> dict[str, Any]:
+        return {"weather.smhi": {"forecast": forecast_entries}}
+
+    ctx.hass.services.async_register("weather", "get_forecasts", _forecast_handler)
+
+    snapshot = await ctx.runtime.async_recompute("forecast_enabled")
+    assert snapshot["policy"]["cop_weighting_active"] is True
+    assert isinstance(snapshot["policy"]["current_true_cost"], float)
+
+
+@pytest.mark.asyncio
+async def test_forecast_enabled_service_unavailable(
+    blockheat_env: SimpleNamespace,
+    fake_hass: Any,
+    build_config: Any,
+    seed_runtime_states: Any,
+) -> None:
+    """Forecast enabled but weather service raises -> graceful fallback."""
+    ctx = _make_runtime_context(
+        blockheat_env,
+        fake_hass,
+        build_config,
+        seed_runtime_states,
+        overrides={
+            blockheat_env.const.CONF_ENABLE_FORECAST_OPTIMIZATION: True,
+            blockheat_env.const.CONF_WEATHER_ENTITY: "weather.smhi",
+            blockheat_env.const.CONF_MINUTES_TO_BLOCK: 30,
+        },
+        seed_kwargs={
+            "price": 9.0,
+            "prices_today": [1.0, 2.0, 9.0, 8.0],
+            "policy_state": "off",
+        },
+    )
+
+    # Register service but make it raise.
+    ctx.hass.services.available.add(("weather", "get_forecasts"))
+    ctx.hass.services.raise_not_found.add(("weather", "get_forecasts"))
+
+    snapshot = await ctx.runtime.async_recompute("forecast_error")
+    assert snapshot["policy"]["cop_weighting_active"] is False
+
+
+@pytest.mark.asyncio
 async def test_async_unload_clears_timers_and_subscriptions(
     blockheat_env: SimpleNamespace,
     fake_hass: Any,

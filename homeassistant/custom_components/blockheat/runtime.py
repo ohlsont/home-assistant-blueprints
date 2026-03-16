@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -28,6 +29,7 @@ from .const import (
     CONF_DAIKIN_NORMAL_TEMPERATURE,
     CONF_DAIKIN_PREHEAT_OFFSET,
     CONF_ENABLE_DAIKIN_CONSUMER,
+    CONF_ENABLE_FORECAST_OPTIMIZATION,
     CONF_ENERGY_SAVING_WARM_SHUTDOWN_OUTDOOR,
     CONF_HEATPUMP_OFFSET_C,
     CONF_HEATPUMP_SETPOINT,
@@ -45,6 +47,7 @@ from .const import (
     CONF_TARGET_COMFORT_HELPER,
     CONF_TARGET_FINAL_HELPER,
     CONF_TARGET_SAVING_HELPER,
+    CONF_WEATHER_ENTITY,
     DEFAULT_RECOMPUTE_MINUTES,
     DEFAULTS,
     EVENT_BLOCKHEAT_POLICY_CHANGED,
@@ -281,6 +284,68 @@ class BlockheatRuntime:
             return []
         return [value for item in attr if (value := as_float(item)) is not None]
 
+    async def _async_get_hourly_forecast(
+        self, weather_entity: str
+    ) -> list[dict[str, Any]]:
+        """Fetch hourly forecast from a weather entity, or [] on failure."""
+        try:
+            response = await self.hass.services.async_call(
+                "weather",
+                "get_forecasts",
+                {"entity_id": weather_entity, "type": "hourly"},
+                blocking=True,
+                return_response=True,
+            )
+        except (ServiceNotFound, HomeAssistantError) as exc:
+            _LOGGER.debug("Forecast fetch failed for %s: %s", weather_entity, exc)
+            return []
+
+        if not isinstance(response, dict):
+            return []
+        forecasts = response.get(weather_entity)
+        if isinstance(forecasts, dict):
+            forecasts = forecasts.get("forecast", [])
+        if isinstance(forecasts, (list, tuple)):
+            return list(forecasts)
+        return []
+
+    def _build_outdoor_temps_by_slot(
+        self, forecast: list[dict[str, Any]], now: datetime, num_slots: int
+    ) -> list[float | None]:
+        """Map forecast temps to slot indices (0..num_slots-1).
+
+        Slot 0 = today midnight local hour, slot 23 = today 23:00 local,
+        slot 24 = tomorrow midnight local, slot 47 = tomorrow 23:00 local.
+        Nordpool prices are indexed in local time, so we convert all
+        datetimes to local before extracting date/hour.
+        """
+        temps: list[float | None] = [None] * num_slots
+        local_now = dt_util.as_local(now)
+        today_date = local_now.date()
+        for entry in forecast:
+            dt_raw = entry.get("datetime")
+            if dt_raw is None:
+                continue
+            if isinstance(dt_raw, str):
+                dt_parsed = dt_util.parse_datetime(dt_raw)
+                if dt_parsed is None:
+                    continue
+            elif isinstance(dt_raw, datetime):
+                dt_parsed = dt_raw
+            else:
+                continue
+            local_dt = dt_util.as_local(dt_parsed)
+            day_offset = (local_dt.date() - today_date).days
+            if day_offset < 0 or day_offset > 1:
+                continue
+            slot_idx = day_offset * 24 + local_dt.hour
+            if 0 <= slot_idx < num_slots:
+                temp = entry.get("temperature")
+                if temp is not None:
+                    with contextlib.suppress(TypeError, ValueError):
+                        temps[slot_idx] = float(temp)
+        return temps
+
     async def _async_apply_policy(
         self,
         now: datetime,
@@ -293,6 +358,39 @@ class BlockheatRuntime:
         price_state = self.hass.states.get(nordpool_price)
         price = as_float(price_state.state, 0.0) if price_state else 0.0
 
+        # Forecast optimization: extend price window and apply COP weighting.
+        forecast_enabled = self._cfg_bool(CONF_ENABLE_FORECAST_OPTIMIZATION, False)
+        weather_entity = self._cfg_str(CONF_WEATHER_ENTITY)
+        use_cop_weighting = False
+        outdoor_temps_by_slot: list[float | None] | None = None
+        current_hour_index: int | None = None
+        prices_window = list(prices_today)
+
+        if forecast_enabled and weather_entity:
+            forecast = await self._async_get_hourly_forecast(weather_entity)
+            if forecast:
+                # Only extend the price window with tomorrow when the forecast
+                # is available — otherwise the non-COP fallback path would rank
+                # nslots against a 48-slot window, diluting the daily budget.
+                prices_tomorrow: list[float] = []
+                if price_state:
+                    attr_tmrw = price_state.attributes.get("tomorrow")
+                    if isinstance(attr_tmrw, (list, tuple)):
+                        prices_tomorrow = [
+                            value
+                            for item in attr_tmrw
+                            if (value := as_float(item)) is not None
+                        ]
+
+                if prices_tomorrow:
+                    prices_window = prices_today + prices_tomorrow
+
+                outdoor_temps_by_slot = self._build_outdoor_temps_by_slot(
+                    forecast, now, len(prices_window)
+                )
+                use_cop_weighting = True
+                current_hour_index = dt_util.as_local(now).hour
+
         pv_sensor = self._cfg_str(CONF_PV_SENSOR)
         pv_now = self._state_float(pv_sensor, default=0.0) if pv_sensor else 0.0
 
@@ -303,7 +401,7 @@ class BlockheatRuntime:
 
         computation = compute_policy(
             price=price,
-            prices_today=prices_today,
+            prices_today=prices_window,
             minutes_to_block=self._cfg_int(CONF_MINUTES_TO_BLOCK, 240),
             price_ignore_below=self._cfg_float(CONF_PRICE_IGNORE_BELOW, 0.0),
             pv_now=pv_now,
@@ -312,6 +410,9 @@ class BlockheatRuntime:
             last_changed=last_changed,
             now=now,
             min_toggle_interval_min=min_toggle,
+            use_cop_weighting=use_cop_weighting,
+            outdoor_temps_by_slot=outdoor_temps_by_slot,
+            current_hour_index=current_hour_index,
         )
 
         policy_on_effective = current_on
@@ -362,6 +463,8 @@ class BlockheatRuntime:
             "ignore_by_price": computation.ignore_by_price,
             "ignore_by_pv": computation.ignore_by_pv,
             "enough_time_passed": computation.enough_time_passed,
+            "cop_weighting_active": computation.cop_weighting_active,
+            "current_true_cost": computation.current_true_cost,
         }
 
     def _fire_policy_events(self, state: str, computation: Any) -> None:
