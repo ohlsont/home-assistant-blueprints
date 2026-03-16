@@ -273,13 +273,13 @@ async def test_options_flow_saved_daikin_options_survive_reload_and_recompute(
             const.CONF_MINUTES_TO_BLOCK: 210,
             const.CONF_PRICE_IGNORE_BELOW: 0.6,
             const.CONF_PV_IGNORE_ABOVE_W: 0.0,
-            const.CONF_HEATPUMP_SETPOINT: 20.0,
+            const.CONF_HEATPUMP_SETPOINT: 21.0,
             const.CONF_SAVING_COLD_OFFSET_C: 1.0,
             const.CONF_ENERGY_SAVING_WARM_SHUTDOWN_OUTDOOR: 8.0,
             const.CONF_COMFORT_TARGET_C: 22.0,
-            const.CONF_STORAGE_TARGET_C: 24.5,
-            const.CONF_HEATPUMP_OFFSET_C: 2.0,
-            const.CONF_COLD_THRESHOLD: 1.0,
+            const.CONF_STORAGE_TARGET_C: 25.0,
+            const.CONF_HEATPUMP_OFFSET_C: 1.0,
+            const.CONF_COLD_THRESHOLD: 2.0,
             const.CONF_MAX_BOOST: 3.0,
         }
     )

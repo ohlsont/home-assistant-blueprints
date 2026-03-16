@@ -482,11 +482,11 @@ class BlockheatRuntime:
     async def _async_apply_saving_target(self) -> tuple[float, dict[str, Any]]:
         target_current = self._state.target_saving
         outdoor_temp = self._state_float(self._cfg_str(CONF_OUTDOOR_TEMPERATURE_SENSOR))
-        heatpump_setpoint = self._cfg_float(CONF_HEATPUMP_SETPOINT, 20.0)
+        heatpump_setpoint = self._cfg_float(CONF_HEATPUMP_SETPOINT, 21.0)
         saving_cold_offset_c = self._cfg_float(CONF_SAVING_COLD_OFFSET_C, 1.0)
         warm_shutdown_outdoor = self._cfg_float(
             CONF_ENERGY_SAVING_WARM_SHUTDOWN_OUTDOOR,
-            7.0,
+            8.0,
         )
         control_min_c = float(HARDCODED["control_min_c"])  # type: ignore[arg-type]
         control_max_c = float(HARDCODED["control_max_c"])  # type: ignore[arg-type]
@@ -529,8 +529,8 @@ class BlockheatRuntime:
     async def _async_apply_comfort_target(self) -> tuple[float, dict[str, Any]]:
         target_current = self._state.target_comfort
 
-        heatpump_setpoint = self._cfg_float(CONF_HEATPUMP_SETPOINT, 20.0)
-        heatpump_offset_c = self._cfg_float(CONF_HEATPUMP_OFFSET_C, 2.0)
+        heatpump_setpoint = self._cfg_float(CONF_HEATPUMP_SETPOINT, 21.0)
+        heatpump_offset_c = self._cfg_float(CONF_HEATPUMP_OFFSET_C, 1.0)
         comfort_margin_c = float(HARDCODED["comfort_margin_c"])  # type: ignore[arg-type]
         boost_slope_c = float(HARDCODED["boost_slope_c"])  # type: ignore[arg-type]
         control_min_c = float(HARDCODED["control_min_c"])  # type: ignore[arg-type]
@@ -548,7 +548,7 @@ class BlockheatRuntime:
             heatpump_offset_c=heatpump_offset_c,
             heatpump_setpoint=heatpump_setpoint,
             comfort_margin_c=comfort_margin_c,
-            cold_threshold=self._cfg_float(CONF_COLD_THRESHOLD, 0.0),
+            cold_threshold=self._cfg_float(CONF_COLD_THRESHOLD, 2.0),
             max_boost=self._cfg_float(CONF_MAX_BOOST, 3.0),
             boost_slope_c=boost_slope_c,
             control_min_c=control_min_c,
