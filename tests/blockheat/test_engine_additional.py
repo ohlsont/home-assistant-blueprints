@@ -115,7 +115,7 @@ def test_saving_target_uses_setpoint_at_warm_boundary() -> None:
         control_min_c=10.0,
         control_max_c=26.0,
     )
-    assert target == 20.0
+    assert target == 21.0
 
 
 @pytest.mark.parametrize(

@@ -226,7 +226,7 @@ def compute_saving_target(
 ) -> float:
     """Compute saving mode target."""
     if outdoor_temp is not None and outdoor_temp >= warm_shutdown_outdoor:
-        target_unclamped = heatpump_setpoint
+        target_unclamped = heatpump_setpoint + 1.0
     else:
         target_unclamped = heatpump_setpoint - saving_cold_offset_c
     return clamp(target_unclamped, control_min_c, control_max_c)
