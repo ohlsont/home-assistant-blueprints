@@ -55,6 +55,8 @@ class PolicyComputation:
     pv_now: float
     ignore_by_price: bool
     ignore_by_pv: bool
+    cop_weighting_active: bool = False
+    current_true_cost: float | None = None
 
 
 @dataclass(slots=True)
@@ -81,6 +83,49 @@ class DaikinComputation:
     current_temp: float
 
 
+COP_FLOOR = 1.5
+COP_BASE = 3.0
+COP_SLOPE = 0.08
+
+
+def estimate_cop(t_outdoor: float) -> float:
+    """Estimate heat pump COP from outdoor temperature (linear model)."""
+    return max(COP_FLOOR, COP_BASE + COP_SLOPE * t_outdoor)
+
+
+def true_cost(price: float, t_outdoor: float) -> float:
+    """Compute true cost per unit of heat: price / COP."""
+    return price / estimate_cop(t_outdoor)
+
+
+def rank_slots_true_cost(
+    prices: list[float],
+    outdoor_temps: list[float | None],
+    minutes_to_block: int,
+) -> tuple[float, list[float]]:
+    """Rank price slots by COP-weighted true cost.
+
+    Returns (cutoff_true_cost, effective_costs) where effective_costs is
+    parallel to prices and outdoor_temps.
+    """
+    effective_costs: list[float] = []
+    for i, p in enumerate(prices):
+        temp = outdoor_temps[i] if i < len(outdoor_temps) else None
+        if temp is not None:
+            effective_costs.append(true_cost(p, temp))
+        else:
+            effective_costs.append(p)
+
+    nslots = as_int(minutes_to_block, 240) // 15
+    sorted_desc = sorted(effective_costs, reverse=True)
+    if nslots > 0 and len(sorted_desc) >= nslots:
+        cutoff = sorted_desc[nslots - 1]
+    else:
+        cutoff = DEFAULT_POLICY_CUTOFF
+
+    return cutoff, effective_costs
+
+
 def compute_policy(
     *,
     price: float | None,
@@ -93,6 +138,9 @@ def compute_policy(
     last_changed: datetime | None,
     now: datetime,
     min_toggle_interval_min: int,
+    use_cop_weighting: bool = False,
+    outdoor_temps_by_slot: list[float | None] | None = None,
+    current_hour_index: int | None = None,
 ) -> PolicyComputation:
     """Compute policy ON/OFF decision matching integration behavior."""
     current_price = as_float(price, 0.0) or 0.0
@@ -104,14 +152,30 @@ def compute_policy(
         if numeric is not None:
             normalized_prices.append(numeric)
 
-    nslots = as_int(minutes_to_block, 240) // 15
-    sorted_desc = sorted(normalized_prices, reverse=True)
-    if nslots > 0 and len(sorted_desc) >= nslots:
-        cutoff = sorted_desc[nslots - 1]
-    else:
-        cutoff = DEFAULT_POLICY_CUTOFF
+    cop_active = False
+    current_true_cost: float | None = None
 
-    blocked_now = current_price >= cutoff
+    if use_cop_weighting and outdoor_temps_by_slot is not None:
+        cutoff, effective_costs = rank_slots_true_cost(
+            normalized_prices, outdoor_temps_by_slot, minutes_to_block
+        )
+        cop_active = True
+
+        hour_idx = current_hour_index if current_hour_index is not None else now.hour
+        if 0 <= hour_idx < len(effective_costs):
+            current_true_cost = effective_costs[hour_idx]
+            blocked_now = current_true_cost >= cutoff
+        else:
+            blocked_now = current_price >= cutoff
+    else:
+        nslots = as_int(minutes_to_block, 240) // 15
+        sorted_desc = sorted(normalized_prices, reverse=True)
+        if nslots > 0 and len(sorted_desc) >= nslots:
+            cutoff = sorted_desc[nslots - 1]
+        else:
+            cutoff = DEFAULT_POLICY_CUTOFF
+        blocked_now = current_price >= cutoff
+
     ignore_by_price = price_ignore_below > 0 and current_price < price_ignore_below
     ignore_by_pv = pv_ignore_above_w > 0 and current_pv >= pv_ignore_above_w
     target_on = (not (ignore_by_price or ignore_by_pv)) and blocked_now
@@ -137,6 +201,8 @@ def compute_policy(
         pv_now=current_pv,
         ignore_by_price=ignore_by_price,
         ignore_by_pv=ignore_by_pv,
+        cop_weighting_active=cop_active,
+        current_true_cost=current_true_cost,
     )
 
 

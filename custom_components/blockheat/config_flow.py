@@ -20,6 +20,7 @@ from .const import (
     CONF_DAIKIN_OUTDOOR_TEMP_THRESHOLD,
     CONF_DAIKIN_SAVING_TEMPERATURE,
     CONF_ENABLE_DAIKIN_CONSUMER,
+    CONF_ENABLE_FORECAST_OPTIMIZATION,
     CONF_ENERGY_SAVING_WARM_SHUTDOWN_OUTDOOR,
     CONF_HEATPUMP_OFFSET_C,
     CONF_HEATPUMP_SETPOINT,
@@ -33,6 +34,7 @@ from .const import (
     CONF_SAVING_COLD_OFFSET_C,
     CONF_STORAGE_ROOM_SENSOR,
     CONF_STORAGE_TARGET_C,
+    CONF_WEATHER_ENTITY,
     DEFAULTS,
     DOMAIN,
     normalize_entry_data,
@@ -184,6 +186,14 @@ def _tuning_targets_schema(current: dict[str, Any]) -> vol.Schema:
             vol.Required(
                 CONF_MAX_BOOST, default=_cfg_value(current, CONF_MAX_BOOST)
             ): _bounded_float(0, 20),
+            vol.Optional(
+                CONF_ENABLE_FORECAST_OPTIMIZATION,
+                default=_cfg_value(current, CONF_ENABLE_FORECAST_OPTIMIZATION),
+            ): bool,
+            vol.Optional(
+                CONF_WEATHER_ENTITY,
+                default=_cfg_value(current, CONF_WEATHER_ENTITY),
+            ): _entity_selector("weather"),
         }
     )
 

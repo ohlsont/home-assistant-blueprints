@@ -42,7 +42,9 @@
           "storage_target_c": "Storage target (°C)",
           "heatpump_offset_c": "Heatpump offset (°C)",
           "cold_threshold": "Cold threshold (°C)",
-          "max_boost": "Maximum boost (°C)"
+          "max_boost": "Maximum boost (°C)",
+          "enable_forecast_optimization": "Enable COP-weighted forecast optimization",
+          "weather_entity": "Weather entity for hourly forecast"
         },
         "data_description": {
           "minutes_to_block": "Daily total minutes considered expensive and routed to saving mode (top-N 15-minute slots).",
@@ -55,7 +57,9 @@
           "storage_target_c": "Desired storage temperature target before offsets and boost are applied.",
           "heatpump_offset_c": "Degrees subtracted from comfort/storage targets to derive heat pump targets.",
           "cold_threshold": "Outdoor temperature below which cold-weather boost starts applying.",
-          "max_boost": "Maximum additional boost degrees that can be added in cold weather."
+          "max_boost": "Maximum additional boost degrees that can be added in cold weather.",
+          "enable_forecast_optimization": "Rank price slots by true heat cost (price / COP) using per-slot weather forecast temperatures. Falls back to raw price ranking if forecast is unavailable.",
+          "weather_entity": "Weather entity providing hourly temperature forecasts for COP-weighted slot ranking."
         }
       },
       "tuning_daikin": {
@@ -123,7 +127,9 @@
           "storage_target_c": "Storage target (°C)",
           "heatpump_offset_c": "Heatpump offset (°C)",
           "cold_threshold": "Cold threshold (°C)",
-          "max_boost": "Maximum boost (°C)"
+          "max_boost": "Maximum boost (°C)",
+          "enable_forecast_optimization": "Enable COP-weighted forecast optimization",
+          "weather_entity": "Weather entity for hourly forecast"
         },
         "data_description": {
           "minutes_to_block": "Daily total minutes considered expensive and routed to saving mode (top-N 15-minute slots).",
@@ -136,7 +142,9 @@
           "storage_target_c": "Desired storage temperature target before offsets and boost are applied.",
           "heatpump_offset_c": "Degrees subtracted from comfort/storage targets to derive heat pump targets.",
           "cold_threshold": "Outdoor temperature below which cold-weather boost starts applying.",
-          "max_boost": "Maximum additional boost degrees that can be added in cold weather."
+          "max_boost": "Maximum additional boost degrees that can be added in cold weather.",
+          "enable_forecast_optimization": "Rank price slots by true heat cost (price / COP) using per-slot weather forecast temperatures. Falls back to raw price ranking if forecast is unavailable.",
+          "weather_entity": "Weather entity providing hourly temperature forecasts for COP-weighted slot ranking."
         }
       },
       "tuning_daikin": {
