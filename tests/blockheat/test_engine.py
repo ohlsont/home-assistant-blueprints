@@ -67,10 +67,74 @@ class PolicyTests(unittest.TestCase):
         assert result.target_on
         assert not result.should_turn_on
 
+    def test_policy_hysteresis_keeps_saving_on_at_cutoff(self) -> None:
+        """When already ON and price equals cutoff, hysteresis prevents turn-off."""
+        now = datetime(2026, 2, 18, 10, 0, tzinfo=UTC)
+        # prices [1, 2, 3, 4], block 30 min = 2 slots → cutoff = 3.0
+        # price 3.0 == cutoff, without hysteresis this would stay blocked_now=True
+        # but price 2.9 < cutoff would turn off.
+        # With 5% hysteresis, off_cutoff = 3.0 * 0.95 = 2.85
+        # So price 2.9 >= 2.85 → stays ON
+        result = compute_policy(
+            price=2.9,
+            prices_today=[1.0, 2.0, 3.0, 4.0],
+            minutes_to_block=30,
+            price_ignore_below=0.0,
+            pv_now=0.0,
+            pv_ignore_above_w=0.0,
+            current_on=True,
+            last_changed=now - timedelta(minutes=60),
+            now=now,
+            min_toggle_interval_min=15,
+            price_hysteresis_fraction=0.05,
+        )
+        assert result.target_on  # stays on due to hysteresis
+        assert not result.should_turn_off
+
+    def test_policy_hysteresis_allows_turn_off_below_band(self) -> None:
+        """When already ON and price drops well below cutoff, turn off."""
+        now = datetime(2026, 2, 18, 10, 0, tzinfo=UTC)
+        # cutoff = 3.0, off_cutoff = 2.85, price = 2.0 < 2.85 → turn off
+        result = compute_policy(
+            price=2.0,
+            prices_today=[1.0, 2.0, 3.0, 4.0],
+            minutes_to_block=30,
+            price_ignore_below=0.0,
+            pv_now=0.0,
+            pv_ignore_above_w=0.0,
+            current_on=True,
+            last_changed=now - timedelta(minutes=60),
+            now=now,
+            min_toggle_interval_min=15,
+            price_hysteresis_fraction=0.05,
+        )
+        assert not result.target_on
+        assert result.should_turn_off
+
+    def test_policy_hysteresis_not_applied_when_off(self) -> None:
+        """Hysteresis only applies when currently ON — entry threshold unchanged."""
+        now = datetime(2026, 2, 18, 10, 0, tzinfo=UTC)
+        # cutoff = 3.0, price = 2.9 < cutoff → should not turn on
+        result = compute_policy(
+            price=2.9,
+            prices_today=[1.0, 2.0, 3.0, 4.0],
+            minutes_to_block=30,
+            price_ignore_below=0.0,
+            pv_now=0.0,
+            pv_ignore_above_w=0.0,
+            current_on=False,
+            last_changed=now - timedelta(minutes=60),
+            now=now,
+            min_toggle_interval_min=15,
+            price_hysteresis_fraction=0.05,
+        )
+        assert not result.target_on
+        assert not result.should_turn_on
+
 
 class SavingTargetTests(unittest.TestCase):
     def test_saving_warm_shutdown_uses_heatpump_setpoint(self) -> None:
-        target = compute_saving_target(
+        result = compute_saving_target(
             outdoor_temp=8.0,
             heatpump_setpoint=20.0,
             saving_cold_offset_c=1.0,
@@ -78,10 +142,11 @@ class SavingTargetTests(unittest.TestCase):
             control_min_c=10.0,
             control_max_c=26.0,
         )
-        assert target == 21.0
+        assert result.target == 21.0
+        assert result.warm_shutdown is True
 
     def test_saving_cold_mode_uses_setpoint_offset(self) -> None:
-        target = compute_saving_target(
+        result = compute_saving_target(
             outdoor_temp=0.0,
             heatpump_setpoint=20.0,
             saving_cold_offset_c=1.0,
@@ -89,7 +154,54 @@ class SavingTargetTests(unittest.TestCase):
             control_min_c=10.0,
             control_max_c=26.0,
         )
-        assert target == 19.0
+        assert result.target == 19.0
+        assert result.warm_shutdown is False
+
+    def test_warm_shutdown_hysteresis_stays_in_warm_shutdown(self) -> None:
+        """Once in warm shutdown, temp must drop below threshold - hysteresis to exit."""
+        result = compute_saving_target(
+            outdoor_temp=7.5,  # below threshold (8.0) but above threshold - hysteresis (7.0)
+            heatpump_setpoint=21.0,
+            saving_cold_offset_c=1.0,
+            warm_shutdown_outdoor=8.0,
+            control_min_c=10.0,
+            control_max_c=26.0,
+            warm_shutdown_hysteresis_c=1.0,
+            currently_warm_shutdown=True,
+        )
+        # Should stay in warm shutdown due to hysteresis
+        assert result.warm_shutdown is True
+        assert result.target == 22.0  # heatpump_setpoint + 1.0
+
+    def test_warm_shutdown_hysteresis_exits_below_band(self) -> None:
+        """Exits warm shutdown when temp drops below threshold - hysteresis."""
+        result = compute_saving_target(
+            outdoor_temp=6.9,  # below threshold - hysteresis (8.0 - 1.0 = 7.0)
+            heatpump_setpoint=21.0,
+            saving_cold_offset_c=1.0,
+            warm_shutdown_outdoor=8.0,
+            control_min_c=10.0,
+            control_max_c=26.0,
+            warm_shutdown_hysteresis_c=1.0,
+            currently_warm_shutdown=True,
+        )
+        assert result.warm_shutdown is False
+        assert result.target == 20.0  # heatpump_setpoint - saving_cold_offset_c
+
+    def test_warm_shutdown_hysteresis_does_not_enter_early(self) -> None:
+        """When not in warm shutdown, the normal threshold applies (no early entry)."""
+        result = compute_saving_target(
+            outdoor_temp=7.5,  # below threshold (8.0)
+            heatpump_setpoint=21.0,
+            saving_cold_offset_c=1.0,
+            warm_shutdown_outdoor=8.0,
+            control_min_c=10.0,
+            control_max_c=26.0,
+            warm_shutdown_hysteresis_c=1.0,
+            currently_warm_shutdown=False,
+        )
+        assert result.warm_shutdown is False
+        assert result.target == 20.0
 
 
 class ComfortTargetTests(unittest.TestCase):
