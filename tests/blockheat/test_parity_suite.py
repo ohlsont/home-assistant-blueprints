@@ -11,7 +11,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 ENGINE_MODULE = "homeassistant.custom_components.blockheat.engine"
-ENGINE_PATH = ROOT / "homeassistant" / "custom_components" / "blockheat" / "engine.py"
+ENGINE_PATH = ROOT / "custom_components" / "blockheat" / "engine.py"
 
 if ENGINE_MODULE in sys.modules:
     engine = sys.modules[ENGINE_MODULE]

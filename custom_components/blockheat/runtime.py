@@ -76,7 +76,7 @@ from .engine import (
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from .coordinator import BlockheatCoordinator
+    from . import BlockheatCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 

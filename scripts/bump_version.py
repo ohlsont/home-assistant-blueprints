@@ -10,10 +10,7 @@ from pathlib import Path
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
 
 ROOT = Path(__file__).resolve().parents[1]
-MANIFEST_PATHS = (
-    ROOT / "custom_components" / "blockheat" / "manifest.json",
-    ROOT / "homeassistant" / "custom_components" / "blockheat" / "manifest.json",
-)
+MANIFEST_PATHS = (ROOT / "custom_components" / "blockheat" / "manifest.json",)
 PYPROJECT_PATH = ROOT / "pyproject.toml"
 
 

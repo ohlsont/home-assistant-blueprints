@@ -67,13 +67,6 @@ HARDCODED: dict[str, object] = {
     "price_hysteresis_fraction": 0.05,
 }
 
-LEGACY_INTERNAL_ENTITY_KEYS: tuple[str, ...] = (
-    CONF_TARGET_BOOLEAN,
-    CONF_TARGET_SAVING_HELPER,
-    CONF_TARGET_COMFORT_HELPER,
-    CONF_TARGET_FINAL_HELPER,
-)
-
 STATE_POLICY_ON = "policy_on"
 STATE_POLICY_LAST_CHANGED = "policy_last_changed"
 STATE_TARGET_SAVING = "target_saving"
@@ -126,46 +119,7 @@ OPTIONAL_ENTITY_KEYS: tuple[str, ...] = (
     CONF_DAIKIN_CLIMATE_ENTITY,
 )
 
-# Legacy config keys that may exist in saved entries and need migration.
-_LEGACY_REMOVED_KEYS = (
-    "min_toggle_interval_min",
-    "virtual_temperature",
-    "maintenance_target_c",
-    "comfort_margin_c",
-    "boost_slope_c",
-    "control_min_c",
-    "control_max_c",
-    "saving_helper_write_delta_c",
-    "comfort_helper_write_delta_c",
-    "final_helper_write_delta_c",
-    "control_write_delta_c",
-    "daikin_min_temp_change",
-    "daikin_outdoor_temp_sensor",
-    "daikin_saving_temperature",
-    "daikin_outdoor_temp_threshold",
-    "daikin_cold_threshold",
-    "daikin_disable_threshold",
-)
-
 
 def normalize_entry_data(data: dict[str, Any]) -> dict[str, Any]:
     """Normalize entry/options data for runtime use and future saves."""
-    normalized = {**DEFAULTS, **data}
-
-    # Migrate old dual-offset keys to single heatpump_offset_c.
-    # Check raw data (not normalized) so DEFAULTS don't mask the legacy value.
-    if "comfort_to_heatpump_offset_c" in data:
-        normalized[CONF_HEATPUMP_OFFSET_C] = data["comfort_to_heatpump_offset_c"]
-    normalized.pop("comfort_to_heatpump_offset_c", None)
-    normalized.pop("storage_to_heatpump_offset_c", None)
-
-    # Strip legacy keys that are now hardcoded or removed.
-    for key in _LEGACY_REMOVED_KEYS:
-        normalized.pop(key, None)
-
-    # Inject hardcoded values so runtime always sees them.
-    normalized.update(HARDCODED)
-
-    for key in LEGACY_INTERNAL_ENTITY_KEYS:
-        normalized.pop(key, None)
-    return normalized
+    return {**DEFAULTS, **data, **HARDCODED}

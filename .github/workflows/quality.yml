@@ -30,13 +30,13 @@ jobs:
         run: uv sync --group dev
 
       - name: Check formatting
-        run: uv run ruff format --check custom_components homeassistant scripts tests
+        run: uv run ruff format --check custom_components scripts tests
 
       - name: Lint
-        run: uv run ruff check custom_components homeassistant scripts tests
+        run: uv run ruff check custom_components scripts tests
 
       - name: Type check
         run: uv run mypy
 
       - name: Spell check
-        run: uv run codespell custom_components homeassistant scripts tests
+        run: uv run codespell custom_components scripts tests

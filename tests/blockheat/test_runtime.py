@@ -28,7 +28,7 @@ def _make_runtime_context(
     config = {**base_entry_data, **entry_options_data}
     state_seed = seed_kwargs or {}
     seed_runtime_states(fake_hass, config, **state_seed)
-    coordinator = blockheat_env.coordinator.BlockheatCoordinator(fake_hass)
+    coordinator = blockheat_env.package.BlockheatCoordinator(fake_hass)
     runtime = blockheat_env.runtime.BlockheatRuntime(
         fake_hass,
         "entry-test",

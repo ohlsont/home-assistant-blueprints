@@ -19,5 +19,4 @@
 
 ## Structure
 - Integration files live under `custom_components/blockheat/`.
-- Home Assistant mirror files live under `homeassistant/custom_components/blockheat/`.
 - Update `README.md` when behavior or inputs change.

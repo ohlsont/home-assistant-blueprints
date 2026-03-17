@@ -276,35 +276,6 @@ async def test_options_flow_routes_through_expected_steps(
 
 
 @pytest.mark.asyncio
-async def test_options_flow_strips_legacy_internal_entity_keys_on_save(
-    blockheat_env: SimpleNamespace,
-    build_config: Any,
-) -> None:
-    const = blockheat_env.const
-    legacy_entry_data = build_config(
-        {
-            const.CONF_TARGET_BOOLEAN: "input_boolean.block_heat_energy_saving",
-            const.CONF_TARGET_SAVING_HELPER: "input_number.block_heat_target_saving",
-            const.CONF_TARGET_COMFORT_HELPER: "input_number.block_heat_target_comfort",
-            const.CONF_TARGET_FINAL_HELPER: "input_number.block_heat_target_final",
-        }
-    )
-    entry = blockheat_env.FakeConfigEntry("entry-1", data=legacy_entry_data)
-    flow = blockheat_env.config_flow.BlockheatOptionsFlow(entry)
-
-    await flow.async_step_init(_step1_user_input(const))
-    result = await flow.async_step_tuning_targets(
-        _tuning_input(const, "tuning_targets")
-    )
-
-    assert result["type"] == "create_entry"
-    assert const.CONF_TARGET_BOOLEAN not in result["data"]
-    assert const.CONF_TARGET_SAVING_HELPER not in result["data"]
-    assert const.CONF_TARGET_COMFORT_HELPER not in result["data"]
-    assert const.CONF_TARGET_FINAL_HELPER not in result["data"]
-
-
-@pytest.mark.asyncio
 async def test_config_flow_round_trip_with_forecast_optimization(
     blockheat_env: SimpleNamespace,
 ) -> None:

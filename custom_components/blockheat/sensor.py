@@ -8,7 +8,7 @@ from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.const import UnitOfTemperature
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import ENTRY_COORDINATOR
+from . import ENTRY_COORDINATOR, BlockheatCoordinator
 from .const import (
     DOMAIN,
     ENTITY_ID_TARGET_COMFORT,
@@ -18,7 +18,6 @@ from .const import (
     STATE_TARGET_FINAL,
     STATE_TARGET_SAVING,
 )
-from .coordinator import BlockheatCoordinator
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry

@@ -30,7 +30,7 @@ async def test_binary_sensor_entities_read_internal_state(
     binary_sensor_module = importlib.import_module(
         "homeassistant.custom_components.blockheat.binary_sensor"
     )
-    coordinator = blockheat_env.coordinator.BlockheatCoordinator(fake_hass)
+    coordinator = blockheat_env.package.BlockheatCoordinator(fake_hass)
     coordinator.async_set_updated_data(
         {
             "at": "2026-02-19T12:00:00+00:00",
@@ -70,7 +70,7 @@ async def test_sensor_entities_read_internal_state_and_handle_bad_values(
     sensor_module = importlib.import_module(
         "homeassistant.custom_components.blockheat.sensor"
     )
-    coordinator = blockheat_env.coordinator.BlockheatCoordinator(fake_hass)
+    coordinator = blockheat_env.package.BlockheatCoordinator(fake_hass)
     coordinator.async_set_updated_data(
         {
             "at": "2026-02-19T12:30:00+00:00",
@@ -130,7 +130,7 @@ async def test_entities_unavailable_without_coordinator_data(
     binary_sensor_module = importlib.import_module(
         "homeassistant.custom_components.blockheat.binary_sensor"
     )
-    coordinator = blockheat_env.coordinator.BlockheatCoordinator(fake_hass)
+    coordinator = blockheat_env.package.BlockheatCoordinator(fake_hass)
     entry = _setup_entry_data(
         blockheat_env, fake_hass, "entry-entities-empty", coordinator
     )
