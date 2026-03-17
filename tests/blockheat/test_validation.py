@@ -10,10 +10,10 @@ if TYPE_CHECKING:
 
 
 def _validate(blockheat_env: SimpleNamespace, values: dict[str, object]) -> str | None:
-    validation = importlib.import_module(
-        "homeassistant.custom_components.blockheat.validation"
+    config_flow = importlib.import_module(
+        "homeassistant.custom_components.blockheat.config_flow"
     )
-    return validation.validate_tuning_values(values)
+    return config_flow.validate_tuning_values(values)
 
 
 def test_validate_tuning_values_rejects_negative_non_negative_field(

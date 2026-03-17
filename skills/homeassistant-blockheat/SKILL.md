@@ -1,6 +1,6 @@
 ---
 name: homeassistant-blockheat
-description: Edit and review the Blockheat Home Assistant custom integration. Use when tasks involve creating, debugging, or refactoring files under custom_components/blockheat/ (or its homeassistant/ mirror), dashboards/blockheat/, or configuration flow and engine logic, especially when validating helper contracts, routing precedence, and sensor/control entity wiring.
+description: Edit and review the Blockheat Home Assistant custom integration. Use when tasks involve creating, debugging, or refactoring files under custom_components/blockheat/, configuration flow and engine logic, especially when validating helper contracts, routing precedence, and sensor/control entity wiring.
 ---
 
 # Home Assistant Blockheat
@@ -11,12 +11,11 @@ Implement safe, minimal changes for the Blockheat custom integration. Favor dete
 
 ## Quick Start
 
-1. Identify request scope: engine logic, runtime adapter, config flow, dashboard, or documentation.
+1. Identify request scope: engine logic, runtime adapter, config flow, or documentation.
 2. Read `references/repo-map.md` for file routing and helper contracts.
 3. Inspect only impacted files plus directly-related upstream/downstream modules.
 4. Apply narrow edits that preserve established code style and entity naming.
-5. Keep both directory mirrors in sync (`custom_components/blockheat/` and `homeassistant/custom_components/blockheat/`).
-6. Validate with tests and linting, then provide explicit manual runtime checks for Home Assistant.
+5. Validate with tests and linting, then provide explicit manual runtime checks for Home Assistant.
 
 ## Workflow
 
@@ -24,9 +23,8 @@ Implement safe, minimal changes for the Blockheat custom integration. Favor dete
 
 Classify requests into one or more categories:
 - Engine/computation change in `engine.py`.
-- Runtime/HA adapter change in `runtime.py` or `coordinator.py`.
-- Config flow or validation change in `config_flow.py` / `validation.py`.
-- Dashboard diagnostics update in `dashboards/blockheat/...`.
+- Runtime/HA adapter change in `runtime.py`.
+- Config flow or validation change in `config_flow.py`.
 - Documentation update in `README.md` when behavior or required inputs change.
 
 ### 2. Gather only required context
@@ -45,7 +43,6 @@ Apply these rules on every change:
 - Keep helper entity ids stable unless the user explicitly requests a migration.
 - Preserve clamp/deadband/hysteresis semantics unless asked to change control behavior.
 - Prefer additive defaults and backward-compatible inputs.
-- Update both directory mirrors for any integration code change.
 
 ### 4. Validate before handoff
 
@@ -61,7 +58,7 @@ If runtime validation is required, provide a short matrix of manual HA checks in
 Handle common requests with this playbook:
 - "Tune comfort/saving behavior": update engine target calculators and note helper/output impact.
 - "Fix control flapping": adjust timing, thresholds, or deadband in engine/runtime and mention regression risks.
-- "Add config parameter": add to `const.py`, wire through `config_flow.py`, `engine.py`, and `runtime.py`; update both mirrors.
+- "Add config parameter": add to `const.py`, wire through `config_flow.py`, `engine.py`, and `runtime.py`.
 - "Change Daikin behavior": update `compute_daikin` in engine and Daikin runtime logic.
 
 ## MCP and Runtime Notes

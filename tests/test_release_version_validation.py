@@ -40,29 +40,18 @@ def _write_pyproject(path: Path, version: str) -> Path:
 
 
 def test_resolve_release_version_returns_synced_version(tmp_path: Path) -> None:
-    left = _write_manifest(tmp_path / "left.json", "0.2.0")
-    right = _write_manifest(tmp_path / "right.json", "0.2.0")
+    manifest = _write_manifest(tmp_path / "manifest.json", "0.2.0")
     pyproject = _write_pyproject(tmp_path / "pyproject.toml", "0.2.0")
 
-    assert resolve_release_version((left, right), pyproject) == "0.2.0"
-
-
-def test_resolve_release_version_rejects_manifest_mismatch(tmp_path: Path) -> None:
-    left = _write_manifest(tmp_path / "left.json", "0.2.0")
-    right = _write_manifest(tmp_path / "right.json", "0.2.1")
-    pyproject = _write_pyproject(tmp_path / "pyproject.toml", "0.2.0")
-
-    with pytest.raises(ValueError, match="Version mismatch"):
-        resolve_release_version((left, right), pyproject)
+    assert resolve_release_version((manifest,), pyproject) == "0.2.0"
 
 
 def test_resolve_release_version_rejects_pyproject_mismatch(tmp_path: Path) -> None:
-    left = _write_manifest(tmp_path / "left.json", "0.2.0")
-    right = _write_manifest(tmp_path / "right.json", "0.2.0")
+    manifest = _write_manifest(tmp_path / "manifest.json", "0.2.0")
     pyproject = _write_pyproject(tmp_path / "pyproject.toml", "0.3.0")
 
     with pytest.raises(ValueError, match="Version mismatch"):
-        resolve_release_version((left, right), pyproject)
+        resolve_release_version((manifest,), pyproject)
 
 
 @pytest.mark.parametrize(
@@ -79,9 +68,8 @@ def test_resolve_release_version_rejects_invalid_or_missing_versions(
     pyproject_version: str,
     message: str,
 ) -> None:
-    left = _write_manifest(tmp_path / "left.json", manifest_version)
-    right = _write_manifest(tmp_path / "right.json", "0.2.0")
+    manifest = _write_manifest(tmp_path / "manifest.json", manifest_version)
     pyproject = _write_pyproject(tmp_path / "pyproject.toml", pyproject_version)
 
     with pytest.raises(ValueError, match=message):
-        resolve_release_version((left, right), pyproject)
+        resolve_release_version((manifest,), pyproject)

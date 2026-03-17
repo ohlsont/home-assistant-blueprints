@@ -26,7 +26,7 @@ asyncio_mode = "auto"
 [tool.ruff]
 target-version = "py312"
 line-length = 88
-src = ["custom_components", "homeassistant", "scripts", "tests"]
+src = ["custom_components", "scripts", "tests"]
 
 [tool.ruff.lint]
 select = [
@@ -52,7 +52,7 @@ select = [
 
 [tool.mypy]
 python_version = "3.12"
-files = ["custom_components/blockheat", "homeassistant/custom_components/blockheat", "scripts"]
+files = ["custom_components/blockheat", "scripts"]
 explicit_package_bases = true
 ignore_missing_imports = true
 warn_unused_ignores = true

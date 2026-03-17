@@ -7,13 +7,12 @@ from typing import TYPE_CHECKING, Any
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import ENTRY_COORDINATOR
+from . import ENTRY_COORDINATOR, BlockheatCoordinator
 from .const import (
     DOMAIN,
     ENTITY_ID_POLICY_ACTIVE,
     STATE_POLICY_ON,
 )
-from .coordinator import BlockheatCoordinator
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry

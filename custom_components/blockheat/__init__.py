@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 import voluptuous as vol
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import (
     DOMAIN,
@@ -19,13 +20,20 @@ from .const import (
     SERVICE_DUMP_DIAGNOSTICS,
     SERVICE_RECOMPUTE,
 )
-from .coordinator import BlockheatCoordinator
 from .runtime import BlockheatRuntime
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
 
 _LOGGER = logging.getLogger(__name__)
+
+
+class BlockheatCoordinator(DataUpdateCoordinator[dict[str, Any]]):
+    """Hold latest Blockheat runtime snapshot."""
+
+    def __init__(self, hass: HomeAssistant) -> None:
+        super().__init__(hass, logger=_LOGGER, name=DOMAIN)
+
 
 ENTRY_RUNTIME = "runtime"
 ENTRY_COORDINATOR = "coordinator"

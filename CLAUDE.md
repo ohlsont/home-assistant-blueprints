@@ -22,19 +22,19 @@ uv run python -m pytest tests/blockheat/test_engine.py -q
 uv run python -m pytest tests/blockheat/test_engine.py -k "test_name" -q
 
 # Coverage gate (CI threshold: 80%)
-uv run python -m pytest tests -q --cov=homeassistant.custom_components.blockheat --cov-branch --cov-report=term-missing --cov-fail-under=80
+uv run python -m pytest tests -q --cov=custom_components.blockheat --cov-branch --cov-report=term-missing --cov-fail-under=80
 
 # Format
-uv run ruff format custom_components homeassistant scripts tests
+uv run ruff format custom_components scripts tests
 
 # Lint
-uv run ruff check custom_components homeassistant scripts tests
+uv run ruff check custom_components scripts tests
 
 # Type check
 uv run mypy
 
 # Spell check
-uv run codespell custom_components homeassistant scripts tests
+uv run codespell custom_components scripts tests
 ```
 
 Always use `uv run` instead of bare `python` or `python3`.
@@ -46,7 +46,7 @@ Always use `uv run` instead of bare `python` or `python3`.
 uv run python scripts/bump_version.py X.Y.Z
 
 # Commit, tag, and push
-git add pyproject.toml custom_components/blockheat/manifest.json homeassistant/custom_components/blockheat/manifest.json
+git add pyproject.toml custom_components/blockheat/manifest.json
 git commit -m "chore: bump version to X.Y.Z"
 git tag vX.Y.Z
 git push && git push --tags
@@ -55,24 +55,14 @@ git push && git push --tags
 
 ## Architecture
 
-### Dual-directory mirror
-
-The integration source exists in two identical directories that must stay in sync:
-
-- `custom_components/blockheat/` — HACS install path (primary)
-- `homeassistant/custom_components/blockheat/` — local dev/testing mirror
-
-CI enforces mirror sync via `scripts/check_component_mirror_sync.py`. Tests import from the `homeassistant/` mirror. When editing integration code, update both directories.
-
 ### Core layers
 
 - **`engine.py`** — Pure computation, no HA dependencies. Computes policy decisions (`PolicyComputation`), comfort targets (`ComfortComputation`), saving targets, and final target with clamping/deadband. All functions are stateless and testable in isolation.
 - **`runtime.py`** — HA runtime adapter. Reads entity states, calls the engine, writes results back to HA entities/helpers, fires events, manages periodic scheduling and toggle interval guards.
-- **`coordinator.py`** — Thin `DataUpdateCoordinator` holding the latest runtime snapshot for sensor/binary_sensor platforms.
-- **`config_flow.py`** — Two-step config flow: Step 1 maps external entities (sensors, controls); Step 2 is a sectioned tuning wizard for all numeric parameters.
+- **`__init__.py`** — Integration setup, `BlockheatCoordinator` (thin `DataUpdateCoordinator`), service registration.
+- **`config_flow.py`** — Two-step config flow: Step 1 maps external entities (sensors, controls); Step 2 is a sectioned tuning wizard for all numeric parameters. Also contains tuning validation helpers.
 - **`sensor.py` / `binary_sensor.py`** — Read-only entities exposing targets and policy state.
 - **`const.py`** — All config keys, defaults, and entity ID constants.
-- **`validation.py`** — Voluptuous schema helpers for config flow validation.
 
 ### Data flow
 
@@ -88,14 +78,13 @@ HA entity states (price, outdoor temp, room temps, PV)
 
 ### Testing structure
 
-- `tests/blockheat/` — Unit tests against the `homeassistant/` mirror path
+- `tests/blockheat/` — Unit tests for the integration
 - `tests/conftest.py` — Shared fake HA fixtures (FakeHass, FakeState, etc.)
-- `tests/test_mirror_sync.py` — Verifies both directories are identical
-- `tests/test_release_version_validation.py` — Ensures version matches across `manifest.json` (both) and `pyproject.toml`
+- `tests/test_release_version_validation.py` — Ensures version matches across `manifest.json` and `pyproject.toml`
 
 ### Release version contract
 
-Version must match in three files: `custom_components/blockheat/manifest.json`, `homeassistant/custom_components/blockheat/manifest.json`, and `pyproject.toml`. CI blocks release if they diverge.
+Version must match in two files: `custom_components/blockheat/manifest.json` and `pyproject.toml`. CI blocks release if they diverge.
 
 ## Conventions
 

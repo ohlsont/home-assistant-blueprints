@@ -9,17 +9,6 @@ ROOT = Path(__file__).resolve().parents[1]
 
 CUSTOM_STRINGS = ROOT / "custom_components" / "blockheat" / "strings.json"
 CUSTOM_EN = ROOT / "custom_components" / "blockheat" / "translations" / "en.json"
-MIRROR_STRINGS = (
-    ROOT / "homeassistant" / "custom_components" / "blockheat" / "strings.json"
-)
-MIRROR_EN = (
-    ROOT
-    / "homeassistant"
-    / "custom_components"
-    / "blockheat"
-    / "translations"
-    / "en.json"
-)
 
 TUNING_STEPS = (
     "tuning_targets",
@@ -55,11 +44,9 @@ def _assert_step_field_explanations(
         )
 
 
-def test_translation_files_are_kept_in_sync_for_component_and_mirror() -> None:
+def test_translation_files_are_kept_in_sync() -> None:
     base = _load_json(CUSTOM_STRINGS)
     assert _load_json(CUSTOM_EN) == base
-    assert _load_json(MIRROR_STRINGS) == base
-    assert _load_json(MIRROR_EN) == base
 
 
 def test_all_tuning_steps_have_labels_and_descriptions_in_config_and_options() -> None:

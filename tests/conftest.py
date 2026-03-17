@@ -14,7 +14,6 @@ from typing import Any, ClassVar
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-HOMEASSISTANT_DIR = REPO_ROOT / "homeassistant"
 CUSTOM_COMPONENTS_DIR = REPO_ROOT / "custom_components"
 
 
@@ -424,7 +423,7 @@ def blockheat_env(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
     service_not_found_cls = type("ServiceNotFound", (home_assistant_error_cls,), {})
 
     homeassistant_module = types.ModuleType("homeassistant")
-    homeassistant_module.__path__ = [str(HOMEASSISTANT_DIR)]
+    homeassistant_module.__path__ = []
     custom_components_module = types.ModuleType("homeassistant.custom_components")
     custom_components_module.__path__ = [str(CUSTOM_COMPONENTS_DIR)]
     components_module = types.ModuleType("homeassistant.components")
@@ -630,9 +629,6 @@ def blockheat_env(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
             f"expected under {expected_package_dir}, got {package_path}"
         )
     const = importlib.import_module("homeassistant.custom_components.blockheat.const")
-    coordinator = importlib.import_module(
-        "homeassistant.custom_components.blockheat.coordinator"
-    )
     runtime = importlib.import_module(
         "homeassistant.custom_components.blockheat.runtime"
     )
@@ -644,7 +640,6 @@ def blockheat_env(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
     return SimpleNamespace(
         package=package_module,
         const=const,
-        coordinator=coordinator,
         runtime=runtime,
         config_flow=config_flow,
         engine=engine,
