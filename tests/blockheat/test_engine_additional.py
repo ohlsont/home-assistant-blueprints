@@ -155,7 +155,6 @@ def test_comfort_no_boost_exactly_at_threshold() -> None:
         outdoor_temp=0.0,
         comfort_target_c=22.0,
         storage_target_c=25.0,
-        heatpump_offset_c=2.0,
         heatpump_setpoint=20.0,
         comfort_margin_c=0.2,
         cold_threshold=0.0,
@@ -165,7 +164,7 @@ def test_comfort_no_boost_exactly_at_threshold() -> None:
         control_max_c=26.0,
     )
     assert result.boost_clamped == 0.0
-    assert result.target == 20.0
+    assert result.target == 22.0
 
 
 def test_comfort_boost_saturates_at_max() -> None:
@@ -176,7 +175,6 @@ def test_comfort_boost_saturates_at_max() -> None:
         outdoor_temp=-50.0,
         comfort_target_c=22.0,
         storage_target_c=25.0,
-        heatpump_offset_c=2.0,
         heatpump_setpoint=20.0,
         comfort_margin_c=0.2,
         cold_threshold=0.0,
@@ -186,7 +184,7 @@ def test_comfort_boost_saturates_at_max() -> None:
         control_max_c=26.0,
     )
     assert result.boost_clamped == 3.0
-    assert result.target == 23.0
+    assert result.target == 25.0
 
 
 def test_comfort_zero_boost_slope_uses_max_boost_without_crash() -> None:
@@ -197,7 +195,6 @@ def test_comfort_zero_boost_slope_uses_max_boost_without_crash() -> None:
         outdoor_temp=-5.0,
         comfort_target_c=22.0,
         storage_target_c=25.0,
-        heatpump_offset_c=2.0,
         heatpump_setpoint=20.0,
         comfort_margin_c=0.2,
         cold_threshold=0.0,
@@ -207,7 +204,7 @@ def test_comfort_zero_boost_slope_uses_max_boost_without_crash() -> None:
         control_max_c=26.0,
     )
     assert result.boost_clamped == 3.0
-    assert result.target == 23.0
+    assert result.target == 25.0
 
 
 def test_comfort_colder_outdoor_increases_target() -> None:
@@ -218,7 +215,6 @@ def test_comfort_colder_outdoor_increases_target() -> None:
         outdoor_temp=0.0,
         comfort_target_c=22.0,
         storage_target_c=25.0,
-        heatpump_offset_c=2.0,
         heatpump_setpoint=20.0,
         comfort_margin_c=0.2,
         cold_threshold=0.0,
@@ -234,7 +230,6 @@ def test_comfort_colder_outdoor_increases_target() -> None:
         outdoor_temp=-5.0,
         comfort_target_c=22.0,
         storage_target_c=25.0,
-        heatpump_offset_c=2.0,
         heatpump_setpoint=20.0,
         comfort_margin_c=0.2,
         cold_threshold=0.0,
@@ -256,7 +251,6 @@ def test_comfort_storage_path_is_boosted_when_comfort_satisfied() -> None:
         outdoor_temp=-10.0,
         comfort_target_c=22.0,
         storage_target_c=25.0,
-        heatpump_offset_c=2.0,
         heatpump_setpoint=20.0,
         comfort_margin_c=0.2,
         cold_threshold=0.0,
@@ -266,9 +260,9 @@ def test_comfort_storage_path_is_boosted_when_comfort_satisfied() -> None:
         control_max_c=26.0,
     )
     assert result.boost_clamped == 2.0
-    assert result.comfort_target_unclamped == 22.0
-    assert result.storage_target_unclamped == 25.0
-    assert result.target == 25.0
+    assert result.comfort_target_unclamped == 24.0
+    assert result.storage_target_unclamped == 27.0
+    assert result.target == 26.0
 
 
 def test_comfort_extreme_cold_clamps_to_control_max() -> None:
@@ -279,7 +273,6 @@ def test_comfort_extreme_cold_clamps_to_control_max() -> None:
         outdoor_temp=-100.0,
         comfort_target_c=22.0,
         storage_target_c=25.0,
-        heatpump_offset_c=2.0,
         heatpump_setpoint=20.0,
         comfort_margin_c=0.2,
         cold_threshold=0.0,
@@ -300,7 +293,6 @@ def test_comfort_missing_room_sensor_forces_unsatisfied_path() -> None:
         outdoor_temp=0.0,
         comfort_target_c=22.0,
         storage_target_c=25.0,
-        heatpump_offset_c=2.0,
         heatpump_setpoint=20.0,
         comfort_margin_c=0.2,
         cold_threshold=0.0,
@@ -310,7 +302,7 @@ def test_comfort_missing_room_sensor_forces_unsatisfied_path() -> None:
         control_max_c=26.0,
     )
     assert result.comfort_satisfied is False
-    assert result.target == 20.0
+    assert result.target == 22.0
 
 
 def test_comfort_storage_vs_comfort_tie_is_stable() -> None:
@@ -321,7 +313,6 @@ def test_comfort_storage_vs_comfort_tie_is_stable() -> None:
         outdoor_temp=0.0,
         comfort_target_c=22.0,
         storage_target_c=22.0,
-        heatpump_offset_c=2.0,
         heatpump_setpoint=20.0,
         comfort_margin_c=0.2,
         cold_threshold=0.0,

@@ -240,7 +240,6 @@ def compute_comfort_target(
     outdoor_temp: float | None,
     comfort_target_c: float,
     storage_target_c: float,
-    heatpump_offset_c: float,
     heatpump_setpoint: float,
     comfort_margin_c: float,
     cold_threshold: float,
@@ -266,8 +265,8 @@ def compute_comfort_target(
         boost_raw = 0.0
     boost_clamped = clamp(boost_raw, 0.0, max_boost)
 
-    comfort_target_unclamped = (comfort_target_c - heatpump_offset_c) + boost_clamped
-    storage_target_unclamped = (storage_target_c - heatpump_offset_c) + boost_clamped
+    comfort_target_unclamped = comfort_target_c + boost_clamped
+    storage_target_unclamped = storage_target_c + boost_clamped
 
     storage_needs_heat = storage_temp is not None and storage_temp < (
         storage_target_c - comfort_margin_c
