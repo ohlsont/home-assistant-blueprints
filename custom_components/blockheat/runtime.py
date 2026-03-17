@@ -31,7 +31,6 @@ from .const import (
     CONF_ENABLE_DAIKIN_CONSUMER,
     CONF_ENABLE_FORECAST_OPTIMIZATION,
     CONF_ENERGY_SAVING_WARM_SHUTDOWN_OUTDOOR,
-    CONF_HEATPUMP_OFFSET_C,
     CONF_HEATPUMP_SETPOINT,
     CONF_MAX_BOOST,
     CONF_MINUTES_TO_BLOCK,
@@ -530,7 +529,7 @@ class BlockheatRuntime:
         target_current = self._state.target_comfort
 
         heatpump_setpoint = self._cfg_float(CONF_HEATPUMP_SETPOINT, 21.0)
-        heatpump_offset_c = self._cfg_float(CONF_HEATPUMP_OFFSET_C, 1.0)
+
         comfort_margin_c = float(HARDCODED["comfort_margin_c"])  # type: ignore[arg-type]
         boost_slope_c = float(HARDCODED["boost_slope_c"])  # type: ignore[arg-type]
         control_min_c = float(HARDCODED["control_min_c"])  # type: ignore[arg-type]
@@ -545,7 +544,6 @@ class BlockheatRuntime:
             ),
             comfort_target_c=self._cfg_float(CONF_COMFORT_TARGET_C, 22.0),
             storage_target_c=self._cfg_float(CONF_STORAGE_TARGET_C, 25.0),
-            heatpump_offset_c=heatpump_offset_c,
             heatpump_setpoint=heatpump_setpoint,
             comfort_margin_c=comfort_margin_c,
             cold_threshold=self._cfg_float(CONF_COLD_THRESHOLD, 2.0),

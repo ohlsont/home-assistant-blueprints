@@ -101,7 +101,6 @@ class ComfortTargetTests(unittest.TestCase):
             outdoor_temp=2.0,
             comfort_target_c=22.0,
             storage_target_c=25.0,
-            heatpump_offset_c=2.0,
             heatpump_setpoint=20.0,
             comfort_margin_c=0.2,
             cold_threshold=0.0,
@@ -110,7 +109,7 @@ class ComfortTargetTests(unittest.TestCase):
             control_min_c=10.0,
             control_max_c=26.0,
         )
-        assert result.target == pytest.approx(20.0)
+        assert result.target == pytest.approx(22.0)
 
     def test_comfort_satisfied_storage_needs_heat_prefers_storage_path(self) -> None:
         result = compute_comfort_target(
@@ -120,7 +119,6 @@ class ComfortTargetTests(unittest.TestCase):
             outdoor_temp=2.0,
             comfort_target_c=22.0,
             storage_target_c=25.0,
-            heatpump_offset_c=2.0,
             heatpump_setpoint=20.0,
             comfort_margin_c=0.2,
             cold_threshold=0.0,
@@ -129,7 +127,7 @@ class ComfortTargetTests(unittest.TestCase):
             control_min_c=10.0,
             control_max_c=26.0,
         )
-        assert result.target == pytest.approx(23.0)
+        assert result.target == pytest.approx(25.0)
 
     def test_comfort_satisfied_storage_ok_uses_maintenance(self) -> None:
         result = compute_comfort_target(
@@ -139,7 +137,6 @@ class ComfortTargetTests(unittest.TestCase):
             outdoor_temp=2.0,
             comfort_target_c=22.0,
             storage_target_c=25.0,
-            heatpump_offset_c=2.0,
             heatpump_setpoint=20.0,
             comfort_margin_c=0.2,
             cold_threshold=0.0,
