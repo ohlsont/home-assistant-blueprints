@@ -107,7 +107,7 @@ def test_policy_ignore_overrides_precedence() -> None:
 
 
 def test_saving_target_uses_setpoint_at_warm_boundary() -> None:
-    target = compute_saving_target(
+    result = compute_saving_target(
         outdoor_temp=7.0,
         heatpump_setpoint=20.0,
         saving_cold_offset_c=1.0,
@@ -115,7 +115,7 @@ def test_saving_target_uses_setpoint_at_warm_boundary() -> None:
         control_min_c=10.0,
         control_max_c=26.0,
     )
-    assert target == 21.0
+    assert result.target == 21.0
 
 
 @pytest.mark.parametrize(
@@ -136,7 +136,7 @@ def test_saving_target_clamps_to_limits(
     saving_cold_offset_c: float,
     expected: float,
 ) -> None:
-    target = compute_saving_target(
+    result = compute_saving_target(
         outdoor_temp=outdoor_temp,
         heatpump_setpoint=heatpump_setpoint,
         saving_cold_offset_c=saving_cold_offset_c,
@@ -144,7 +144,7 @@ def test_saving_target_clamps_to_limits(
         control_min_c=10.0,
         control_max_c=26.0,
     )
-    assert target == expected
+    assert result.target == expected
 
 
 def test_comfort_no_boost_exactly_at_threshold() -> None:

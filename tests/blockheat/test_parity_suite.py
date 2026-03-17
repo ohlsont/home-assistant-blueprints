@@ -40,13 +40,13 @@ class ParitySuite(unittest.TestCase):
         )
         final = compute_final_target(
             policy_on=True,
-            saving_target=saving,
+            saving_target=saving.target,
             comfort_target=23.0,
             control_current=20.0,
             control_min_c=10.0,
             control_max_c=26.0,
         )
-        assert saving == 21.0
+        assert saving.target == 21.0
         assert final.target == 21.0
 
     def test_policy_on_cold_saving_path(self) -> None:
@@ -58,7 +58,7 @@ class ParitySuite(unittest.TestCase):
             control_min_c=10.0,
             control_max_c=26.0,
         )
-        assert saving == 19.0
+        assert saving.target == 19.0
 
     def test_policy_off_comfort_unsatisfied(self) -> None:
         comfort = compute_comfort_target(

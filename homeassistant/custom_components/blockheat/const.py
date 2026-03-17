@@ -65,6 +65,8 @@ HARDCODED: dict[str, object] = {
     "final_helper_write_delta_c": 0.05,
     "control_write_delta_c": 0.2,
     "daikin_min_temp_change": 0.5,
+    "warm_shutdown_hysteresis_c": 1.0,
+    "price_hysteresis_fraction": 0.05,
 }
 
 LEGACY_INTERNAL_ENTITY_KEYS: tuple[str, ...] = (
@@ -79,6 +81,7 @@ STATE_POLICY_LAST_CHANGED = "policy_last_changed"
 STATE_TARGET_SAVING = "target_saving"
 STATE_TARGET_COMFORT = "target_comfort"
 STATE_TARGET_FINAL = "target_final"
+STATE_WARM_SHUTDOWN = "warm_shutdown"
 
 STATE_STORAGE_VERSION = 1
 STATE_STORAGE_KEY_PREFIX = "blockheat.internal_state"

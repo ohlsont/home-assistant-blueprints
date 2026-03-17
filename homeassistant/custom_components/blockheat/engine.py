@@ -70,6 +70,12 @@ class ComfortComputation:
 
 
 @dataclass(slots=True)
+class SavingComputation:
+    target: float
+    warm_shutdown: bool
+
+
+@dataclass(slots=True)
 class FinalTargetComputation:
     target: float
     source: str
@@ -151,6 +157,7 @@ def compute_policy(
     use_cop_weighting: bool = False,
     outdoor_temps_by_slot: list[float | None] | None = None,
     current_hour_index: int | None = None,
+    price_hysteresis_fraction: float = 0.0,
 ) -> PolicyComputation:
     """Compute policy ON/OFF decision matching integration behavior."""
     current_price = as_float(price, 0.0) or 0.0
@@ -185,6 +192,16 @@ def compute_policy(
         else:
             cutoff = DEFAULT_POLICY_CUTOFF
         blocked_now = current_price >= cutoff
+
+    # Hysteresis: once saving is ON, require cost to drop further below cutoff
+    # before turning OFF.  This prevents toggling when price hovers at the cutoff.
+    if current_on and price_hysteresis_fraction > 0:
+        off_cutoff = cutoff * (1.0 - price_hysteresis_fraction)
+        if cop_active and current_true_cost is not None:
+            blocked_now = current_true_cost >= off_cutoff
+        else:
+            blocked_now = current_price >= off_cutoff
+
     ignore_by_price = price_ignore_below > 0 and current_price < price_ignore_below
     ignore_by_pv = pv_ignore_above_w > 0 and current_pv >= pv_ignore_above_w
     target_on = (not (ignore_by_price or ignore_by_pv)) and blocked_now
@@ -223,13 +240,30 @@ def compute_saving_target(
     warm_shutdown_outdoor: float,
     control_min_c: float,
     control_max_c: float,
-) -> float:
-    """Compute saving mode target."""
-    if outdoor_temp is not None and outdoor_temp >= warm_shutdown_outdoor:
+    warm_shutdown_hysteresis_c: float = 0.0,
+    currently_warm_shutdown: bool = False,
+) -> SavingComputation:
+    """Compute saving mode target with hysteresis on warm-shutdown threshold."""
+    if outdoor_temp is not None:
+        if currently_warm_shutdown:
+            # Already in warm shutdown: require temp to drop below threshold
+            # minus hysteresis before exiting.
+            warm_shutdown = outdoor_temp >= (
+                warm_shutdown_outdoor - warm_shutdown_hysteresis_c
+            )
+        else:
+            warm_shutdown = outdoor_temp >= warm_shutdown_outdoor
+    else:
+        warm_shutdown = False
+
+    if warm_shutdown:
         target_unclamped = heatpump_setpoint + 1.0
     else:
         target_unclamped = heatpump_setpoint - saving_cold_offset_c
-    return clamp(target_unclamped, control_min_c, control_max_c)
+    return SavingComputation(
+        target=clamp(target_unclamped, control_min_c, control_max_c),
+        warm_shutdown=warm_shutdown,
+    )
 
 
 def compute_comfort_target(

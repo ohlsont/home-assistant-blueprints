@@ -62,6 +62,7 @@ from .const import (
     STATE_TARGET_COMFORT,
     STATE_TARGET_FINAL,
     STATE_TARGET_SAVING,
+    STATE_WARM_SHUTDOWN,
 )
 from .engine import (
     as_float,
@@ -106,6 +107,7 @@ class RuntimeState:
     target_saving: float | None = None
     target_comfort: float | None = None
     target_final: float | None = None
+    warm_shutdown: bool = False
 
 
 class BlockheatRuntime:
@@ -412,6 +414,7 @@ class BlockheatRuntime:
             use_cop_weighting=use_cop_weighting,
             outdoor_temps_by_slot=outdoor_temps_by_slot,
             current_hour_index=current_hour_index,
+            price_hysteresis_fraction=float(HARDCODED["price_hysteresis_fraction"]),  # type: ignore[arg-type]
         )
 
         policy_on_effective = current_on
@@ -489,41 +492,46 @@ class BlockheatRuntime:
         )
         control_min_c = float(HARDCODED["control_min_c"])  # type: ignore[arg-type]
         control_max_c = float(HARDCODED["control_max_c"])  # type: ignore[arg-type]
-        target = compute_saving_target(
+        warm_shutdown_hysteresis_c = float(HARDCODED["warm_shutdown_hysteresis_c"])  # type: ignore[arg-type]
+        computation = compute_saving_target(
             outdoor_temp=outdoor_temp,
             heatpump_setpoint=heatpump_setpoint,
             saving_cold_offset_c=saving_cold_offset_c,
             warm_shutdown_outdoor=warm_shutdown_outdoor,
             control_min_c=control_min_c,
             control_max_c=control_max_c,
+            warm_shutdown_hysteresis_c=warm_shutdown_hysteresis_c,
+            currently_warm_shutdown=self._state.warm_shutdown,
         )
+        self._state.warm_shutdown = computation.warm_shutdown
 
         write_delta_c = float(HARDCODED["saving_helper_write_delta_c"])  # type: ignore[arg-type]
         write_performed = self._delta_ok(
-            target,
+            computation.target,
             target_current,
             write_delta_c,
         )
         if write_performed:
-            self._state.target_saving = target
+            self._state.target_saving = computation.target
 
         debug = {
             "source": (
                 "heatpump_setpoint"
-                if outdoor_temp is not None and outdoor_temp >= warm_shutdown_outdoor
+                if computation.warm_shutdown
                 else "setpoint_minus_offset"
             ),
             "outdoor_temp": outdoor_temp,
             "warm_shutdown_outdoor": warm_shutdown_outdoor,
-            "target": target,
+            "warm_shutdown": computation.warm_shutdown,
+            "target": computation.target,
             "target_current": target_current,
-            "delta": self._delta_abs(target, target_current),
+            "delta": self._delta_abs(computation.target, target_current),
             "write_delta_c": write_delta_c,
             "write_performed": write_performed,
             "heatpump_setpoint": heatpump_setpoint,
             "saving_cold_offset_c": saving_cold_offset_c,
         }
-        return target, debug
+        return computation.target, debug
 
     async def _async_apply_comfort_target(self) -> tuple[float, dict[str, Any]]:
         target_current = self._state.target_comfort
@@ -800,6 +808,7 @@ class BlockheatRuntime:
         self._state.target_saving = as_float(raw.get(STATE_TARGET_SAVING))
         self._state.target_comfort = as_float(raw.get(STATE_TARGET_COMFORT))
         self._state.target_final = as_float(raw.get(STATE_TARGET_FINAL))
+        self._state.warm_shutdown = bool(raw.get(STATE_WARM_SHUTDOWN, False))
         self._last_saved_state = self._serialize_state()
 
     async def _async_save_state(self, force: bool = False) -> None:
@@ -845,6 +854,7 @@ class BlockheatRuntime:
             STATE_TARGET_SAVING: self._state.target_saving,
             STATE_TARGET_COMFORT: self._state.target_comfort,
             STATE_TARGET_FINAL: self._state.target_final,
+            STATE_WARM_SHUTDOWN: self._state.warm_shutdown,
         }
 
     def _build_config_debug(self) -> dict[str, dict[str, Any]]:
