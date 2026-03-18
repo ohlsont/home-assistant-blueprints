@@ -23,8 +23,6 @@ from .const import (
     CONF_COMFORT_TARGET_C,
     CONF_CONTROL_NUMBER_ENTITY,
     CONF_DAIKIN_CLIMATE_ENTITY,
-    CONF_DAIKIN_COLD_THRESHOLD,
-    CONF_DAIKIN_DISABLE_THRESHOLD,
     CONF_DAIKIN_MILD_THRESHOLD,
     CONF_DAIKIN_NORMAL_TEMPERATURE,
     CONF_DAIKIN_PREHEAT_OFFSET,
@@ -93,8 +91,6 @@ _DAIKIN_CONFIG_DEBUG_KEYS: tuple[str, ...] = (
     CONF_DAIKIN_NORMAL_TEMPERATURE,
     CONF_DAIKIN_PREHEAT_OFFSET,
     CONF_DAIKIN_MILD_THRESHOLD,
-    CONF_DAIKIN_COLD_THRESHOLD,
-    CONF_DAIKIN_DISABLE_THRESHOLD,
 )
 
 
@@ -703,8 +699,6 @@ class BlockheatRuntime:
             min_temp_change=min_temp_change,
             outdoor_temp=self._state_float(outdoor_sensor) if outdoor_sensor else None,
             mild_threshold=self._cfg_float(CONF_DAIKIN_MILD_THRESHOLD, 5.0),
-            cold_threshold=self._cfg_float(CONF_DAIKIN_COLD_THRESHOLD, -5.0),
-            disable_threshold=self._cfg_float(CONF_DAIKIN_DISABLE_THRESHOLD, -22.0),
             outdoor_sensor_defined=True,
             price_quartile=price_quartile,
         )
@@ -735,7 +729,6 @@ class BlockheatRuntime:
             "target_hvac_mode": computation.target_hvac_mode,
             "temp_written": computation.should_write_temp,
             "mode_written": computation.should_write_mode,
-            "outdoor_ok": computation.outdoor_ok,
         }
 
     def _delta_ok(self, target: float, current: float | None, delta: float) -> bool:

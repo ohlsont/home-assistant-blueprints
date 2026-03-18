@@ -68,16 +68,12 @@
         "data": {
           "daikin_normal_temperature": "Daikin normal temperature (°C)",
           "daikin_preheat_offset": "Daikin preheat offset (°C)",
-          "daikin_mild_threshold": "Daikin mild threshold (°C)",
-          "daikin_cold_threshold": "Daikin cold threshold (°C)",
-          "daikin_disable_threshold": "Daikin disable threshold (°C)"
+          "daikin_mild_threshold": "Daikin mild threshold (°C)"
         },
         "data_description": {
           "daikin_normal_temperature": "Daikin target temperature when policy is OFF (comfort mode).",
           "daikin_preheat_offset": "Degrees added to normal temperature during very-low-price preheat periods.",
-          "daikin_mild_threshold": "Outdoor temperature above which Daikin is turned off (mild weather).",
-          "daikin_cold_threshold": "Outdoor temperature below which Daikin switches to capacity-assist mode.",
-          "daikin_disable_threshold": "Outdoor temperature below which Daikin is disabled entirely."
+          "daikin_mild_threshold": "Outdoor temperature above which Daikin is turned off (mild weather)."
         }
       }
     },
@@ -157,16 +153,12 @@
         "data": {
           "daikin_normal_temperature": "Daikin normal temperature (°C)",
           "daikin_preheat_offset": "Daikin preheat offset (°C)",
-          "daikin_mild_threshold": "Daikin mild threshold (°C)",
-          "daikin_cold_threshold": "Daikin cold threshold (°C)",
-          "daikin_disable_threshold": "Daikin disable threshold (°C)"
+          "daikin_mild_threshold": "Daikin mild threshold (°C)"
         },
         "data_description": {
           "daikin_normal_temperature": "Daikin target temperature when policy is OFF (comfort mode).",
           "daikin_preheat_offset": "Degrees added to normal temperature during very-low-price preheat periods.",
-          "daikin_mild_threshold": "Outdoor temperature above which Daikin is turned off (mild weather).",
-          "daikin_cold_threshold": "Outdoor temperature below which Daikin switches to capacity-assist mode.",
-          "daikin_disable_threshold": "Outdoor temperature below which Daikin is disabled entirely."
+          "daikin_mild_threshold": "Outdoor temperature above which Daikin is turned off (mild weather)."
         }
       }
     },
