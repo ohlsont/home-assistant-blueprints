@@ -22,7 +22,7 @@ uv run python -m pytest tests/blockheat/test_engine.py -q
 uv run python -m pytest tests/blockheat/test_engine.py -k "test_name" -q
 
 # Coverage gate (CI threshold: 80%)
-uv run python -m pytest tests -q --cov=custom_components.blockheat --cov-branch --cov-report=term-missing --cov-fail-under=80
+uv run python -m pytest tests -q --cov=custom_components/blockheat --cov-branch --cov-report=term-missing --cov-fail-under=80
 
 # Format
 uv run ruff format custom_components scripts tests

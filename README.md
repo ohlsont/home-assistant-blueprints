@@ -67,7 +67,7 @@ uv sync --group dev
 uv run python -m pytest tests -q
 
 # Coverage gate (CI threshold: 80%)
-uv run python -m pytest tests -q --cov=custom_components.blockheat --cov-branch --cov-report=term-missing --cov-fail-under=80
+uv run python -m pytest tests -q --cov=custom_components/blockheat --cov-branch --cov-report=term-missing --cov-fail-under=80
 ```
 
 Shared fake Home Assistant test fixtures are defined in `tests/conftest.py`.

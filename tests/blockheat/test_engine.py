@@ -302,7 +302,7 @@ def test_saving_target_uses_setpoint_at_warm_boundary() -> None:
         control_min_c=10.0,
         control_max_c=26.0,
     )
-    assert target == 21.0
+    assert target.target == 21.0
 
 
 @pytest.mark.parametrize(
@@ -331,7 +331,7 @@ def test_saving_target_clamps_to_limits(
         control_min_c=10.0,
         control_max_c=26.0,
     )
-    assert target == expected
+    assert target.target == expected
 
 
 # ---------------------------------------------------------------------------
@@ -679,8 +679,6 @@ _DAIKIN_DEFAULTS: dict[str, object] = {
     "min_temp_change": 0.5,
     "outdoor_temp": 0.0,
     "mild_threshold": 5.0,
-    "cold_threshold": -5.0,
-    "disable_threshold": -22.0,
     "outdoor_sensor_defined": True,
     "price_quartile": "low",
 }
@@ -755,12 +753,9 @@ def test_daikin_without_outdoor_sensor_uses_default_allow_path() -> None:
         min_temp_change=0.5,
         outdoor_temp=None,
         mild_threshold=5.0,
-        cold_threshold=-5.0,
-        disable_threshold=-22.0,
         outdoor_sensor_defined=False,
         price_quartile="low",
     )
-    assert result.outdoor_ok is True
     assert result.mode == "normal"
     assert result.target_hvac_mode == "heat"
 
