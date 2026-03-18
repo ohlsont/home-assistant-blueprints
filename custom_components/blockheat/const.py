@@ -42,8 +42,6 @@ CONF_DAIKIN_CLIMATE_ENTITY = "daikin_climate_entity"
 CONF_DAIKIN_NORMAL_TEMPERATURE = "daikin_normal_temperature"
 CONF_DAIKIN_PREHEAT_OFFSET = "daikin_preheat_offset"
 CONF_DAIKIN_MILD_THRESHOLD = "daikin_mild_threshold"
-CONF_DAIKIN_COLD_THRESHOLD = "daikin_cold_threshold"
-CONF_DAIKIN_DISABLE_THRESHOLD = "daikin_disable_threshold"
 
 EVENT_ENERGY_SAVING_STATE_CHANGED = "energy_saving_state_changed"
 EVENT_BLOCKHEAT_POLICY_CHANGED = "blockheat_policy_changed"
@@ -111,8 +109,6 @@ DEFAULTS: dict[str, object] = {
     CONF_DAIKIN_NORMAL_TEMPERATURE: 22.0,
     CONF_DAIKIN_PREHEAT_OFFSET: 2.0,
     CONF_DAIKIN_MILD_THRESHOLD: 5.0,
-    CONF_DAIKIN_COLD_THRESHOLD: -5.0,
-    CONF_DAIKIN_DISABLE_THRESHOLD: -22.0,
 }
 
 REQUIRED_ENTITY_KEYS: tuple[str, ...] = (
@@ -147,6 +143,8 @@ _LEGACY_REMOVED_KEYS = (
     "daikin_outdoor_temp_sensor",
     "daikin_saving_temperature",
     "daikin_outdoor_temp_threshold",
+    "daikin_cold_threshold",
+    "daikin_disable_threshold",
 )
 
 

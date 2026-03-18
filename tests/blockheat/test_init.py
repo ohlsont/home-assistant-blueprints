@@ -289,8 +289,6 @@ async def test_options_flow_saved_daikin_options_survive_reload_and_recompute(
             const.CONF_DAIKIN_NORMAL_TEMPERATURE: 22.0,
             const.CONF_DAIKIN_PREHEAT_OFFSET: 2.0,
             const.CONF_DAIKIN_MILD_THRESHOLD: 5.0,
-            const.CONF_DAIKIN_COLD_THRESHOLD: -5.0,
-            const.CONF_DAIKIN_DISABLE_THRESHOLD: -22.0,
         }
     )
     assert result["type"] == "create_entry"

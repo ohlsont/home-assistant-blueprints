@@ -216,8 +216,6 @@ async def test_snapshot_exposes_daikin_config_debug_views(
             blockheat_env.const.CONF_DAIKIN_NORMAL_TEMPERATURE: 22.0,
             blockheat_env.const.CONF_DAIKIN_PREHEAT_OFFSET: 2.0,
             blockheat_env.const.CONF_DAIKIN_MILD_THRESHOLD: 5.0,
-            blockheat_env.const.CONF_DAIKIN_COLD_THRESHOLD: -5.0,
-            blockheat_env.const.CONF_DAIKIN_DISABLE_THRESHOLD: -22.0,
         },
         seed_kwargs={
             "policy_state": "off",

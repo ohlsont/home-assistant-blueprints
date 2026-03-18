@@ -87,7 +87,6 @@ class DaikinComputation:
     target_hvac_mode: str | None
     should_write_temp: bool
     should_write_mode: bool
-    outdoor_ok: bool
     current_temp: float
     current_hvac_mode: str
     mode: str
@@ -393,8 +392,6 @@ def compute_daikin(
     min_temp_change: float,
     outdoor_temp: float | None,
     mild_threshold: float,
-    cold_threshold: float,
-    disable_threshold: float,
     outdoor_sensor_defined: bool,
     price_quartile: str,
 ) -> DaikinComputation:
@@ -408,8 +405,6 @@ def compute_daikin(
     else:
         out_temp = DEFAULT_MISSING_OUTDOOR
 
-    outdoor_ok = out_temp >= disable_threshold or out_temp == DEFAULT_MISSING_OUTDOOR
-
     target_temp: float | None = None
     target_hvac_mode: str | None = None
     mode: str = "off"
@@ -421,9 +416,6 @@ def compute_daikin(
         target_temp = normal_temperature + preheat_offset
         target_hvac_mode = "heat"
         mode = "preheat"
-    elif not outdoor_ok:
-        target_hvac_mode = "off"
-        mode = "off"
     elif out_temp == DEFAULT_MISSING_OUTDOOR:
         target_temp = normal_temperature
         target_hvac_mode = "heat"
@@ -431,14 +423,10 @@ def compute_daikin(
     elif out_temp > mild_threshold:
         target_hvac_mode = "off"
         mode = "off"
-    elif out_temp > cold_threshold:
-        target_temp = normal_temperature
-        target_hvac_mode = "heat"
-        mode = "normal"
     else:
         target_temp = normal_temperature
         target_hvac_mode = "heat"
-        mode = "capacity_assist"
+        mode = "normal"
 
     should_write_temp = (
         target_temp is not None and abs(cur_temp - target_temp) >= min_temp_change
@@ -450,7 +438,6 @@ def compute_daikin(
         target_hvac_mode=target_hvac_mode,
         should_write_temp=should_write_temp,
         should_write_mode=should_write_mode,
-        outdoor_ok=outdoor_ok,
         current_temp=cur_temp,
         current_hvac_mode=cur_mode,
         mode=mode,

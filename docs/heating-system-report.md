@@ -412,27 +412,18 @@ ELSE (normal pricing — decide by outdoor temp):
         → Daikin OFF
         → ETK6500 compressor handles everything at COP 3.8+
 
-    ELIF outdoor > cold_threshold (-5°C):
+    ELSE:
         → Daikin HEAT at normal_temp
-        → Supplement ETK6500 capacity headroom
-
-    ELIF outdoor > disable_threshold (-22°C):
-        → Daikin HEAT at normal_temp (capacity_assist mode)
-        → Critical: compressor maxed at 6.5 kW, house needs more
-
-    ELSE (below -22°C):
-        → Daikin OFF (COP too low to be useful)
+        → Supplement ETK6500 capacity at any cold temperature
 ```
 
 ### 8.4 Config Parameters
 
 | Parameter | Default | Description |
 |---|---|---|
-| `daikin_normal_temperature` | 22.0°C | Target temp for normal/capacity_assist modes |
+| `daikin_normal_temperature` | 22.0°C | Target temp for normal heating mode |
 | `daikin_preheat_offset` | 2.0°C | Added to normal_temp during very_low price preheat |
 | `daikin_mild_threshold` | 5.0°C | Above this, Daikin off (ETK6500 handles it) |
-| `daikin_cold_threshold` | -5.0°C | Below mild but above this: normal assist |
-| `daikin_disable_threshold` | -22.0°C | Below this, Daikin off (COP too low) |
 | `daikin_min_temp_change` | 0.5°C | Deadband to avoid unnecessary writes |
 
 ---

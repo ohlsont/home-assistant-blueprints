@@ -76,8 +76,6 @@ def _tuning_input(
             const.CONF_DAIKIN_NORMAL_TEMPERATURE: 22.0,
             const.CONF_DAIKIN_PREHEAT_OFFSET: 2.0,
             const.CONF_DAIKIN_MILD_THRESHOLD: 5.0,
-            const.CONF_DAIKIN_COLD_THRESHOLD: -5.0,
-            const.CONF_DAIKIN_DISABLE_THRESHOLD: -22.0,
         },
     }
     return by_step[step_id]

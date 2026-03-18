@@ -360,11 +360,8 @@ def test_daikin_without_outdoor_sensor_uses_default_allow_path() -> None:
         min_temp_change=0.5,
         outdoor_temp=None,
         mild_threshold=5.0,
-        cold_threshold=-5.0,
-        disable_threshold=-22.0,
         outdoor_sensor_defined=False,
         price_quartile="low",
     )
-    assert result.outdoor_ok is True
     assert result.mode == "normal"
     assert result.target_hvac_mode == "heat"

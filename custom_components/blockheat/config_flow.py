@@ -16,8 +16,6 @@ from .const import (
     CONF_COMFORT_TARGET_C,
     CONF_CONTROL_NUMBER_ENTITY,
     CONF_DAIKIN_CLIMATE_ENTITY,
-    CONF_DAIKIN_COLD_THRESHOLD,
-    CONF_DAIKIN_DISABLE_THRESHOLD,
     CONF_DAIKIN_MILD_THRESHOLD,
     CONF_DAIKIN_NORMAL_TEMPERATURE,
     CONF_DAIKIN_PREHEAT_OFFSET,
@@ -214,14 +212,6 @@ def _tuning_daikin_schema(current: dict[str, Any]) -> vol.Schema:
             vol.Required(
                 CONF_DAIKIN_MILD_THRESHOLD,
                 default=_cfg_value(current, CONF_DAIKIN_MILD_THRESHOLD),
-            ): _bounded_float(-50, 50),
-            vol.Required(
-                CONF_DAIKIN_COLD_THRESHOLD,
-                default=_cfg_value(current, CONF_DAIKIN_COLD_THRESHOLD),
-            ): _bounded_float(-50, 50),
-            vol.Required(
-                CONF_DAIKIN_DISABLE_THRESHOLD,
-                default=_cfg_value(current, CONF_DAIKIN_DISABLE_THRESHOLD),
             ): _bounded_float(-50, 50),
         }
     )

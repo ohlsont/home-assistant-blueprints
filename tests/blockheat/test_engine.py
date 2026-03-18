@@ -306,8 +306,6 @@ _DAIKIN_DEFAULTS: dict[str, object] = {
     "min_temp_change": 0.5,
     "outdoor_temp": 0.0,
     "mild_threshold": 5.0,
-    "cold_threshold": -5.0,
-    "disable_threshold": -22.0,
     "outdoor_sensor_defined": True,
     "price_quartile": "low",
 }
@@ -361,17 +359,11 @@ class ConsumerTests(unittest.TestCase):
         assert result.target_temp == 22.0
         assert result.target_hvac_mode == "heat"
 
-    def test_cold_weather_capacity_assist(self) -> None:
+    def test_cold_weather_normal_mode(self) -> None:
         result = _daikin(outdoor_temp=-10.0)
-        assert result.mode == "capacity_assist"
+        assert result.mode == "normal"
         assert result.target_temp == 22.0
         assert result.target_hvac_mode == "heat"
-
-    def test_extreme_cold_below_disable_turns_off(self) -> None:
-        result = _daikin(outdoor_temp=-25.0)
-        assert result.mode == "off"
-        assert result.target_hvac_mode == "off"
-        assert not result.outdoor_ok
 
     def test_no_outdoor_sensor_defaults_to_normal(self) -> None:
         result = _daikin(outdoor_sensor_defined=False)
