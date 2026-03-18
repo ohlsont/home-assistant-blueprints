@@ -7,7 +7,6 @@ from typing import Any
 DOMAIN = "blockheat"
 PLATFORMS: list[str] = ["binary_sensor", "sensor"]
 
-CONF_TARGET_BOOLEAN = "target_boolean"
 CONF_NORDPOOL_PRICE = "nordpool_price"
 CONF_PV_SENSOR = "pv_sensor"
 CONF_PV_IGNORE_ABOVE_W = "pv_ignore_above_w"
@@ -19,9 +18,6 @@ CONF_COMFORT_ROOM_2_SENSOR = "comfort_room_2_sensor"
 CONF_STORAGE_ROOM_SENSOR = "storage_room_sensor"
 CONF_OUTDOOR_TEMPERATURE_SENSOR = "outdoor_temperature_sensor"
 
-CONF_TARGET_SAVING_HELPER = "target_saving_helper"
-CONF_TARGET_COMFORT_HELPER = "target_comfort_helper"
-CONF_TARGET_FINAL_HELPER = "target_final_helper"
 CONF_CONTROL_NUMBER_ENTITY = "control_number_entity"
 
 CONF_HEATPUMP_SETPOINT = "heatpump_setpoint"
@@ -30,7 +26,6 @@ CONF_ENERGY_SAVING_WARM_SHUTDOWN_OUTDOOR = "energy_saving_warm_shutdown_outdoor"
 
 CONF_COMFORT_TARGET_C = "comfort_target_c"
 CONF_STORAGE_TARGET_C = "storage_target_c"
-CONF_HEATPUMP_OFFSET_C = "heatpump_offset_c"
 CONF_COLD_THRESHOLD = "cold_threshold"
 CONF_MAX_BOOST = "max_boost"
 
@@ -43,12 +38,10 @@ CONF_DAIKIN_NORMAL_TEMPERATURE = "daikin_normal_temperature"
 CONF_DAIKIN_PREHEAT_OFFSET = "daikin_preheat_offset"
 CONF_DAIKIN_MILD_THRESHOLD = "daikin_mild_threshold"
 
-EVENT_ENERGY_SAVING_STATE_CHANGED = "energy_saving_state_changed"
 EVENT_BLOCKHEAT_POLICY_CHANGED = "blockheat_policy_changed"
 EVENT_BLOCKHEAT_SNAPSHOT = "blockheat_snapshot"
 
 SERVICE_RECOMPUTE = "recompute"
-SERVICE_DUMP_DIAGNOSTICS = "dump_diagnostics"
 
 DEFAULT_RECOMPUTE_MINUTES = 5
 
@@ -92,7 +85,6 @@ DEFAULTS: dict[str, object] = {
     CONF_ENERGY_SAVING_WARM_SHUTDOWN_OUTDOOR: 8.0,
     CONF_COMFORT_TARGET_C: 22.0,
     CONF_STORAGE_TARGET_C: 25.0,
-    CONF_HEATPUMP_OFFSET_C: 1.0,
     CONF_COLD_THRESHOLD: 2.0,
     CONF_MAX_BOOST: 3.0,
     CONF_ENABLE_FORECAST_OPTIMIZATION: False,

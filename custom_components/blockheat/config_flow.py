@@ -22,7 +22,6 @@ from .const import (
     CONF_ENABLE_DAIKIN_CONSUMER,
     CONF_ENABLE_FORECAST_OPTIMIZATION,
     CONF_ENERGY_SAVING_WARM_SHUTDOWN_OUTDOOR,
-    CONF_HEATPUMP_OFFSET_C,
     CONF_HEATPUMP_SETPOINT,
     CONF_MAX_BOOST,
     CONF_MINUTES_TO_BLOCK,
@@ -205,10 +204,6 @@ def _tuning_targets_schema(current: dict[str, Any]) -> vol.Schema:
                 CONF_STORAGE_TARGET_C,
                 default=_cfg_value(current, CONF_STORAGE_TARGET_C),
             ): _bounded_float(0, 60),
-            vol.Required(
-                CONF_HEATPUMP_OFFSET_C,
-                default=_cfg_value(current, CONF_HEATPUMP_OFFSET_C),
-            ): _bounded_float(0, 20),
             vol.Required(
                 CONF_COLD_THRESHOLD, default=_cfg_value(current, CONF_COLD_THRESHOLD)
             ): _bounded_float(-50, 30),

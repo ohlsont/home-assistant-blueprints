@@ -40,16 +40,11 @@ from .const import (
     CONF_SAVING_COLD_OFFSET_C,
     CONF_STORAGE_ROOM_SENSOR,
     CONF_STORAGE_TARGET_C,
-    CONF_TARGET_BOOLEAN,
-    CONF_TARGET_COMFORT_HELPER,
-    CONF_TARGET_FINAL_HELPER,
-    CONF_TARGET_SAVING_HELPER,
     CONF_WEATHER_ENTITY,
     DEFAULT_RECOMPUTE_MINUTES,
     DEFAULTS,
     EVENT_BLOCKHEAT_POLICY_CHANGED,
     EVENT_BLOCKHEAT_SNAPSHOT,
-    EVENT_ENERGY_SAVING_STATE_CHANGED,
     HARDCODED,
     OPTIONAL_ENTITY_KEYS,
     REQUIRED_ENTITY_KEYS,
@@ -148,7 +143,6 @@ class BlockheatRuntime:
     async def async_setup(self) -> None:
         """Set up listeners and run initial compute."""
         await self._async_load_state()
-        self._seed_state_from_legacy_entities()
 
         monitored_entities: list[str] = []
         for key in REQUIRED_ENTITY_KEYS + OPTIONAL_ENTITY_KEYS:
@@ -474,7 +468,6 @@ class BlockheatRuntime:
             "pv_now": computation.pv_now,
             "reason": reason,
         }
-        self.hass.bus.async_fire(EVENT_ENERGY_SAVING_STATE_CHANGED, event_data)
         self.hass.bus.async_fire(EVENT_BLOCKHEAT_POLICY_CHANGED, event_data)
 
     async def _async_apply_saving_target(self) -> tuple[float, dict[str, Any]]:
@@ -811,31 +804,6 @@ class BlockheatRuntime:
         await self._state_store.async_save(serialized)
         self._last_saved_state = serialized
 
-    def _seed_state_from_legacy_entities(self) -> None:
-        if self._last_saved_state is not None:
-            return
-
-        if self._state.policy_last_changed is None:
-            policy_state = self.hass.states.get(self._cfg_str(CONF_TARGET_BOOLEAN))
-            if policy_state is not None:
-                self._state.policy_on = policy_state.state == "on"
-                self._state.policy_last_changed = policy_state.last_changed
-
-        if self._state.target_saving is None:
-            self._state.target_saving = self._state_float(
-                self._cfg_str(CONF_TARGET_SAVING_HELPER)
-            )
-
-        if self._state.target_comfort is None:
-            self._state.target_comfort = self._state_float(
-                self._cfg_str(CONF_TARGET_COMFORT_HELPER)
-            )
-
-        if self._state.target_final is None:
-            self._state.target_final = self._state_float(
-                self._cfg_str(CONF_TARGET_FINAL_HELPER)
-            )
-
     def _serialize_state(self) -> dict[str, Any]:
         return {
             STATE_POLICY_ON: self._state.policy_on,
@@ -885,12 +853,6 @@ class BlockheatRuntime:
         if state is None:
             return default
         return as_float(state.state, default)
-
-    def _is_on(self, entity_id: str) -> bool:
-        if not entity_id:
-            return False
-        state = self.hass.states.get(entity_id)
-        return state is not None and state.state == "on"
 
     def _cfg_bool(self, key: str, default: bool) -> bool:
         value = self._config.get(key, default)
