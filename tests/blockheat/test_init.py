@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -88,15 +87,8 @@ async def test_setup_entry_registers_services_once_and_resolves_runtimes(
     assert await package.async_setup_entry(fake_hass, entry_2) is True
 
     assert fake_hass.services.has_service(const.DOMAIN, const.SERVICE_RECOMPUTE)
-    assert fake_hass.services.has_service(const.DOMAIN, const.SERVICE_DUMP_DIAGNOSTICS)
     assert (
         fake_hass.services.register_calls.count((const.DOMAIN, const.SERVICE_RECOMPUTE))
-        == 1
-    )
-    assert (
-        fake_hass.services.register_calls.count(
-            (const.DOMAIN, const.SERVICE_DUMP_DIAGNOSTICS)
-        )
         == 1
     )
 
@@ -129,13 +121,9 @@ async def test_unload_entry_unregisters_services_only_after_last_entry(
 
     assert await package.async_unload_entry(fake_hass, entry_1) is True
     assert fake_hass.services.has_service(const.DOMAIN, const.SERVICE_RECOMPUTE)
-    assert fake_hass.services.has_service(const.DOMAIN, const.SERVICE_DUMP_DIAGNOSTICS)
 
     assert await package.async_unload_entry(fake_hass, entry_2) is True
     assert not fake_hass.services.has_service(const.DOMAIN, const.SERVICE_RECOMPUTE)
-    assert not fake_hass.services.has_service(
-        const.DOMAIN, const.SERVICE_DUMP_DIAGNOSTICS
-    )
     assert entry_1._listener_unsubscribed is True
     assert entry_2._listener_unsubscribed is True
 
@@ -198,19 +186,9 @@ async def test_services_can_optionally_return_snapshot_payloads(
         blocking=True,
         return_response=True,
     )
-    diagnostics_response = await fake_hass.services.async_call(
-        const.DOMAIN,
-        const.SERVICE_DUMP_DIAGNOSTICS,
-        {"entry_id": "entry-1"},
-        blocking=True,
-        return_response=True,
-    )
 
     assert recompute_response == {
         "entries": {"entry-2": {"reason": "service_recompute"}}
-    }
-    assert diagnostics_response == {
-        "entries": {"entry-1": {"reason": "service_dump_diagnostics"}}
     }
 
 
@@ -278,7 +256,6 @@ async def test_options_flow_saved_daikin_options_survive_reload_and_recompute(
             const.CONF_ENERGY_SAVING_WARM_SHUTDOWN_OUTDOOR: 8.0,
             const.CONF_COMFORT_TARGET_C: 22.0,
             const.CONF_STORAGE_TARGET_C: 25.0,
-            const.CONF_HEATPUMP_OFFSET_C: 1.0,
             const.CONF_COLD_THRESHOLD: 2.0,
             const.CONF_MAX_BOOST: 3.0,
         }
@@ -319,137 +296,3 @@ async def test_options_flow_saved_daikin_options_survive_reload_and_recompute(
     )
     assert daikin_calls
     assert daikin_calls[-1]["payload"]["temperature"] == 24.0
-
-
-@pytest.mark.asyncio
-async def test_setup_entry_migrates_exact_legacy_internal_entity_ids(
-    blockheat_env: SimpleNamespace,
-    fake_hass: Any,
-    build_config: Any,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    package = blockheat_env.package
-    const = blockheat_env.const
-    registry = blockheat_env.entity_registry
-    monkeypatch.setattr(package, "BlockheatRuntime", _FakeRuntime)
-    monkeypatch.setattr(package, "BlockheatCoordinator", _FakeCoordinator)
-
-    await package.async_setup(fake_hass, {})
-
-    entry_id = "entry-migrate"
-    entry = blockheat_env.FakeConfigEntry(entry_id, data=build_config())
-    registry.add(
-        entity_id="binary_sensor.energy_saving_active",
-        unique_id=f"{entry_id}_{const.STATE_POLICY_ON}",
-        config_entry_id=entry_id,
-    )
-    registry.add(
-        entity_id="sensor.target_saving",
-        unique_id=f"{entry_id}_{const.STATE_TARGET_SAVING}",
-        config_entry_id=entry_id,
-    )
-    registry.add(
-        entity_id="sensor.target_comfort",
-        unique_id=f"{entry_id}_{const.STATE_TARGET_COMFORT}",
-        config_entry_id=entry_id,
-    )
-    registry.add(
-        entity_id="sensor.target_final",
-        unique_id=f"{entry_id}_{const.STATE_TARGET_FINAL}",
-        config_entry_id=entry_id,
-    )
-
-    assert await package.async_setup_entry(fake_hass, entry) is True
-
-    assert registry.async_get("binary_sensor.energy_saving_active") is None
-    assert registry.async_get("sensor.target_saving") is None
-    assert registry.async_get("sensor.target_comfort") is None
-    assert registry.async_get("sensor.target_final") is None
-    assert registry.async_get(const.ENTITY_ID_POLICY_ACTIVE) is not None
-    assert registry.async_get(const.ENTITY_ID_TARGET_SAVING) is not None
-    assert registry.async_get(const.ENTITY_ID_TARGET_COMFORT) is not None
-    final_entry = registry.async_get(const.ENTITY_ID_TARGET_FINAL)
-    assert final_entry is not None
-    assert final_entry.unique_id == f"{entry_id}_{const.STATE_TARGET_FINAL}"
-    assert len(registry.update_calls) == 4
-
-
-@pytest.mark.asyncio
-async def test_setup_entry_skips_migration_when_canonical_id_is_occupied(
-    blockheat_env: SimpleNamespace,
-    fake_hass: Any,
-    build_config: Any,
-    monkeypatch: pytest.MonkeyPatch,
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    package = blockheat_env.package
-    const = blockheat_env.const
-    registry = blockheat_env.entity_registry
-    monkeypatch.setattr(package, "BlockheatRuntime", _FakeRuntime)
-    monkeypatch.setattr(package, "BlockheatCoordinator", _FakeCoordinator)
-
-    await package.async_setup(fake_hass, {})
-
-    entry_id = "entry-occupied"
-    entry = blockheat_env.FakeConfigEntry(entry_id, data=build_config())
-    registry.add(
-        entity_id="sensor.target_final",
-        unique_id=f"{entry_id}_{const.STATE_TARGET_FINAL}",
-        config_entry_id=entry_id,
-    )
-    registry.add(
-        entity_id=const.ENTITY_ID_TARGET_FINAL,
-        unique_id="other-entry_target_final",
-        config_entry_id="other-entry",
-    )
-
-    caplog.set_level(logging.WARNING)
-    assert await package.async_setup_entry(fake_hass, entry) is True
-
-    assert registry.async_get("sensor.target_final") is not None
-    assert registry.async_get(const.ENTITY_ID_TARGET_FINAL) is not None
-    assert registry.update_calls == []
-    assert "manual cleanup" in caplog.text
-    assert const.ENTITY_ID_TARGET_FINAL in caplog.text
-
-
-@pytest.mark.asyncio
-async def test_setup_entry_leaves_user_custom_entity_ids_untouched(
-    blockheat_env: SimpleNamespace,
-    fake_hass: Any,
-    build_config: Any,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    package = blockheat_env.package
-    const = blockheat_env.const
-    registry = blockheat_env.entity_registry
-    monkeypatch.setattr(package, "BlockheatRuntime", _FakeRuntime)
-    monkeypatch.setattr(package, "BlockheatCoordinator", _FakeCoordinator)
-
-    await package.async_setup(fake_hass, {})
-
-    entry_id = "entry-custom"
-    entry = blockheat_env.FakeConfigEntry(entry_id, data=build_config())
-    registry.add(
-        entity_id="sensor.my_target_final",
-        unique_id=f"{entry_id}_{const.STATE_TARGET_FINAL}",
-        config_entry_id=entry_id,
-    )
-
-    assert await package.async_setup_entry(fake_hass, entry) is True
-
-    custom_entry = registry.async_get("sensor.my_target_final")
-    assert custom_entry is not None
-    assert custom_entry.unique_id == f"{entry_id}_{const.STATE_TARGET_FINAL}"
-    assert registry.update_calls == []
-
-
-def test_normalize_entry_data_keeps_explicit_offset(
-    blockheat_env: SimpleNamespace,
-) -> None:
-    """When raw data has the key, it is preserved."""
-    const = blockheat_env.const
-
-    data = {**const.DEFAULTS, const.CONF_HEATPUMP_OFFSET_C: 4.0}
-    result = const.normalize_entry_data(data)
-    assert result[const.CONF_HEATPUMP_OFFSET_C] == 4.0

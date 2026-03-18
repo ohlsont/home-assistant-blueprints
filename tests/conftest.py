@@ -643,7 +643,6 @@ def blockheat_env(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
         runtime=runtime,
         config_flow=config_flow,
         engine=engine,
-        entity_registry=entity_registry,
         FakeHass=FakeHass,
         FakeConfigEntry=FakeConfigEntry,
         service_not_found_cls=service_not_found_cls,
@@ -697,9 +696,6 @@ def seed_runtime_states(blockheat_env: SimpleNamespace) -> Any:
         room2_temp: float = 21.0,
         storage_temp: float = 24.0,
         outdoor_temp: float = 0.0,
-        saving_target: float = 19.0,
-        comfort_target: float = 20.0,
-        final_target: float = 20.0,
         control_value: float = 20.0,
     ) -> None:
         changed = datetime.now(UTC) - timedelta(hours=2)
@@ -734,38 +730,6 @@ def seed_runtime_states(blockheat_env: SimpleNamespace) -> Any:
             str(control_value),
             last_changed=changed,
         )
-
-        legacy_policy_entity = config.get(const.CONF_TARGET_BOOLEAN, "")
-        if legacy_policy_entity:
-            hass.states.set(
-                legacy_policy_entity,
-                policy_state,
-                last_changed=changed,
-            )
-
-        legacy_saving_entity = config.get(const.CONF_TARGET_SAVING_HELPER, "")
-        if legacy_saving_entity:
-            hass.states.set(
-                legacy_saving_entity,
-                str(saving_target),
-                last_changed=changed,
-            )
-
-        legacy_comfort_entity = config.get(const.CONF_TARGET_COMFORT_HELPER, "")
-        if legacy_comfort_entity:
-            hass.states.set(
-                legacy_comfort_entity,
-                str(comfort_target),
-                last_changed=changed,
-            )
-
-        legacy_final_entity = config.get(const.CONF_TARGET_FINAL_HELPER, "")
-        if legacy_final_entity:
-            hass.states.set(
-                legacy_final_entity,
-                str(final_target),
-                last_changed=changed,
-            )
 
         pv_sensor = config.get(const.CONF_PV_SENSOR, "")
         if pv_sensor:

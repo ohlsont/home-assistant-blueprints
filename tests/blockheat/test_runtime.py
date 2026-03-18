@@ -27,7 +27,10 @@ def _make_runtime_context(
         base_entry_data.update(overrides)
     config = {**base_entry_data, **entry_options_data}
     state_seed = seed_kwargs or {}
-    seed_runtime_states(fake_hass, config, **state_seed)
+    # Keys handled locally by _make_runtime_context, not by the seed fixture.
+    _local_keys = {"saving_target", "comfort_target", "final_target"}
+    fixture_seed = {k: v for k, v in state_seed.items() if k not in _local_keys}
+    seed_runtime_states(fake_hass, config, **fixture_seed)
     coordinator = blockheat_env.package.BlockheatCoordinator(fake_hass)
     runtime = blockheat_env.runtime.BlockheatRuntime(
         fake_hass,
@@ -271,7 +274,6 @@ async def test_policy_transition_fires_events_and_toggles_boolean(
     assert on_snapshot["policy"]["transition"] == "on"
     assert on_snapshot["internal_state"][ctx.const.STATE_POLICY_ON] is True
     fired_types = [item["event_type"] for item in ctx.hass.bus.fired]
-    assert ctx.const.EVENT_ENERGY_SAVING_STATE_CHANGED in fired_types
     assert ctx.const.EVENT_BLOCKHEAT_POLICY_CHANGED in fired_types
 
     ctx.hass.services.calls.clear()

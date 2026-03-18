@@ -66,7 +66,6 @@ def _tuning_input(
             const.CONF_ENERGY_SAVING_WARM_SHUTDOWN_OUTDOOR: 8.0,
             const.CONF_COMFORT_TARGET_C: 22.0,
             const.CONF_STORAGE_TARGET_C: 25.0,
-            const.CONF_HEATPUMP_OFFSET_C: 1.0,
             const.CONF_COLD_THRESHOLD: 2.0,
             const.CONF_MAX_BOOST: 3.0,
             const.CONF_ENABLE_FORECAST_OPTIMIZATION: enable_forecast,
@@ -141,10 +140,6 @@ async def test_config_flow_routes_through_expected_steps(
     assert result["data"][const.CONF_MINUTES_TO_BLOCK] == 210
     assert result["data"][const.CONF_DAIKIN_PREHEAT_OFFSET] == 2.0
     assert result["data"][const.CONF_STORAGE_TARGET_C] == 25.0
-    assert const.CONF_TARGET_BOOLEAN not in result["data"]
-    assert const.CONF_TARGET_SAVING_HELPER not in result["data"]
-    assert const.CONF_TARGET_COMFORT_HELPER not in result["data"]
-    assert const.CONF_TARGET_FINAL_HELPER not in result["data"]
 
 
 @pytest.mark.asyncio
@@ -162,12 +157,6 @@ async def test_config_flow_uses_domain_filtered_entity_selectors(
 
     assert nordpool_selector.config.domain == "sensor"
     assert control_selector.config.domain == "number"
-
-    schema_keys = _schema_keys(result["data_schema"])
-    assert const.CONF_TARGET_BOOLEAN not in schema_keys
-    assert const.CONF_TARGET_SAVING_HELPER not in schema_keys
-    assert const.CONF_TARGET_COMFORT_HELPER not in schema_keys
-    assert const.CONF_TARGET_FINAL_HELPER not in schema_keys
 
 
 @pytest.mark.asyncio
@@ -200,10 +189,6 @@ async def test_config_flow_schema_defaults_reflect_new_baseline(
         _schema_default(targets_step["data_schema"], const.CONF_COLD_THRESHOLD) == 2.0
     )
     assert _schema_default(targets_step["data_schema"], const.CONF_MAX_BOOST) == 3.0
-    assert (
-        _schema_default(targets_step["data_schema"], const.CONF_HEATPUMP_OFFSET_C)
-        == 1.0
-    )
 
     daikin_flow = blockheat_env.config_flow.BlockheatConfigFlow()
     await daikin_flow.async_step_user(_step1_user_input(const, enable_daikin=True))
@@ -269,10 +254,6 @@ async def test_options_flow_routes_through_expected_steps(
     assert result["type"] == "create_entry"
     assert result["data"][const.CONF_STORAGE_TARGET_C] == 25.0
     assert result["data"][const.CONF_DAIKIN_PREHEAT_OFFSET] == 2.0
-    assert const.CONF_TARGET_BOOLEAN not in result["data"]
-    assert const.CONF_TARGET_SAVING_HELPER not in result["data"]
-    assert const.CONF_TARGET_COMFORT_HELPER not in result["data"]
-    assert const.CONF_TARGET_FINAL_HELPER not in result["data"]
 
 
 @pytest.mark.asyncio

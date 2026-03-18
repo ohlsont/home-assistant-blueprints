@@ -58,7 +58,7 @@ git push && git push --tags
 ### Core layers
 
 - **`engine.py`** — Pure computation, no HA dependencies. Computes policy decisions (`PolicyComputation`), comfort targets (`ComfortComputation`), saving targets, and final target with clamping/deadband. All functions are stateless and testable in isolation.
-- **`runtime.py`** — HA runtime adapter. Reads entity states, calls the engine, writes results back to HA entities/helpers, fires events, manages periodic scheduling and toggle interval guards.
+- **`runtime.py`** — HA runtime adapter. Reads entity states, calls the engine, writes results back to HA control entity, fires events, manages periodic scheduling and toggle interval guards.
 - **`__init__.py`** — Integration setup, `BlockheatCoordinator` (thin `DataUpdateCoordinator`), service registration.
 - **`config_flow.py`** — Two-step config flow: Step 1 maps external entities (sensors, controls); Step 2 is a sectioned tuning wizard for all numeric parameters. Also contains tuning validation helpers.
 - **`sensor.py` / `binary_sensor.py`** — Read-only entities exposing targets and policy state.

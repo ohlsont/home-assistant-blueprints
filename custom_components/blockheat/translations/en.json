@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Blockheat entities",
-        "description": "Map external inputs and writable outputs. Legacy helper/boolean mappings are internal-only. Read-only internal state entities use the canonical blockheat_* IDs. On first reload, exact pre-v1 public IDs (binary_sensor.energy_saving_active, sensor.target_saving, sensor.target_comfort, sensor.target_final) are auto-migrated when the canonical target is free; otherwise the old ID remains and manual cleanup is required.",
+        "description": "Map external inputs and writable outputs. Read-only internal state entities use the canonical blockheat_* IDs.",
         "data": {
           "nordpool_price": "Core - Nordpool price sensor",
           "comfort_room_1_sensor": "Core - Comfort room 1 sensor",
@@ -40,7 +40,6 @@
           "energy_saving_warm_shutdown_outdoor": "Warm shutdown outdoor threshold (°C)",
           "comfort_target_c": "Comfort target (°C)",
           "storage_target_c": "Storage target (°C)",
-          "heatpump_offset_c": "Heatpump offset (°C)",
           "cold_threshold": "Cold threshold (°C)",
           "max_boost": "Maximum boost (°C)",
           "enable_forecast_optimization": "Enable COP-weighted forecast optimization",
@@ -55,7 +54,6 @@
           "energy_saving_warm_shutdown_outdoor": "Outdoor temperature threshold where saving target switches to heatpump setpoint.",
           "comfort_target_c": "Desired comfort-room temperature before offsets and boost are applied.",
           "storage_target_c": "Desired storage temperature target before offsets and boost are applied.",
-          "heatpump_offset_c": "Degrees subtracted from comfort/storage targets to derive heat pump targets.",
           "cold_threshold": "Outdoor temperature below which cold-weather boost starts applying.",
           "max_boost": "Maximum additional boost degrees that can be added in cold weather.",
           "enable_forecast_optimization": "Rank price slots by true heat cost (price / COP) using per-slot weather forecast temperatures. Falls back to raw price ranking if forecast is unavailable.",
@@ -89,7 +87,7 @@
     "step": {
       "init": {
         "title": "Blockheat entities",
-        "description": "Map external inputs and writable outputs. Legacy helper/boolean mappings are internal-only. Read-only internal state entities use the canonical blockheat_* IDs. On first reload, exact pre-v1 public IDs (binary_sensor.energy_saving_active, sensor.target_saving, sensor.target_comfort, sensor.target_final) are auto-migrated when the canonical target is free; otherwise the old ID remains and manual cleanup is required.",
+        "description": "Map external inputs and writable outputs. Read-only internal state entities use the canonical blockheat_* IDs.",
         "data": {
           "nordpool_price": "Core - Nordpool price sensor",
           "comfort_room_1_sensor": "Core - Comfort room 1 sensor",
@@ -125,7 +123,6 @@
           "energy_saving_warm_shutdown_outdoor": "Warm shutdown outdoor threshold (°C)",
           "comfort_target_c": "Comfort target (°C)",
           "storage_target_c": "Storage target (°C)",
-          "heatpump_offset_c": "Heatpump offset (°C)",
           "cold_threshold": "Cold threshold (°C)",
           "max_boost": "Maximum boost (°C)",
           "enable_forecast_optimization": "Enable COP-weighted forecast optimization",
@@ -140,7 +137,6 @@
           "energy_saving_warm_shutdown_outdoor": "Outdoor temperature threshold where saving target switches to heatpump setpoint.",
           "comfort_target_c": "Desired comfort-room temperature before offsets and boost are applied.",
           "storage_target_c": "Desired storage temperature target before offsets and boost are applied.",
-          "heatpump_offset_c": "Degrees subtracted from comfort/storage targets to derive heat pump targets.",
           "cold_threshold": "Outdoor temperature below which cold-weather boost starts applying.",
           "max_boost": "Maximum additional boost degrees that can be added in cold weather.",
           "enable_forecast_optimization": "Rank price slots by true heat cost (price / COP) using per-slot weather forecast temperatures. Falls back to raw price ranking if forecast is unavailable.",
