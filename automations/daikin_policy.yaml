@@ -1,0 +1,39 @@
+# Blockheat — Daikin Policy
+# Turns the Daikin AC (climate.daikinap75809_room_temperature) on or off
+# based on the shared energy-saving flag.
+#
+# When energy saving is active:  turn Daikin OFF (reduce electricity use)
+# When energy saving is inactive: turn Daikin ON  (restore previous mode)
+#
+# IMPORTANT: Uses climate.turn_on / climate.turn_off only.
+# Does NOT call climate.set_hvac_mode — the HVAC mode (heat/cool/auto) is
+# managed independently and must not be overridden here.
+
+alias: "Blockheat — Daikin Policy"
+description: >
+  Turns the Daikin AC on or off when input_boolean.energy_saving_active changes.
+  HVAC mode selection is intentionally left to separate automations.
+mode: single
+trigger:
+  - platform: state
+    entity_id: input_boolean.energy_saving_active
+  - platform: homeassistant
+    event: start
+action:
+  - choose:
+      - conditions:
+          - condition: state
+            entity_id: input_boolean.energy_saving_active
+            state: "on"
+        sequence:
+          - action: climate.turn_off
+            target:
+              entity_id: climate.daikinap75809_room_temperature
+      - conditions:
+          - condition: state
+            entity_id: input_boolean.energy_saving_active
+            state: "off"
+        sequence:
+          - action: climate.turn_on
+            target:
+              entity_id: climate.daikinap75809_room_temperature
