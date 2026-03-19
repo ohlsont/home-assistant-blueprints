@@ -1,0 +1,42 @@
+# Blockheat — Final Writer
+# Selects saving or comfort target based on energy-saving policy state,
+# then writes to the heat pump setpoint if the change exceeds the deadband.
+#
+# Parameters:
+#   control_write_delta_c = 0.2 °C  (only write if |target - current| >= 0.2)
+#   control_min_c         = 10.0 °C
+#   control_max_c         = 26.0 °C
+
+alias: "Blockheat — Final Writer"
+description: >
+  Selects saving or comfort target, clamps to [10, 26] °C, and writes to
+  number.ohmigo_temperature_2 only when the change exceeds the 0.2 °C deadband.
+mode: single
+trigger:
+  - platform: state
+    entity_id:
+      - input_boolean.energy_saving_active
+      - input_number.blockheat_target_saving
+      - input_number.blockheat_target_comfort
+action:
+  - variables:
+      saving: >
+        {{ states('input_number.blockheat_target_saving') | float(21) }}
+      comfort: >
+        {{ states('input_number.blockheat_target_comfort') | float(22) }}
+      raw: >
+        {{ saving if is_state('input_boolean.energy_saving_active', 'on') else comfort }}
+      target: >
+        {{ [[raw, 10.0] | max, 26.0] | min }}
+      current: >
+        {{ states('number.ohmigo_temperature_2') | float(0) }}
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ ((target - current) | abs) >= 0.2 }}"
+        sequence:
+          - action: number.set_value
+            target:
+              entity_id: number.ohmigo_temperature_2
+            data:
+              value: "{{ target }}"

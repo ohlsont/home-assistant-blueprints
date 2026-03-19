@@ -13,5 +13,8 @@ _tmp_*
 # OS artifacts
 .DS_Store
 
+# Claude Code local state
+.claude/
+
 # Empty blueprint stub (not ready to ship)
 blueprints/

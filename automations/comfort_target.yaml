@@ -1,0 +1,96 @@
+# Blockheat — Comfort Target
+# Computes the temperature setpoint to use in comfort (non-saving) mode.
+#
+# Logic (mirrors engine.compute_comfort):
+#   boost: cold-weather boost when effective_outdoor < 2.0 °C, up to max_boost = 3.0 °C
+#          effective_outdoor = min(current_outdoor, min_forecast_6h)
+#          boost = min((cold_threshold - effective_outdoor) / boost_slope_c, max_boost)
+#                = min((2.0 - effective_outdoor) / 4.0, 3.0)
+#
+#   The forecast look-ahead (6 hourly slots from weather.forecast_home) allows the
+#   floor to preheat before cold weather arrives, not just react to it.
+#
+#   satisfied: all rooms >= comfort_target_c - comfort_margin_c
+#              = 22.0 - 0.25 = 21.75 °C
+#   storage_cold: storage < storage_target_c - comfort_margin_c
+#                 = 25.0 - 0.25 = 24.75 °C
+#
+#   if satisfied and storage_cold: target = 25.0 + boost
+#   elif satisfied:                target = 22.0  (maintenance)
+#   else:                          target = 22.0 + boost
+#   clamped to [10, 26] °C
+#
+# Parameters:
+#   comfort_target_c      = 22.0 °C
+#   storage_target_c      = 25.0 °C
+#   comfort_margin_c      = 0.25 °C
+#   cold_threshold        = 2.0 °C
+#   max_boost             = 3.0 °C
+#   boost_slope_c         = 4.0
+#   forecast_lookahead_h  = 6 (hourly slots)
+
+alias: "Blockheat — Comfort Target"
+description: >
+  Writes input_number.blockheat_target_comfort based on room temperatures,
+  storage temperature, and cold-weather boost. The boost uses the minimum of
+  the current outdoor temperature and the 6-hour forecast minimum, so the floor
+  preheats ahead of incoming cold weather.
+mode: queued
+max: 2
+trigger:
+  - platform: state
+    entity_id:
+      - sensor.lumi_lumi_sensor_ht_agl02_temperature
+      - sensor.sonoff_snzb_02d_bedroom_2_temperature
+      - sensor.sonoff_snzb_02d_temp_humid_temperature
+      - sensor.hue_outdoor_motion_sensor_1_temperature
+      - weather.forecast_home
+  - platform: time_pattern
+    minutes: "/5"
+action:
+  - action: weather.get_forecasts
+    target:
+      entity_id: weather.forecast_home
+    data:
+      type: hourly
+    response_variable: forecast_data
+  - variables:
+      room1: >
+        {{ states('sensor.lumi_lumi_sensor_ht_agl02_temperature') | float(none) }}
+      room2: >
+        {{ states('sensor.sonoff_snzb_02d_bedroom_2_temperature') | float(none) }}
+      storage: >
+        {{ states('sensor.sonoff_snzb_02d_temp_humid_temperature') | float(none) }}
+      outdoor: >
+        {{ states('sensor.hue_outdoor_motion_sensor_1_temperature') | float(999) }}
+      min_forecast_temp: >
+        {% set fc = forecast_data['weather.forecast_home']['forecast'][:6] %}
+        {{ fc | map(attribute='temperature') | list | min if fc | length > 0 else outdoor }}
+      effective_outdoor: >
+        {{ [outdoor, min_forecast_temp] | min }}
+      boost: >
+        {% if effective_outdoor < 2.0 %}
+          {{ [[(2.0 - effective_outdoor) / 4.0, 0] | max, 3.0] | min }}
+        {% else %}
+          {{ 0.0 }}
+        {% endif %}
+      satisfied: >
+        {{ room1 is not none and room2 is not none
+           and room1 >= 21.75 and room2 >= 21.75 }}
+      storage_cold: >
+        {{ storage is not none and storage < 24.75 }}
+      raw: >
+        {% if satisfied and storage_cold %}
+          {{ 25.0 + boost }}
+        {% elif satisfied %}
+          {{ 22.0 }}
+        {% else %}
+          {{ 22.0 + boost }}
+        {% endif %}
+      target: >
+        {{ [[raw, 10.0] | max, 26.0] | min }}
+  - action: input_number.set_value
+    target:
+      entity_id: input_number.blockheat_target_comfort
+    data:
+      value: "{{ target }}"

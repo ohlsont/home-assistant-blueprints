@@ -1,0 +1,58 @@
+# Blockheat — Energy Saving Policy
+# Decides whether energy-saving mode should be on or off based on:
+#   - Nordpool 15-min slot price vs the top-N cutoff (N = minutes_to_block / 15 = 16)
+#   - Minimum price floor (0.6 SEK/kWh)
+#   - PV production (bypass saving when PV > 3000 W)
+#   - 15-min toggle guard (min_toggle_interval_min)
+#   - 5% hysteresis on the cutoff price to prevent flip-flop
+
+alias: "Blockheat — Energy Saving Policy"
+description: >
+  Turns input_boolean.energy_saving_active on when the current Nordpool price is
+  among the top 16 most expensive 15-min slots of the day (and above 0.6 SEK/kWh
+  and PV production is below 3000 W). Includes 5% hysteresis and a 15-min toggle
+  guard.
+mode: single
+trigger:
+  - platform: state
+    entity_id: sensor.nordpool_kwh_se3_sek_3_10_025
+  - platform: time_pattern
+    minutes: "/5"
+  - platform: homeassistant
+    event: start
+action:
+  - variables:
+      prices: >
+        {{ state_attr('sensor.nordpool_kwh_se3_sek_3_10_025', 'today') | sort | list }}
+      nslots: 16
+      cutoff: >
+        {{ (prices[-nslots] if prices | length >= nslots else 9999) | float }}
+      price: >
+        {{ states('sensor.nordpool_kwh_se3_sek_3_10_025') | float(0) }}
+      pv: >
+        {{ states('sensor.pv_power') | float(0) }}
+      currently_on: >
+        {{ is_state('input_boolean.energy_saving_active', 'on') }}
+      effective_cutoff: >
+        {{ cutoff * 0.95 if currently_on else cutoff }}
+      target_on: >
+        {{ price >= effective_cutoff and price >= 0.6 and pv < 3000 }}
+      elapsed: >
+        {{ (now() - states.input_boolean.energy_saving_active.last_changed).total_seconds() }}
+      enough_time: >
+        {{ elapsed >= 900 }}
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ target_on and not currently_on and enough_time }}"
+        sequence:
+          - action: input_boolean.turn_on
+            target:
+              entity_id: input_boolean.energy_saving_active
+      - conditions:
+          - condition: template
+            value_template: "{{ not target_on and currently_on and enough_time }}"
+        sequence:
+          - action: input_boolean.turn_off
+            target:
+              entity_id: input_boolean.energy_saving_active

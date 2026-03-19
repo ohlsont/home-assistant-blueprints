@@ -39,6 +39,12 @@ uv run codespell custom_components scripts tests
 
 Always use `uv run` instead of bare `python` or `python3`.
 
+## Gotchas
+
+- **No direct commits to main**: Pre-commit hook blocks `git commit` on the `main` branch. Always work on a feature branch.
+- **Pre-commit runs automatically** on commit. To run manually: `uv run pre-commit run --all-files`
+- **Mirror sync is enforced**: If you edit only one of the two component directories, CI and `test_mirror_sync` will fail.
+
 ## Releasing
 
 ```bash

@@ -1,0 +1,45 @@
+# Blockheat — Saving Target
+# Computes the temperature setpoint to use in energy-saving mode.
+#
+# Logic:
+#   warm_shutdown: outdoor >= 8.0 °C (with 1 °C hysteresis → stays off below 7.0)
+#   if warm_shutdown: target = setpoint + 1.0  (heat pump in warm-shutdown/high mode)
+#   else:            target = setpoint - 1.0  (saving: pull back 1 °C)
+#   clamped to [10, 26] °C
+#
+# Parameters:
+#   setpoint              = 21.0 °C  (heatpump_setpoint)
+#   saving_cold_offset_c  = 1.0 °C
+#   warm_shutdown_outdoor = 8.0 °C
+#   warm_shutdown_hysteresis_c = 1.0 °C
+
+alias: "Blockheat — Saving Target"
+description: >
+  Writes input_number.blockheat_target_saving based on outdoor temperature and
+  warm-shutdown logic.
+mode: single
+trigger:
+  - platform: state
+    entity_id: sensor.hue_outdoor_motion_sensor_1_temperature
+  - platform: time_pattern
+    minutes: "/5"
+action:
+  - variables:
+      outdoor: >
+        {{ states('sensor.hue_outdoor_motion_sensor_1_temperature') | float(999) }}
+      setpoint: 21.0
+      currently_ws: >
+        {{ (states('input_number.blockheat_target_saving') | float(0)) > 21.0 }}
+      ws_threshold: >
+        {{ 7.0 if currently_ws else 8.0 }}
+      warm_shutdown: >
+        {{ outdoor >= ws_threshold }}
+      raw: >
+        {{ setpoint + 1.0 if warm_shutdown else setpoint - 1.0 }}
+      target: >
+        {{ [[raw, 10.0] | max, 26.0] | min }}
+  - action: input_number.set_value
+    target:
+      entity_id: input_number.blockheat_target_saving
+    data:
+      value: "{{ target }}"

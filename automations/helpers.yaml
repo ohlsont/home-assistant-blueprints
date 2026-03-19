@@ -1,0 +1,29 @@
+# Blockheat replacement helpers
+# Apply via MCP: ha_config_set_helper × 3
+#
+# These replace the unavailable blockheat integration entities:
+#   binary_sensor.blockheat_energy_saving_active  → input_boolean.energy_saving_active
+#   sensor.blockheat_target_saving                → input_number.blockheat_target_saving
+#   sensor.blockheat_target_comfort               → input_number.blockheat_target_comfort
+
+- platform: input_boolean
+  name: energy_saving_active
+  icon: mdi:lightning-bolt
+
+- platform: input_number
+  name: blockheat_target_saving
+  min: 10
+  max: 26
+  step: 0.1
+  unit_of_measurement: "°C"
+  icon: mdi:thermometer-low
+  mode: box
+
+- platform: input_number
+  name: blockheat_target_comfort
+  min: 10
+  max: 26
+  step: 0.1
+  unit_of_measurement: "°C"
+  icon: mdi:thermometer-high
+  mode: box
