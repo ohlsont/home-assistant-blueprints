@@ -1,0 +1,32 @@
+# Dehumidifier energy saving
+# Updated to use input_boolean.energy_saving_active instead of the
+# unavailable binary_sensor.blockheat_energy_saving_active.
+#
+# Preserves original device_id / entity_id references for the fan device.
+
+alias: "Dehumidifier energy saving"
+description: "Turn off dehumidifier when energy saving is active, turn on when inactive."
+mode: single
+trigger:
+  - platform: state
+    entity_id: input_boolean.energy_saving_active
+action:
+  - choose:
+      - conditions:
+          - condition: state
+            entity_id: input_boolean.energy_saving_active
+            state: "on"
+        sequence:
+          - type: turn_off
+            device_id: 7f39d4a907bbdb75e8eea23f2b348c2c
+            entity_id: c163fab90ff9d4f99b6372685372ab26
+            domain: fan
+      - conditions:
+          - condition: state
+            entity_id: input_boolean.energy_saving_active
+            state: "off"
+        sequence:
+          - type: turn_on
+            device_id: 7f39d4a907bbdb75e8eea23f2b348c2c
+            entity_id: c163fab90ff9d4f99b6372685372ab26
+            domain: fan
