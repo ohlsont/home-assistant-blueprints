@@ -11,6 +11,46 @@ Native HA automations replacing the unavailable blockheat HACS integration.
 
 The two devices are **independent** — the Daikin policy does not affect the Ohmigo setpoint calculations, and vice versa.
 
+## Data flow
+
+```mermaid
+flowchart TD
+    nordpool["sensor.nordpool_kwh_se3_sek_3_10_025\n(spot price)"]
+    pv["sensor.pv_power\n(PV production)"]
+    outdoor["sensor.hue_outdoor_motion_sensor_1_temperature\n(outdoor temp)"]
+    room1["sensor.lumi_lumi_sensor_ht_agl02_temperature\n(room 1)"]
+    room2["sensor.sonoff_snzb_02d_bedroom_2_temperature\n(room 2)"]
+    storage["sensor.sonoff_snzb_02d_temp_humid_temperature\n(storage)"]
+    forecast["weather.forecast_home\n(6-h forecast)"]
+
+    nordpool --> policy
+    pv --> policy
+    policy["policy.yaml\ntop-N price slots\n+ hysteresis + PV bypass"]
+
+    policy --> flag["input_boolean.energy_saving_active"]
+
+    outdoor --> saving_target["saving_target.yaml\nwarm-shutdown logic"]
+    saving_target --> ib_saving["input_number.blockheat_target_saving"]
+
+    outdoor --> comfort_target["comfort_target.yaml\nroom/storage satisfaction\n+ 6-h forecast boost"]
+    room1 --> comfort_target
+    room2 --> comfort_target
+    storage --> comfort_target
+    forecast --> comfort_target
+    comfort_target --> ib_comfort["input_number.blockheat_target_comfort"]
+
+    flag --> final_writer["final_writer.yaml\nselect saving/comfort\n+ 0.2 °C deadband"]
+    ib_saving --> final_writer
+    ib_comfort --> final_writer
+    final_writer --> ohmigo["number.ohmigo_temperature_2\n(floor-heat setpoint)"]
+
+    flag --> daikin_policy["daikin_policy.yaml"]
+    daikin_policy --> daikin["climate.daikinap75809_room_temperature\n(Daikin on/off)"]
+
+    flag --> dehumidifier["dehumidifier.yaml"]
+    dehumidifier --> fan["fan\n(dehumidifier on/off)"]
+```
+
 ## Files
 
 | File | Purpose |
