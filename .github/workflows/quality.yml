@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: pip install yamllint
-      - run: yamllint -d relaxed automations/
+      - run: yamllint automations/
 
   validate-automations:
     runs-on: ubuntu-latest
