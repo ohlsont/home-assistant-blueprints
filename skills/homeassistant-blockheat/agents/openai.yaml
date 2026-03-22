@@ -1,4 +1,0 @@
-interface:
-  display_name: "Home Assistant Blockheat"
-  short_description: "Edit and validate the Blockheat Home Assistant integration"
-  default_prompt: "Update the Blockheat Home Assistant custom integration with safe, minimal changes."
