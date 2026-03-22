@@ -1,0 +1,53 @@
+name: Quality
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: pre-commit/action@v3.0.1
+
+  yamllint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install yamllint
+      - run: yamllint -d relaxed automations/
+
+  validate-automations:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate automation structure
+        run: |
+          pip install pyyaml
+          python3 -c "
+          import yaml, sys, glob
+
+          errors = []
+          for path in sorted(glob.glob('automations/*.yaml')):
+              if 'helpers' in path:
+                  continue
+              with open(path) as f:
+                  doc = yaml.safe_load(f)
+              if not isinstance(doc, dict):
+                  errors.append(f'{path}: not a mapping')
+                  continue
+              for field in ['alias', 'trigger', 'action']:
+                  if field not in doc:
+                      errors.append(f'{path}: missing required field \"{field}\"')
+
+          if errors:
+              for e in errors:
+                  print(f'ERROR: {e}', file=sys.stderr)
+              sys.exit(1)
+          else:
+              print(f'All automation files valid.')
+          "

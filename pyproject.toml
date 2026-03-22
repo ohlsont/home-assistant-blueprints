@@ -1,3 +1,5 @@
 [project]
 name = "blockheat"
+version = "0.4.0"
 description = "Blockheat – automations-based heating control for Home Assistant"
+requires-python = ">=3.12"
