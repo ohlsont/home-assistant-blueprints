@@ -23,11 +23,11 @@
 ## How Blockheat Controls Temperature
 
 1. Blockheat engine computes a target temperature based on policy (price, PV, time windows)
-2. Runtime writes the target to the Ohmigo HA entity (`number.ohmigo_temperature_2`)
-3. The Ohmigo device physically reports this value to the ETK6500 as "room temperature"
-4. The ETK6500 compares this reported temp against its BOR-värde (setpoint, from `input_number.blockheat_bor`)
-5. If reported temp < setpoint: heat pump runs; if reported temp > setpoint: heat pump stops
-6. This is an indirect control loop: Blockheat doesn't control the heat pump directly,
+1. Runtime writes the target to the Ohmigo HA entity (`number.ohmigo_temperature_2`)
+1. The Ohmigo device physically reports this value to the ETK6500 as "room temperature"
+1. The ETK6500 compares this reported temp against its BOR-värde (setpoint, from `input_number.blockheat_bor`)
+1. If reported temp < setpoint: heat pump runs; if reported temp > setpoint: heat pump stops
+1. This is an indirect control loop: Blockheat doesn't control the heat pump directly,
    it influences the heat pump's own thermostat by manipulating the room temp reading
 
 ## Heating Distribution

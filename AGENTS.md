@@ -11,6 +11,7 @@ Blockheat is an automations-based heating control system for Home Assistant. It 
 The physical heating system is documented in [`docs/home-architecture.md`](docs/home-architecture.md).
 
 Key points for development:
+
 - **Heat pump**: Qvantum ETK6500 (exhaust-air). Manual: [`docs/Qvantum-ETK-Manual.pdf`](docs/Qvantum-ETK-Manual.pdf)
 - **External sensor**: Ohmigo WiFi replaces the ETK6500's built-in room sensor. Blockheat writes its target to `number.ohmigo_temperature_2`, which the heat pump reads as room temperature.
 - **Control method**: Indirect -- Blockheat manipulates the reported room temp to make the heat pump's own thermostat start/stop as desired.
