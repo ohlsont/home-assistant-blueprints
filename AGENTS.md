@@ -32,10 +32,29 @@ This is **inverse** to a normal thermostat setpoint. To make the heat pump heat 
 - Hardware documentation lives under `docs/`.
 - Update `README.md` when behavior or inputs change.
 
+## Deployment
+
+Automations are deployed to Home Assistant via the MCP `ha_config_set_automation` tool.
+After deploying, always trigger and verify:
+
+1. `ha_config_set_automation(identifier="automation.blockheat_<name>", config={...})`
+1. `ha_call_service("automation", "trigger", entity_id="automation.blockheat_<name>")`
+1. `ha_get_state("input_number.blockheat_target_<saving|comfort>")` to confirm output
+
 ## Gotchas
 
 - **No direct commits to main**: Pre-commit hook blocks `git commit` on the `main` branch. Always work on a feature branch.
 - **Pre-commit runs automatically** on commit. To run manually: `uv run pre-commit run --all-files`
+- **Hysteresis on threshold decisions**: Any automation variable that switches behavior at a threshold (e.g., warm_shutdown) needs hysteresis (stickiness). Even smooth inputs like 24h forecast averages can oscillate near a boundary due to forecast revisions. Use the `currently_ws`/`ws_threshold` pattern.
+- **Both saving and comfort automations use forecasts**: `weather.get_forecasts` with `type: hourly` from `weather.forecast_home`. When adding forecast logic, follow the existing pattern.
+
+## CI
+
+The `quality.yml` workflow runs on all PRs:
+
+- `pre-commit` (yaml, toml, json checks, trailing whitespace, codespell, mdformat)
+- `yamllint` on `automations/`
+- `validate-automations` (checks alias, trigger, action fields in each YAML)
 
 ## Execution preferences
 
