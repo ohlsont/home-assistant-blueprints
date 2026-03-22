@@ -2,47 +2,60 @@
 # Computes the Ohmigo reported-temperature to use in energy-saving mode.
 #
 # IMPORTANT: Ohmigo reports a fake room temperature to the heat pump.
-# Values BELOW BOR (22 °C) make it heat; values ABOVE BOR make it stop.
+# Values BELOW BOR (from input_number.blockheat_bor) make it heat; values
+# ABOVE BOR make it stop.
 #
 # Logic:
-#   warm_shutdown: outdoor >= 8.0 °C (with 1 °C hysteresis → stays off below 7.0)
-#   if warm_shutdown: target = bor + 1.0 = 23.0  (above BOR → heat pump stops)
-#   else:            target = bor - 0.5 = 21.5  (slightly below BOR → gentle heating)
+#   warm_shutdown: 24h forecast avg >= 2.0 °C (with 1.0 °C hysteresis → exits below 1.0)
+#   if warm_shutdown: target = bor + 2.0  (above BOR → heat pump stops reliably)
+#   else:            target = bor - 0.5  (slightly below BOR → gentle heating)
 #   clamped to [10, 26] °C
 #
 #   Compare to comfort mode (bor - 2.0 = 20.0): saving mode heats much less
 #   aggressively, with only a 0.5 °C gap vs comfort's 2.0 °C gap below BOR.
 #
 # Parameters:
-#   bor                       = 22.0 °C  (heat pump BOR-värde)
+#   bor                       = from input_number.blockheat_bor  (heat pump BOR-värde)
 #   saving_offset_c           = 0.5 °C   (how far below BOR during saving)
-#   warm_shutdown_outdoor     = 8.0 °C
-#   warm_shutdown_hysteresis_c = 1.0 °C
+#   warm_shutdown_avg_forecast_c = 2.0 °C
+#   warm_shutdown_hysteresis_c   = 1.0 °C
 
 alias: "Blockheat — Saving Target"
 description: >
-  Writes input_number.blockheat_target_saving based on outdoor temperature and
+  Writes input_number.blockheat_target_saving based on 24h forecast average and
   warm-shutdown logic. Values are Ohmigo reported-temps: slightly below BOR to
   heat gently during cold saving, above BOR to stop during warm shutdown.
 mode: single
 trigger:
   - platform: state
-    entity_id: sensor.hue_outdoor_motion_sensor_1_temperature
+    entity_id:
+      - sensor.hue_outdoor_motion_sensor_1_temperature
+      - weather.forecast_home
+      - input_number.blockheat_bor
   - platform: time_pattern
     minutes: "/5"
 action:
+  - action: weather.get_forecasts
+    target:
+      entity_id: weather.forecast_home
+    data:
+      type: hourly
+    response_variable: forecast_data
   - variables:
-      bor: 22.0
+      bor: "{{ states('input_number.blockheat_bor') | float(22.0) }}"
       outdoor: >
         {{ states('sensor.hue_outdoor_motion_sensor_1_temperature') | float(999) }}
+      avg_forecast_24h: >
+        {% set fc = forecast_data['weather.forecast_home']['forecast'][:24] %}
+        {{ (fc | map(attribute='temperature') | list | sum) / (fc | length) if fc | length > 0 else outdoor }}
       currently_ws: >
         {{ (states('input_number.blockheat_target_saving') | float(0)) > bor }}
       ws_threshold: >
-        {{ 7.0 if currently_ws else 8.0 }}
+        {{ 1.0 if currently_ws else 2.0 }}
       warm_shutdown: >
-        {{ outdoor >= ws_threshold }}
+        {{ avg_forecast_24h >= ws_threshold }}
       raw: >
-        {{ bor + 1.0 if warm_shutdown else bor - 0.5 }}
+        {{ bor + 2.0 if warm_shutdown else bor - 0.5 }}
       target: >
         {{ [[raw, 10.0] | max, 26.0] | min }}
   - action: input_number.set_value

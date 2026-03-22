@@ -5,7 +5,7 @@ Tel: +46 (0) 40-15 10 44
 
 Models covered: Qvantum-ETK3500, Qvantum-ETK5000, Qvantum-ETK6500
 
----
+______________________________________________________________________
 
 ## 1. General Information
 
@@ -29,97 +29,97 @@ Models covered: Qvantum-ETK3500, Qvantum-ETK5000, Qvantum-ETK6500
 
 The heat pump is CE-marked, designed and manufactured in accordance with EU machinery directives.
 
----
+______________________________________________________________________
 
 ## 1.9 Technical Data
 
 ### General
 
-| Parameter | Unit | ETK3500 | ETK5000 | ETK6500 |
-|---|---|---|---|---|
-| Recommended living area | m2 | 70-120 | 100-170 | 160-220 |
+| Parameter               | Unit | ETK3500 | ETK5000 | ETK6500 |
+| ----------------------- | ---- | ------- | ------- | ------- |
+| Recommended living area | m2   | 70-120  | 100-170 | 160-220 |
 
 ### Heating Capacity
 
-| Parameter | Unit | ETK3500 | ETK5000 | ETK6500 |
-|---|---|---|---|---|
-| Heat output at 35C (out/in) | kW | 3.5 / 0.9 | 5 / 1.3 | 6.5 / 1.7 |
-| Heat output at 50C (out/in) | kW | 3.5 / 1.1 | 5 / 1.7 | 6.5 / 2.2 |
-| ErP rating, hot water (medium climate) | | A | A | A |
-| ErP rating, space heating (medium climate) | | A++ | A++ | A++ |
+| Parameter                                  | Unit | ETK3500   | ETK5000 | ETK6500   |
+| ------------------------------------------ | ---- | --------- | ------- | --------- |
+| Heat output at 35C (out/in)                | kW   | 3.5 / 0.9 | 5 / 1.3 | 6.5 / 1.7 |
+| Heat output at 50C (out/in)                | kW   | 3.5 / 1.1 | 5 / 1.7 | 6.5 / 2.2 |
+| ErP rating, hot water (medium climate)     |      | A         | A       | A         |
+| ErP rating, space heating (medium climate) |      | A++       | A++     | A++       |
 
 ### Electric Backup (Elpatron)
 
-| Parameter | Unit | ETK3500 | ETK5000 | ETK6500 |
-|---|---|---|---|---|
-| Max output incl. backup heater | kW | 8.5 | 10 | 11.5 |
-| Backup heater total (3 stages)* | kW | 5 | 5 | 5 |
+| Parameter                        | Unit | ETK3500 | ETK5000 | ETK6500 |
+| -------------------------------- | ---- | ------- | ------- | ------- |
+| Max output incl. backup heater   | kW   | 8.5     | 10      | 11.5    |
+| Backup heater total (3 stages)\* | kW   | 5       | 5       | 5       |
 
-*Delivered with 5 kW backup heater (elpatron). Stages: 1 kW + 2 kW + 2 kW. Can be limited via relays for new-build regulations (BBR).
+\*Delivered with 5 kW backup heater (elpatron). Stages: 1 kW + 2 kW + 2 kW. Can be limited via relays for new-build regulations (BBR).
 
 ### Hot Water
 
-| Parameter | Unit | ETK3500 | ETK5000 | ETK6500 |
-|---|---|---|---|---|
-| Overheat protection | C | 96 | 96 | 96 |
-| Hot water temp adjustable | C | 45-60 | 45-60 | 45-60 |
-| Hot water at 40C, 8 l/min | liters | 250 | 320 | 345 |
+| Parameter                 | Unit   | ETK3500 | ETK5000 | ETK6500 |
+| ------------------------- | ------ | ------- | ------- | ------- |
+| Overheat protection       | C      | 96      | 96      | 96      |
+| Hot water temp adjustable | C      | 45-60   | 45-60   | 45-60   |
+| Hot water at 40C, 8 l/min | liters | 250     | 320     | 345     |
 
 ### Refrigerant
 
 | Parameter | Unit | ETK3500 | ETK5000 | ETK6500 |
-|---|---|---|---|---|
-| Type | | R-134a | R-134a | R-134a |
-| Quantity | kg | 1.1 | 1.2 | 1.2 |
-| GWP | | 1300 | 1300 | 1300 |
-| CO2(e) | ton | 1.43 | 1.56 | 1.69 |
+| --------- | ---- | ------- | ------- | ------- |
+| Type      |      | R-134a  | R-134a  | R-134a  |
+| Quantity  | kg   | 1.1     | 1.2     | 1.2     |
+| GWP       |      | 1300    | 1300    | 1300    |
+| CO2(e)    | ton  | 1.43    | 1.56    | 1.69    |
 
 ### Dimensions & Appearance
 
-| Parameter | Unit | ETK3500 | ETK5000 | ETK6500 |
-|---|---|---|---|---|
-| Width x Depth x Height | mm | 600 x 660 x 1960 | same | same |
-| Additional vent connection | mm | ~30 | ~30 | ~30 |
-| Height incl. pallet | mm | 2070 | 2070 | 2070 |
-| Weight | kg | ~220 | ~225 | ~230 |
-| Color | | White lacquered | same | same |
+| Parameter                  | Unit | ETK3500          | ETK5000 | ETK6500 |
+| -------------------------- | ---- | ---------------- | ------- | ------- |
+| Width x Depth x Height     | mm   | 600 x 660 x 1960 | same    | same    |
+| Additional vent connection | mm   | ~30              | ~30     | ~30     |
+| Height incl. pallet        | mm   | 2070             | 2070    | 2070    |
+| Weight                     | kg   | ~220             | ~225    | ~230    |
+| Color                      |      | White lacquered  | same    | same    |
 
 ### Sound Level (EN12102:2013)
 
-| Parameter | Unit | Value |
-|---|---|---|
-| Sound power level (LWA) | dB(A) | 44 |
+| Parameter               | Unit  | Value |
+| ----------------------- | ----- | ----- |
+| Sound power level (LWA) | dB(A) | 44    |
 
 Continuous A-weighted sound pressure level below 70 dB(A).
 
 ### Components
 
-| Component | Description |
-|---|---|
-| Compressor | Variable speed, scroll |
-| Ventilation fan | Pressure-controlled, A-class, stepless |
-| Circulation pump | Pressure-controlled, A-class |
-| Expansion vessel | 12 liters |
+| Component        | Description                            |
+| ---------------- | -------------------------------------- |
+| Compressor       | Variable speed, scroll                 |
+| Ventilation fan  | Pressure-controlled, A-class, stepless |
+| Circulation pump | Pressure-controlled, A-class           |
+| Expansion vessel | 12 liters                              |
 
 ### Electrical Data
 
-| Parameter | Unit | ETK3500 | ETK5000 | ETK6500 |
-|---|---|---|---|---|
-| Fuse (depending on backup) | A | 16 | 16 | 16 |
-| Earth fault breaker (min) | mA | 300 | 300 | 300 |
-| Voltage | V | 3x400 VAC + N | same | same |
+| Parameter                  | Unit | ETK3500       | ETK5000 | ETK6500 |
+| -------------------------- | ---- | ------------- | ------- | ------- |
+| Fuse (depending on backup) | A    | 16            | 16      | 16      |
+| Earth fault breaker (min)  | mA   | 300           | 300     | 300     |
+| Voltage                    | V    | 3x400 VAC + N | same    | same    |
 
 ### Pipe Connections
 
-| Connection | Type | Size |
-|---|---|---|
+| Connection              | Type   | Size  |
+| ----------------------- | ------ | ----- |
 | Heating supply & return | Copper | 22 mm |
-| Hot water | Copper | 22 mm |
-| Cold water | Copper | 22 mm |
-| Condensate/spillwater | Copper | 22 mm |
-| Exhaust/supply air duct | | DN125 |
+| Hot water               | Copper | 22 mm |
+| Cold water              | Copper | 22 mm |
+| Condensate/spillwater   | Copper | 22 mm |
+| Exhaust/supply air duct |        | DN125 |
 
----
+______________________________________________________________________
 
 ## 2. System Description
 
@@ -128,10 +128,10 @@ Continuous A-weighted sound pressure level below 70 dB(A).
 The Qvantum-ETK is an exhaust-air heat pump (franluftsvärmepump). It extracts heat from indoor exhaust air:
 
 1. **A** - Indoor air is drawn into the house duct system.
-2. **B** - The exhaust air is led to the Qvantum-ETK.
-3. **C** - The ETK provides heating and hot water to the house.
-4. **D** - Air is expelled after passing through the ETK (cooled, as energy has been extracted).
-5. **E** - Fresh air enters through supply air vents, drawn in by the slight negative pressure created by the exhaust system.
+1. **B** - The exhaust air is led to the Qvantum-ETK.
+1. **C** - The ETK provides heating and hot water to the house.
+1. **D** - Air is expelled after passing through the ETK (cooled, as energy has been extracted).
+1. **E** - Fresh air enters through supply air vents, drawn in by the slight negative pressure created by the exhaust system.
 
 ### 2.3 Functional Principle
 
@@ -141,7 +141,7 @@ The heat pump distributes heat via a diverter valve (växelventil) to either rad
 
 The system is Legionella-safe as no hot water is stored. Fresh tap water is heated on demand by flowing through finned channels in the heated accumulator tank.
 
----
+______________________________________________________________________
 
 ## 3. Installation
 
@@ -189,12 +189,12 @@ If the ventilation duct temperature may give incorrect values for the heat pump'
 
 ### 3.8 Pipe Dimensions
 
-| Connection | Type | Size |
-|---|---|---|
+| Connection              | Type        | Size  |
+| ----------------------- | ----------- | ----- |
 | Heating supply & return | Copper pipe | 22 mm |
-| Hot water | Copper pipe | 22 mm |
-| Cold water | Copper pipe | 22 mm |
-| Condensate/spillwater | Copper pipe | 22 mm |
+| Hot water               | Copper pipe | 22 mm |
+| Cold water              | Copper pipe | 22 mm |
+| Condensate/spillwater   | Copper pipe | 22 mm |
 
 ### 3.10 Circulation Pump
 
@@ -228,7 +228,7 @@ If the ventilation duct temperature may give incorrect values for the heat pump'
 - Electric backup stages: Relay 1 = 1 kW, Relay 2 = 2 kW, Relay 3 = 2 kW.
 - For BBR compliance, limit the backup heater by mounting relays for only the number of stages matching the maximum allowed installed power.
 
----
+______________________________________________________________________
 
 ## 4. Commissioning
 
@@ -240,11 +240,11 @@ If the ventilation duct temperature may give incorrect values for the heat pump'
 ### 4.3 Filling the HVAC System
 
 1. Open all radiator valves (leave open during operation).
-2. Open the tank's vent valve at the bottom.
-3. Open the fill valve under the tank on the cold water side.
-4. Close the vent valve when water starts flowing through.
-5. Fill until pressure gauge shows 1.0 bar (cold water).
-6. Target pressure: 1.0-1.5 bar at operating temperature.
+1. Open the tank's vent valve at the bottom.
+1. Open the fill valve under the tank on the cold water side.
+1. Close the vent valve when water starts flowing through.
+1. Fill until pressure gauge shows 1.0 bar (cold water).
+1. Target pressure: 1.0-1.5 bar at operating temperature.
 
 ### 4.4 Venting the Heating System
 
@@ -267,26 +267,26 @@ If the ventilation duct temperature may give incorrect values for the heat pump'
 Fan speed guide:
 
 | House area | Fan % | Speed setting |
-|---|---|---|
-| 280 m2 | 100% | 10 |
-| 250 m2 | 85% | 9 |
-| 200 m2 | 70% | 8 |
-| 150 m2 | 50% | 7 |
-| 120 m2 | 40% | 6 |
-| 100 m2 | 35% | 5 (min) |
+| ---------- | ----- | ------------- |
+| 280 m2     | 100%  | 10            |
+| 250 m2     | 85%   | 9             |
+| 200 m2     | 70%   | 8             |
+| 150 m2     | 50%   | 7             |
+| 120 m2     | 40%   | 6             |
+| 100 m2     | 35%   | 5 (min)       |
 
 ### 4.7 Starting
 
 1. Turn on all fuses in the fuse box.
-2. Turn on any external main switch.
-3. Turn on the heat pump's main switch.
-4. Set room temperature (e.g., 20C).
-5. Set hot water temperature (e.g., 55-60C).
-6. The pump starts in hot water mode (prioritized), then begins space heating.
+1. Turn on any external main switch.
+1. Turn on the heat pump's main switch.
+1. Set room temperature (e.g., 20C).
+1. Set hot water temperature (e.g., 55-60C).
+1. The pump starts in hot water mode (prioritized), then begins space heating.
 
 Note: All values that increase compressor output are delayed by ~3 minutes. Values that decrease output take effect immediately. This ensures smooth regulation.
 
----
+______________________________________________________________________
 
 ## 5. Information During Operation
 
@@ -311,10 +311,11 @@ Note: All values that increase compressor output are delayed by ~3 minutes. Valu
 ### 5.5 Emergency Operation
 
 If the control unit fails:
+
 1. Turn off the main switch.
-2. Flip the power switch on top of the electric backup terminal to emergency mode.
-3. Turn the main switch back to ON.
-4. Only space heating is produced (electric backup only). Call service.
+1. Flip the power switch on top of the electric backup terminal to emergency mode.
+1. Turn the main switch back to ON.
+1. Only space heating is produced (electric backup only). Call service.
 
 The thermostat is factory-set with overheat protection at 96C. The power switch must be ON during emergency operation.
 
@@ -350,7 +351,7 @@ The thermostat is factory-set with overheat protection at 96C. The power switch 
 - Reset by inserting a cross-head screwdriver into the circular hole on top of the protection box and pressing firmly. A strong click confirms reset.
 - Located in the upper left corner of the lower section, above the circulation pump.
 
----
+______________________________________________________________________
 
 ## 6. Panel & Control Unit
 
@@ -368,6 +369,7 @@ All other values are read-only for users. Changing other values voids the warran
 ### 6.2 Adjusting Indoor Temperature
 
 The home screen shows:
+
 - Left value = **AR-värde** (actual/current temperature)
 - Right value with +/- buttons = **BOR-värde** (setpoint/target temperature)
 
@@ -399,18 +401,18 @@ Access: SET-UP > Installningar > Login: User = Administratör, Code = 123.
 
 **Installer settings screen:**
 
-| Parameter | Default | Description |
-|---|---|---|
-| Defrost interval | 3600 s | Time between defrost cycles |
-| Defrost max time | 600 s | Maximum defrost duration |
-| Defrost temp clear | 12C | Temperature at which defrost is considered complete |
-| Return line max temp | 48C | Maximum return water temperature (radiators) |
-| Hot water hysteresis | - | - |
-| Compressor | 3.0C | - |
-| Elsteg 1 threshold | 5.0C | Outdoor temp below which electric stage 1 activates |
-| Elsteg 2 threshold | 6.0C | Outdoor temp below which electric stage 2 activates |
-| Elsteg 3 threshold | 7.0C | Outdoor temp below which electric stage 3 activates |
-| Space heating from | 1.0C | Degrees above setpoint at which heating starts |
+| Parameter            | Default | Description                                         |
+| -------------------- | ------- | --------------------------------------------------- |
+| Defrost interval     | 3600 s  | Time between defrost cycles                         |
+| Defrost max time     | 600 s   | Maximum defrost duration                            |
+| Defrost temp clear   | 12C     | Temperature at which defrost is considered complete |
+| Return line max temp | 48C     | Maximum return water temperature (radiators)        |
+| Hot water hysteresis | -       | -                                                   |
+| Compressor           | 3.0C    | -                                                   |
+| Elsteg 1 threshold   | 5.0C    | Outdoor temp below which electric stage 1 activates |
+| Elsteg 2 threshold   | 6.0C    | Outdoor temp below which electric stage 2 activates |
+| Elsteg 3 threshold   | 7.0C    | Outdoor temp below which electric stage 3 activates |
+| Space heating from   | 1.0C    | Degrees above setpoint at which heating starts      |
 
 - For floor heating: max temp should be adjusted to 35C.
 - "Husvärme fran" (space heating from) = number of degrees above the setpoint (BOR-värde).
@@ -418,6 +420,7 @@ Access: SET-UP > Installningar > Login: User = Administratör, Code = 123.
 ### 6.7 Status Screen
 
 Accessible via the magnifying glass button on the home screen. Shows:
+
 - Room temperature, water temperature, evaporator temperature, return temperature
 - Compressor speed (%)
 - External heat pump status, electric stages status
@@ -431,13 +434,13 @@ Accessible via the magnifying glass button on the home screen. Shows:
 - The increased gas pressure causes the compressor to work harder. After several attempts to reduce the compressor speed, the pump will alarm with "omriktarlarm" (inverter alarm).
 - This is not an acute alarm but a signal to address the high return temperature. After fixing the cause, reset the alarm in the alarm menu.
 
----
+______________________________________________________________________
 
 ## 7. Installation Checklist
 
 (Checklist for installers to verify all steps have been completed correctly.)
 
----
+______________________________________________________________________
 
 ## Appendices
 

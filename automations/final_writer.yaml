@@ -18,6 +18,7 @@ trigger:
       - input_boolean.energy_saving_active
       - input_number.blockheat_target_saving
       - input_number.blockheat_target_comfort
+      - input_number.blockheat_bor
 action:
   - variables:
       saving: >
