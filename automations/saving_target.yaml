@@ -6,12 +6,10 @@
 # ABOVE BOR make it stop.
 #
 # Logic:
-#   warm_shutdown: 24h forecast average outdoor temp >= 2.0 °C
+#   warm_shutdown: 24h forecast avg >= 2.0 °C (with 1.0 °C hysteresis → exits below 1.0)
 #   if warm_shutdown: target = bor + 2.0  (above BOR → heat pump stops reliably)
 #   else:            target = bor - 0.5  (slightly below BOR → gentle heating)
 #   clamped to [10, 26] °C
-#
-#   The 24h forecast average is inherently smooth so no hysteresis is needed.
 #
 #   Compare to comfort mode (bor - 2.0 = 20.0): saving mode heats much less
 #   aggressively, with only a 0.5 °C gap vs comfort's 2.0 °C gap below BOR.
@@ -20,6 +18,7 @@
 #   bor                       = from input_number.blockheat_bor  (heat pump BOR-värde)
 #   saving_offset_c           = 0.5 °C   (how far below BOR during saving)
 #   warm_shutdown_avg_forecast_c = 2.0 °C
+#   warm_shutdown_hysteresis_c   = 1.0 °C
 
 alias: "Blockheat — Saving Target"
 description: >
@@ -49,8 +48,12 @@ action:
       avg_forecast_24h: >
         {% set fc = forecast_data['weather.forecast_home']['forecast'][:24] %}
         {{ (fc | map(attribute='temperature') | list | sum) / (fc | length) if fc | length > 0 else outdoor }}
+      currently_ws: >
+        {{ (states('input_number.blockheat_target_saving') | float(0)) > bor }}
+      ws_threshold: >
+        {{ 1.0 if currently_ws else 2.0 }}
       warm_shutdown: >
-        {{ avg_forecast_24h >= 2.0 }}
+        {{ avg_forecast_24h >= ws_threshold }}
       raw: >
         {{ bor + 2.0 if warm_shutdown else bor - 0.5 }}
       target: >

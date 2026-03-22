@@ -157,6 +157,7 @@ ha_call_service("automation.trigger", {"entity_id": "automation.blockheat_energy
 | pv_ignore_above_w            | 3000 W                                                                   |
 | saving_offset_c              | 0.5 °C (below BOR during saving)                                         |
 | warm_shutdown_avg_forecast_c | 2.0 °C                                                                   |
+| warm_shutdown_hysteresis_c   | 1.0 °C                                                                   |
 | bor_c                        | from `input_number.blockheat_bor` (heat pump BOR-värde, default 22.0 °C) |
 | comfort_target_c             | 22.0 °C (desired room temp)                                              |
 | storage_target_c             | 25.0 °C                                                                  |
