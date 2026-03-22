@@ -21,7 +21,7 @@ flowchart TD
     room1["sensor.lumi_lumi_sensor_ht_agl02_temperature\n(room 1)"]
     room2["sensor.sonoff_snzb_02d_bedroom_2_temperature\n(room 2)"]
     storage["sensor.sonoff_snzb_02d_temp_humid_temperature\n(storage)"]
-    forecast["weather.forecast_home\n(6-h forecast)"]
+    forecast["weather.forecast_home\n(hourly forecast)"]
 
     nordpool --> policy
     pv --> policy
@@ -32,7 +32,8 @@ flowchart TD
     bor["input_number.blockheat_bor\n(BOR-värde)"]
 
     bor --> saving_target
-    outdoor --> saving_target["saving_target.yaml\nwarm-shutdown logic"]
+    outdoor --> saving_target["saving_target.yaml\nforecast warm-shutdown"]
+    forecast --> saving_target
     saving_target --> ib_saving["input_number.blockheat_target_saving"]
 
     bor --> comfort_target
@@ -154,8 +155,7 @@ ha_call_service("automation.trigger", {"entity_id": "automation.blockheat_energy
 | price_ignore_below | 0.6 SEK/kWh |
 | pv_ignore_above_w | 3000 W |
 | saving_offset_c | 0.5 °C (below BOR during saving) |
-| warm_shutdown_outdoor | 8.0 °C |
-| warm_shutdown_hysteresis_c | 1.0 °C |
+| warm_shutdown_avg_forecast_c | 2.0 °C |
 | bor_c | from `input_number.blockheat_bor` (heat pump BOR-värde, default 22.0 °C) |
 | comfort_target_c | 22.0 °C (desired room temp) |
 | storage_target_c | 25.0 °C |
