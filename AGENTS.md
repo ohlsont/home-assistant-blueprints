@@ -15,6 +15,16 @@ Key points for development:
 - **External sensor**: Ohmigo WiFi replaces the ETK6500's built-in room sensor. Blockheat writes its target to `number.ohmigo_temperature_2`, which the heat pump reads as room temperature.
 - **Control method**: Indirect -- Blockheat manipulates the reported room temp to make the heat pump's own thermostat start/stop as desired.
 
+## Ohmigo Control Model (critical)
+
+The Ohmigo value written to `number.ohmigo_temperature_2` is a **fake room temperature**, NOT a desired setpoint. The heat pump compares it against its BOR-värde (built-in setpoint, 22 °C):
+
+- **Ohmigo < BOR (22)** → heat pump thinks room is cold → **runs**
+- **Ohmigo > BOR (22)** → heat pump thinks room is warm → **stops**
+- **Ohmigo = BOR (22)** → at threshold → won't actively heat
+
+This is **inverse** to a normal thermostat setpoint. To make the heat pump heat harder, write a **lower** value. To stop it, write a **higher** value. All automations that compute Ohmigo values must respect this relationship. See `docs/home-architecture.md` lines 23-29 for the full control loop.
+
 ## Structure
 
 - Automation YAML files live under `automations/`. See [`automations/README.md`](automations/README.md) for setup and data flow.
