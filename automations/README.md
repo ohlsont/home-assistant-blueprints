@@ -6,7 +6,7 @@ Native HA automations replacing the unavailable blockheat HACS integration.
 
 | Device | Entity | Policy |
 |---|---|---|
-| **Ohmigo** floor-heat thermostat | `number.ohmigo_temperature_2` | Controls the whole-house floor-heating heat pump. Ohmigo reports a **fake room temperature** to the heat pump, which compares it against its BOR-värde (22 °C). Values **below** BOR make the heat pump run; values **above** BOR make it stop. This is inverse to a normal setpoint. |
+| **Ohmigo** floor-heat thermostat | `number.ohmigo_temperature_2` | Controls the whole-house floor-heating heat pump. Ohmigo reports a **fake room temperature** to the heat pump, which compares it against its BOR-värde (from `input_number.blockheat_bor`). Values **below** BOR make the heat pump run; values **above** BOR make it stop. This is inverse to a normal setpoint. |
 | **Daikin** AC/heat pump | `climate.daikinap75809_room_temperature` | Living-room AC unit. Turned on/off by the energy-saving flag only. HVAC mode (heat/cool) is managed by separate automations and is never overridden here. |
 
 The two devices are **independent** — the Daikin policy does not affect the Ohmigo setpoint calculations, and vice versa.
@@ -29,9 +29,13 @@ flowchart TD
 
     policy --> flag["input_boolean.energy_saving_active"]
 
+    bor["input_number.blockheat_bor\n(BOR-värde)"]
+
+    bor --> saving_target
     outdoor --> saving_target["saving_target.yaml\nwarm-shutdown logic"]
     saving_target --> ib_saving["input_number.blockheat_target_saving"]
 
+    bor --> comfort_target
     outdoor --> comfort_target["comfort_target.yaml\nroom/storage satisfaction\n+ 6-h forecast boost"]
     room1 --> comfort_target
     room2 --> comfort_target
@@ -55,7 +59,7 @@ flowchart TD
 
 | File | Purpose |
 |---|---|
-| `helpers.yaml` | Defines 3 helpers (input_boolean + 2 input_number) |
+| `helpers.yaml` | Defines 4 helpers (input_boolean + 3 input_number) |
 | `policy.yaml` | Energy-saving policy: top-N price slots + hysteresis |
 | `saving_target.yaml` | Ohmigo saving-mode temperature target |
 | `comfort_target.yaml` | Ohmigo comfort target with 6-hour forecast preheating |
@@ -75,6 +79,16 @@ ha_config_set_helper(
     helper_type="input_boolean",
     name="energy_saving_active",
     icon="mdi:lightning-bolt",
+)
+
+# input_number.blockheat_bor
+ha_config_set_helper(
+    helper_type="input_number",
+    name="blockheat_bor",
+    min=18, max=26, step=0.5,
+    unit_of_measurement="°C",
+    icon="mdi:thermostat",
+    mode="box",
 )
 
 # input_number.blockheat_target_saving
@@ -122,6 +136,7 @@ Order matters for initial population:
 ```python
 # Confirm helpers exist
 ha_get_state("input_boolean.energy_saving_active")
+ha_get_state("input_number.blockheat_bor")
 ha_get_state("input_number.blockheat_target_saving")
 ha_get_state("input_number.blockheat_target_comfort")
 
@@ -141,7 +156,7 @@ ha_call_service("automation.trigger", {"entity_id": "automation.blockheat_energy
 | saving_offset_c | 0.5 °C (below BOR during saving) |
 | warm_shutdown_outdoor | 8.0 °C |
 | warm_shutdown_hysteresis_c | 1.0 °C |
-| bor_c | 22.0 °C (heat pump BOR-värde) |
+| bor_c | from `input_number.blockheat_bor` (heat pump BOR-värde, default 22.0 °C) |
 | comfort_target_c | 22.0 °C (desired room temp) |
 | storage_target_c | 25.0 °C |
 | comfort_margin_c | 0.25 °C |

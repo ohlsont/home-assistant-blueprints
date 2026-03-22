@@ -2,19 +2,20 @@
 # Computes the Ohmigo reported-temperature to use in energy-saving mode.
 #
 # IMPORTANT: Ohmigo reports a fake room temperature to the heat pump.
-# Values BELOW BOR (22 °C) make it heat; values ABOVE BOR make it stop.
+# Values BELOW BOR (from input_number.blockheat_bor) make it heat; values
+# ABOVE BOR make it stop.
 #
 # Logic:
 #   warm_shutdown: outdoor >= 8.0 °C (with 1 °C hysteresis → stays off below 7.0)
-#   if warm_shutdown: target = bor + 1.0 = 23.0  (above BOR → heat pump stops)
-#   else:            target = bor - 0.5 = 21.5  (slightly below BOR → gentle heating)
+#   if warm_shutdown: target = bor + 2.0  (above BOR → heat pump stops reliably)
+#   else:            target = bor - 0.5  (slightly below BOR → gentle heating)
 #   clamped to [10, 26] °C
 #
 #   Compare to comfort mode (bor - 2.0 = 20.0): saving mode heats much less
 #   aggressively, with only a 0.5 °C gap vs comfort's 2.0 °C gap below BOR.
 #
 # Parameters:
-#   bor                       = 22.0 °C  (heat pump BOR-värde)
+#   bor                       = from input_number.blockheat_bor  (heat pump BOR-värde)
 #   saving_offset_c           = 0.5 °C   (how far below BOR during saving)
 #   warm_shutdown_outdoor     = 8.0 °C
 #   warm_shutdown_hysteresis_c = 1.0 °C
@@ -27,12 +28,14 @@ description: >
 mode: single
 trigger:
   - platform: state
-    entity_id: sensor.hue_outdoor_motion_sensor_1_temperature
+    entity_id:
+      - sensor.hue_outdoor_motion_sensor_1_temperature
+      - input_number.blockheat_bor
   - platform: time_pattern
     minutes: "/5"
 action:
   - variables:
-      bor: 22.0
+      bor: "{{ states('input_number.blockheat_bor') | float(22.0) }}"
       outdoor: >
         {{ states('sensor.hue_outdoor_motion_sensor_1_temperature') | float(999) }}
       currently_ws: >
@@ -42,7 +45,7 @@ action:
       warm_shutdown: >
         {{ outdoor >= ws_threshold }}
       raw: >
-        {{ bor + 1.0 if warm_shutdown else bor - 0.5 }}
+        {{ bor + 2.0 if warm_shutdown else bor - 0.5 }}
       target: >
         {{ [[raw, 10.0] | max, 26.0] | min }}
   - action: input_number.set_value

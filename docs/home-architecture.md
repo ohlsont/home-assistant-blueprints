@@ -5,7 +5,7 @@
 - Model: Qvantum ETK6500 (exhaust-air / franluftsvärmepump)
 - Capacity: 6.5 kW (compressor), 5 kW electric backup (3 stages: 1+2+2 kW)
 - Serves: radiators + floor heating (combined system) + domestic hot water
-- Control: built-in touchscreen, indoor temp setpoint (BOR-värde), default 20C
+- Control: built-in touchscreen, indoor temp setpoint (BOR-värde), managed via `input_number.blockheat_bor`
 - Max return temp: 48C (radiator), 35C recommended for floor heating
 - External room sensor: Ohmigo (replaces built-in Pt100 duct sensor)
   - Ohmigo reports room temperature to HA via WiFi
@@ -25,7 +25,7 @@
 1. Blockheat engine computes a target temperature based on policy (price, PV, time windows)
 2. Runtime writes the target to the Ohmigo HA entity (`number.ohmigo_temperature_2`)
 3. The Ohmigo device physically reports this value to the ETK6500 as "room temperature"
-4. The ETK6500 compares this reported temp against its BOR-värde (setpoint, typically 22C)
+4. The ETK6500 compares this reported temp against its BOR-värde (setpoint, from `input_number.blockheat_bor`)
 5. If reported temp < setpoint: heat pump runs; if reported temp > setpoint: heat pump stops
 6. This is an indirect control loop: Blockheat doesn't control the heat pump directly,
    it influences the heat pump's own thermostat by manipulating the room temp reading

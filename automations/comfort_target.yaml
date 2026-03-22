@@ -2,8 +2,9 @@
 # Computes the Ohmigo reported-temperature to use in comfort (non-saving) mode.
 #
 # IMPORTANT: Ohmigo reports a fake room temperature to the heat pump. The heat
-# pump compares this against its BOR-värde (22 °C). Values BELOW BOR make it
-# heat; values ABOVE BOR make it stop. This is inverse to a normal setpoint.
+# pump compares this against its BOR-värde (from input_number.blockheat_bor).
+# Values BELOW BOR make it heat; values ABOVE BOR make it stop. This is
+# inverse to a normal setpoint.
 #
 # Logic:
 #   boost: cold-weather boost when effective_outdoor < 2.0 °C, up to max_boost = 3.0 °C
@@ -14,19 +15,18 @@
 #   The forecast look-ahead (6 hourly slots from weather.forecast_home) allows the
 #   floor to preheat before cold weather arrives, not just react to it.
 #
-#   satisfied: all rooms >= comfort_target_c - comfort_margin_c
-#              = 22.0 - 0.25 = 21.75 °C
+#   satisfied: all rooms >= bor - comfort_margin_c
 #   storage_cold: storage < storage_target_c - comfort_margin_c
 #                 = 25.0 - 0.25 = 24.75 °C
 #
-#   Ohmigo values (reported room temp to heat pump, BOR = 22 °C):
+#   Ohmigo values (reported room temp to heat pump, BOR from helper):
 #   if not satisfied:             ohmigo = bor - 2.0 - boost  (heat rooms)
 #   elif satisfied and storage_cold: ohmigo = bor - 3.0 - boost  (heat hard for storage)
-#   else (satisfied, no storage): ohmigo = bor + 1.0           (stop heat pump)
+#   else (satisfied, no storage): ohmigo = bor + 2.0           (stop heat pump)
 #   clamped to [10, 26] °C
 #
 # Parameters:
-#   bor_c                 = 22.0 °C  (heat pump BOR-värde)
+#   bor_c                 = from input_number.blockheat_bor  (heat pump BOR-värde)
 #   comfort_target_c      = 22.0 °C  (desired room temp)
 #   storage_target_c      = 25.0 °C
 #   comfort_margin_c      = 0.25 °C
@@ -39,7 +39,7 @@ alias: "Blockheat — Comfort Target"
 description: >
   Writes input_number.blockheat_target_comfort based on room temperatures,
   storage temperature, and cold-weather boost. Values are Ohmigo reported-temps:
-  below BOR (22 °C) to heat, above BOR to stop.
+  below BOR (from input_number.blockheat_bor) to heat, above BOR to stop.
 mode: queued
 max: 2
 trigger:
@@ -50,6 +50,7 @@ trigger:
       - sensor.sonoff_snzb_02d_temp_humid_temperature
       - sensor.hue_outdoor_motion_sensor_1_temperature
       - weather.forecast_home
+      - input_number.blockheat_bor
   - platform: time_pattern
     minutes: "/5"
 action:
@@ -60,7 +61,7 @@ action:
       type: hourly
     response_variable: forecast_data
   - variables:
-      bor: 22.0
+      bor: "{{ states('input_number.blockheat_bor') | float(22.0) }}"
       room1: >
         {{ states('sensor.lumi_lumi_sensor_ht_agl02_temperature') | float(none) }}
       room2: >
@@ -82,7 +83,7 @@ action:
         {% endif %}
       satisfied: >
         {{ room1 is not none and room2 is not none
-           and room1 >= 21.75 and room2 >= 21.75 }}
+           and room1 >= (bor - 0.25) and room2 >= (bor - 0.25) }}
       storage_cold: >
         {{ storage is not none and storage < 24.75 }}
       raw: >
@@ -91,7 +92,7 @@ action:
         {% elif storage_cold %}
           {{ bor - 3.0 - boost }}
         {% else %}
-          {{ bor + 1.0 }}
+          {{ bor + 2.0 }}
         {% endif %}
       target: >
         {{ [[raw, 10.0] | max, 26.0] | min }}

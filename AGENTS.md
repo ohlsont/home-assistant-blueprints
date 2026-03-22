@@ -17,7 +17,7 @@ Key points for development:
 
 ## Ohmigo Control Model (critical)
 
-The Ohmigo value written to `number.ohmigo_temperature_2` is a **fake room temperature**, NOT a desired setpoint. The heat pump compares it against its BOR-värde (built-in setpoint, 22 °C):
+The Ohmigo value written to `number.ohmigo_temperature_2` is a **fake room temperature**, NOT a desired setpoint. The heat pump compares it against its BOR-värde (configurable via `input_number.blockheat_bor`, currently 22 °C):
 
 - **Ohmigo < BOR (22)** → heat pump thinks room is cold → **runs**
 - **Ohmigo > BOR (22)** → heat pump thinks room is warm → **stops**
