@@ -30,7 +30,7 @@ action:
       price: >
         {{ states('sensor.nordpool_kwh_se3_sek_3_10_025') | float(0) }}
       pv: >
-        {{ states('sensor.pv_power') | float(0) }}
+        {{ states('sensor.solar_pv_power') | float(0) }}
       currently_on: >
         {{ is_state('input_boolean.energy_saving_active', 'on') }}
       effective_cutoff: >
