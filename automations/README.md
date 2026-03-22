@@ -138,8 +138,7 @@ ha_call_service("automation.trigger", {"entity_id": "automation.blockheat_energy
 | minutes_to_block | 240 min → 16 slots |
 | price_ignore_below | 0.6 SEK/kWh |
 | pv_ignore_above_w | 3000 W |
-| heatpump_setpoint | 21.0 °C |
-| saving_cold_offset_c | 1.0 °C |
+| saving_offset_c | 0.5 °C (below BOR during saving) |
 | warm_shutdown_outdoor | 8.0 °C |
 | warm_shutdown_hysteresis_c | 1.0 °C |
 | bor_c | 22.0 °C (heat pump BOR-värde) |
