@@ -6,7 +6,7 @@ Native HA automations replacing the unavailable blockheat HACS integration.
 
 | Device | Entity | Policy |
 |---|---|---|
-| **Ohmigo** floor-heat thermostat | `number.ohmigo_temperature_2` | Controls the whole-house floor-heating heat pump. Ohmigo emulates a room thermostat; the heat pump follows its setpoint. Gets price-based energy saving + weather-forecast preheating. |
+| **Ohmigo** floor-heat thermostat | `number.ohmigo_temperature_2` | Controls the whole-house floor-heating heat pump. Ohmigo reports a **fake room temperature** to the heat pump, which compares it against its BOR-värde (22 °C). Values **below** BOR make the heat pump run; values **above** BOR make it stop. This is inverse to a normal setpoint. |
 | **Daikin** AC/heat pump | `climate.daikinap75809_room_temperature` | Living-room AC unit. Turned on/off by the energy-saving flag only. HVAC mode (heat/cool) is managed by separate automations and is never overridden here. |
 
 The two devices are **independent** — the Daikin policy does not affect the Ohmigo setpoint calculations, and vice versa.
@@ -142,7 +142,8 @@ ha_call_service("automation.trigger", {"entity_id": "automation.blockheat_energy
 | saving_cold_offset_c | 1.0 °C |
 | warm_shutdown_outdoor | 8.0 °C |
 | warm_shutdown_hysteresis_c | 1.0 °C |
-| comfort_target_c | 22.0 °C |
+| bor_c | 22.0 °C (heat pump BOR-värde) |
+| comfort_target_c | 22.0 °C (desired room temp) |
 | storage_target_c | 25.0 °C |
 | comfort_margin_c | 0.25 °C |
 | cold_threshold | 2.0 °C |

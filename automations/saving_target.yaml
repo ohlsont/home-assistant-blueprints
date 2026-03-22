@@ -1,10 +1,13 @@
 # Blockheat — Saving Target
-# Computes the temperature setpoint to use in energy-saving mode.
+# Computes the Ohmigo reported-temperature to use in energy-saving mode.
+#
+# IMPORTANT: Ohmigo reports a fake room temperature to the heat pump.
+# Values BELOW BOR (22 °C) make it heat; values ABOVE BOR make it stop.
 #
 # Logic:
 #   warm_shutdown: outdoor >= 8.0 °C (with 1 °C hysteresis → stays off below 7.0)
-#   if warm_shutdown: target = setpoint + 1.0  (heat pump in warm-shutdown/high mode)
-#   else:            target = setpoint - 1.0  (saving: pull back 1 °C)
+#   if warm_shutdown: target = setpoint + 1.0 = 22.0  (at BOR → heat pump stops)
+#   else:            target = setpoint - 1.0 = 20.0  (below BOR → gentle heating)
 #   clamped to [10, 26] °C
 #
 # Parameters:

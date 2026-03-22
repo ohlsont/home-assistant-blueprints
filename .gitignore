@@ -1,9 +1,3 @@
-__pycache__/
-*.py[cod]
-.coverage
-.pytest_cache/
-.venv/
-
 .worktrees/
 
 # Scratch / temp files
