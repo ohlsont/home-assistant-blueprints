@@ -160,7 +160,8 @@ ha_call_service("automation.trigger", {"entity_id": "automation.blockheat_energy
 | warm_shutdown_hysteresis_c   | 1.0 °C                                                                   |
 | bor_c                        | from `input_number.blockheat_bor` (heat pump BOR-värde, default 22.0 °C) |
 | comfort_target_c             | 22.0 °C (desired room temp)                                              |
-| storage_target_c             | 25.0 °C                                                                  |
+| storage_target_c             | dynamic: bor+3.0 at outdoor \<=-5 °C, bor+0.0 at outdoor >=+10 °C        |
+| room_overheat_margin_c       | 1.5 °C (above BOR, hard ceiling for storage heating)                     |
 | comfort_margin_c             | 0.25 °C                                                                  |
 | cold_threshold               | 2.0 °C                                                                   |
 | max_boost                    | 3.0 °C                                                                   |
