@@ -16,19 +16,22 @@
 #   floor to preheat before cold weather arrives, not just react to it.
 #
 #   satisfied: all rooms >= bor - comfort_margin_c
-#   storage_cold: storage < storage_target_c - comfort_margin_c
-#                 = 25.0 - 0.25 = 24.75 °C
+#   storage_target: bor + 3.0*(1-t), where t = clamp((effective_outdoor+5)/15, 0, 1)
+#                   bor+3.0 at -5 C outdoor, bor+0.0 at +10 C outdoor
+#   storage_cold: storage < storage_target - comfort_margin_c
+#   rooms_overheated: any room > bor + room_overheat_margin_c
 #
 #   Ohmigo values (reported room temp to heat pump, BOR from helper):
-#   if not satisfied:             ohmigo = bor - 2.0 - boost  (heat rooms)
-#   elif satisfied and storage_cold: ohmigo = bor - 3.0 - boost  (heat hard for storage)
-#   else (satisfied, no storage): ohmigo = bor + 2.0           (stop heat pump)
+#   if not satisfied:                          ohmigo = bor - 2.0 - boost  (heat rooms)
+#   elif storage_cold and not overheated:      ohmigo = bor - 2.5 - boost  (charge storage)
+#   else (satisfied, no storage need, or hot): ohmigo = bor + 2.0          (stop heat pump)
 #   clamped to [10, 26] °C
 #
 # Parameters:
 #   bor_c                 = from input_number.blockheat_bor  (heat pump BOR-värde)
 #   comfort_target_c      = 22.0 °C  (desired room temp)
-#   storage_target_c      = 25.0 °C
+#   storage_target_c      = dynamic: bor+3.0 at outdoor<=-5 C, bor+0.0 at outdoor>=+10 C
+#   room_overheat_margin_c = 1.5 C  (above BOR, hard ceiling for storage heating)
 #   comfort_margin_c      = 0.25 °C
 #   cold_threshold        = 2.0 °C
 #   max_boost             = 3.0 °C
@@ -84,13 +87,19 @@ action:
       satisfied: >
         {{ room1 is not none and room2 is not none
            and room1 >= (bor - 0.25) and room2 >= (bor - 0.25) }}
+      storage_target: >
+        {% set t = [[(effective_outdoor + 5) / 15, 0.0] | max, 1.0] | min %}
+        {{ bor + 3.0 * (1 - t) }}
       storage_cold: >
-        {{ storage is not none and storage < 24.75 }}
+        {{ storage is not none and storage < (storage_target - 0.25) }}
+      rooms_overheated: >
+        {{ (room1 is not none and room1 > bor + 1.5)
+           or (room2 is not none and room2 > bor + 1.5) }}
       raw: >
         {% if not satisfied %}
           {{ bor - 2.0 - boost }}
-        {% elif storage_cold %}
-          {{ bor - 3.0 - boost }}
+        {% elif storage_cold and not rooms_overheated %}
+          {{ bor - 2.5 - boost }}
         {% else %}
           {{ bor + 2.0 }}
         {% endif %}
