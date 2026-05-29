@@ -2,7 +2,9 @@
 # Decides whether energy-saving mode should be on or off based on:
 #   - Nordpool 15-min slot price vs the top-N cutoff (N = minutes_to_block / 15 = 16)
 #   - Minimum price floor (0.6 SEK/kWh)
-#   - PV production (bypass saving when PV > 3000 W)
+#   - Net grid status (bypass saving when exporting to grid)
+#     Hysteresis: saving only activates when grid import > 500 W,
+#     but deactivates as soon as grid import hits 0 (exporting).
 #   - 15-min toggle guard (min_toggle_interval_min)
 #   - 5% hysteresis on the cutoff price to prevent flip-flop
 
@@ -10,12 +12,14 @@ alias: "Blockheat — Energy Saving Policy"
 description: >
   Turns input_boolean.energy_saving_active on when the current Nordpool price is
   among the top 16 most expensive 15-min slots of the day (and above 0.6 SEK/kWh
-  and PV production is below 3000 W). Includes 5% hysteresis and a 15-min toggle
-  guard.
+  and the house is importing from the grid). Includes 5% hysteresis and a 15-min
+  toggle guard.
 mode: single
 trigger:
   - platform: state
     entity_id: sensor.nordpool_kwh_se3_sek_3_10_025
+  - platform: state
+    entity_id: sensor.power_tarngatan_2
   - platform: time_pattern
     minutes: "/5"
   - platform: homeassistant
@@ -29,14 +33,18 @@ action:
         {{ (prices[-nslots] if prices | length >= nslots else 9999) | float }}
       price: >
         {{ states('sensor.nordpool_kwh_se3_sek_3_10_025') | float(0) }}
-      pv: >
-        {{ states('sensor.solar_pv_power') | float(0) }}
       currently_on: >
         {{ is_state('input_boolean.energy_saving_active', 'on') }}
+      grid_import_raw: >
+        {{ states('sensor.power_tarngatan_2') }}
+      grid_import: >
+        {{ grid_import_raw | float(-1) if grid_import_raw not in ['unavailable', 'unknown'] else -1 }}
+      exporting_to_grid: >
+        {{ grid_import == 0 if currently_on else grid_import >= 0 and grid_import < 500 }}
       effective_cutoff: >
         {{ cutoff * 0.95 if currently_on else cutoff }}
       target_on: >
-        {{ price >= effective_cutoff and price >= 0.6 and pv < 3000 }}
+        {{ price >= effective_cutoff and price >= 0.6 and not exporting_to_grid }}
       elapsed: >
         {{ (now() - states.input_boolean.energy_saving_active.last_changed).total_seconds() }}
       enough_time: >

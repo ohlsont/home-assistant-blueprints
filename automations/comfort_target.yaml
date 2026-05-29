@@ -8,9 +8,16 @@
 #
 # Logic:
 #   boost: cold-weather boost when effective_outdoor < 2.0 °C, up to max_boost = 3.0 °C
-#          effective_outdoor = min(current_outdoor, min_forecast_6h)
+#          effective_outdoor = min(current_feels_like, min_forecast_feels_like_6h)
 #          boost = min((cold_threshold - effective_outdoor) / boost_slope_c, max_boost)
 #                = min((2.0 - effective_outdoor) / 4.0, 3.0)
+#
+#   All outdoor temperatures are wind-chill-adjusted ("feels like"). The current
+#   value comes from sensor.forecast_home_temperature_feels_like. Forecast slots
+#   use the Environment Canada / NWS wind chill formula (T <= 10 °C, V > 4.8 km/h):
+#     WC = 13.12 + 0.6215*T - 11.37*V^0.16 + 0.3965*T*V^0.16
+#   where T is °C and V is km/h (met.no units). Above 10 °C or calm wind, raw
+#   temperature is used unchanged.
 #
 #   The forecast look-ahead (6 hourly slots from weather.forecast_home) allows the
 #   floor to preheat before cold weather arrives, not just react to it.
@@ -51,7 +58,7 @@ trigger:
       - sensor.lumi_lumi_sensor_ht_agl02_temperature
       - sensor.sonoff_snzb_02d_bedroom_2_temperature
       - sensor.sonoff_snzb_02d_temp_humid_temperature
-      - sensor.hue_outdoor_motion_sensor_1_temperature
+      - sensor.forecast_home_temperature_feels_like
       - weather.forecast_home
       - input_number.blockheat_bor
   - platform: time_pattern
@@ -72,10 +79,21 @@ action:
       storage: >
         {{ states('sensor.sonoff_snzb_02d_temp_humid_temperature') | float(none) }}
       outdoor: >
-        {{ states('sensor.hue_outdoor_motion_sensor_1_temperature') | float(999) }}
+        {{ states('sensor.forecast_home_temperature_feels_like') | float(999) }}
       min_forecast_temp: >
         {% set fc = forecast_data['weather.forecast_home']['forecast'][:6] %}
-        {{ fc | map(attribute='temperature') | list | min if fc | length > 0 else outdoor }}
+        {% set ns = namespace(temps=[]) %}
+        {% for f in fc %}
+          {% set t = f.temperature | float(999) %}
+          {% set v = f.wind_speed | float(0) %}
+          {% if t <= 10 and v > 4.8 %}
+            {% set wc = 13.12 + 0.6215 * t - 11.37 * (v ** 0.16) + 0.3965 * t * (v ** 0.16) %}
+            {% set ns.temps = ns.temps + [wc | round(1)] %}
+          {% else %}
+            {% set ns.temps = ns.temps + [t] %}
+          {% endif %}
+        {% endfor %}
+        {{ ns.temps | min if ns.temps | length > 0 else outdoor }}
       effective_outdoor: >
         {{ [outdoor, min_forecast_temp] | min }}
       boost: >

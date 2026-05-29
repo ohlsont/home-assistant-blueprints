@@ -6,7 +6,11 @@
 # ABOVE BOR make it stop.
 #
 # Logic:
-#   warm_shutdown: 24h forecast avg >= 2.0 °C (with 1.0 °C hysteresis → exits below 1.0)
+#   All outdoor temperatures are wind-chill-adjusted ("feels like"). The current
+#   value comes from sensor.forecast_home_temperature_feels_like. Forecast slots
+#   use the Environment Canada / NWS wind chill formula (T <= 10 °C, V > 4.8 km/h).
+#
+#   warm_shutdown: 24h forecast feels-like avg >= 2.0 °C (with 1.0 °C hysteresis)
 #   if warm_shutdown: target = bor + 2.0  (above BOR → heat pump stops reliably)
 #   else:            target = bor - 0.5  (slightly below BOR → gentle heating)
 #   clamped to [10, 26] °C
@@ -29,7 +33,7 @@ mode: single
 trigger:
   - platform: state
     entity_id:
-      - sensor.hue_outdoor_motion_sensor_1_temperature
+      - sensor.forecast_home_temperature_feels_like
       - weather.forecast_home
       - input_number.blockheat_bor
   - platform: time_pattern
@@ -44,10 +48,21 @@ action:
   - variables:
       bor: "{{ states('input_number.blockheat_bor') | float(22.0) }}"
       outdoor: >
-        {{ states('sensor.hue_outdoor_motion_sensor_1_temperature') | float(999) }}
+        {{ states('sensor.forecast_home_temperature_feels_like') | float(999) }}
       avg_forecast_24h: >
         {% set fc = forecast_data['weather.forecast_home']['forecast'][:24] %}
-        {{ (fc | map(attribute='temperature') | list | sum) / (fc | length) if fc | length > 0 else outdoor }}
+        {% set ns = namespace(temps=[]) %}
+        {% for f in fc %}
+          {% set t = f.temperature | float(999) %}
+          {% set v = f.wind_speed | float(0) %}
+          {% if t <= 10 and v > 4.8 %}
+            {% set wc = 13.12 + 0.6215 * t - 11.37 * (v ** 0.16) + 0.3965 * t * (v ** 0.16) %}
+            {% set ns.temps = ns.temps + [wc | round(1)] %}
+          {% else %}
+            {% set ns.temps = ns.temps + [t] %}
+          {% endif %}
+        {% endfor %}
+        {{ (ns.temps | sum) / (ns.temps | length) if ns.temps | length > 0 else outdoor }}
       currently_ws: >
         {{ (states('input_number.blockheat_target_saving') | float(0)) > bor }}
       ws_threshold: >
