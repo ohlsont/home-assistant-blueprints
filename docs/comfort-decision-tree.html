@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<!--
+  Blockheat — Comfort Target decision-tree explorer
+  =================================================
+  Interactive visualization of automations/comfort_target.yaml.
+
+  The JS in computeComfort() is a faithful PORT of the Jinja logic in
+  automations/comfort_target.yaml. The YAML automation remains the single
+  source of truth; if you change the automation, mirror it here.
+
+  The "Today" snapshot was captured from Home Assistant via the MCP on the
+  date shown in the snapshot panel. Open this file directly in any browser
+  (no server / no network needed).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Blockheat — Comfort decision tree</title>
+<style>
+  :root {
+    --bg: #0f1419; --panel: #1a2129; --panel2: #222b35; --ink: #e6edf3;
+    --muted: #9aa7b4; --line: #313c48; --accent: #4aa3ff; --accent2: #ffb454;
+    --hot: #ff6b5e; --cold: #4aa3ff; --on: #3fb950; --off: #6e7681;
+    --heat: #ff8d52; --storage: #ffd152; --stop: #3fb950;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  header { padding: 18px 24px; border-bottom: 1px solid var(--line); }
+  header h1 { margin: 0 0 4px; font-size: 20px; }
+  header p { margin: 0; color: var(--muted); }
+  header code { color: var(--accent2); }
+  .wrap { display: grid; grid-template-columns: 360px 1fr; gap: 0; min-height: calc(100vh - 78px); }
+  @media (max-width: 920px) { .wrap { grid-template-columns: 1fr; } }
+  .left { padding: 18px 22px; border-right: 1px solid var(--line); }
+  .right { padding: 18px 22px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 12px; }
+  .section { margin-bottom: 26px; }
+
+  .ctrl { margin-bottom: 14px; }
+  .ctrl .row { display: flex; justify-content: space-between; align-items: baseline; }
+  .ctrl label { font-weight: 600; }
+  .ctrl .val { font-variant-numeric: tabular-nums; color: var(--accent2); font-weight: 700; }
+  .ctrl input[type=range] { width: 100%; margin-top: 4px; accent-color: var(--accent); }
+  .ctrl .hint { color: var(--muted); font-size: 12px; }
+
+  .toggle { display:flex; align-items:center; gap:8px; margin-bottom: 8px; }
+  .toggle input { width: 16px; height: 16px; accent-color: var(--accent); }
+
+  button {
+    background: var(--panel2); color: var(--ink); border: 1px solid var(--line);
+    padding: 8px 14px; border-radius: 8px; cursor: pointer; font-weight: 600;
+  }
+  button:hover { border-color: var(--accent); }
+
+  /* snapshot */
+  .snap { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .snap .ts { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+  .kv { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; font-variant-numeric: tabular-nums; }
+  .kv .k { color: var(--muted); }
+  .kv .v { font-weight: 600; }
+
+  /* derived chips */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+  .chip { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font-size: 13px; }
+  .chip b { font-variant-numeric: tabular-nums; }
+  .chip.true { border-color: var(--on); color: #b7f3c2; }
+  .chip.false { color: var(--muted); }
+
+  /* tree */
+  .tree { display: flex; flex-direction: column; gap: 0; max-width: 720px; }
+  .node {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px 16px; position: relative;
+  }
+  .node .title { font-weight: 700; margin-bottom: 2px; }
+  .node .desc { color: var(--muted); font-size: 13px; }
+  .node .formula { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--accent2); margin-top: 6px; }
+  .branch { display: grid; grid-template-columns: 28px 1fr; align-items: stretch; }
+  .branch .gut { position: relative; }
+  .branch .gut::before {
+    content: ""; position: absolute; left: 13px; top: -2px; bottom: 50%;
+    border-left: 2px solid var(--line); border-bottom: 2px solid var(--line);
+    width: 14px; border-bottom-left-radius: 8px;
+  }
+  .cond { color: var(--muted); font-size: 12px; margin: 10px 0 4px 2px; }
+  .leaf { margin-bottom: 10px; opacity: .5; transition: opacity .15s, border-color .15s, box-shadow .15s; }
+  .leaf.active { opacity: 1; box-shadow: 0 0 0 2px currentColor inset; }
+  .leaf.heat.active { color: var(--heat); }
+  .leaf.storage.active { color: var(--storage); }
+  .leaf.stop.active { color: var(--stop); }
+  .leaf.gated { opacity: .25; }
+  .leaf.gated .title::after { content: " — skipped (solar backoff)"; color: var(--accent2); font-weight: 400; font-size: 12px; }
+  .leaf .title, .leaf .desc, .leaf .formula { color: var(--ink); }
+  .leaf.active .title { color: currentColor; }
+
+  .result { margin-top: 22px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; }
+  .result .big { font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .result .pump { font-size: 18px; font-weight: 700; margin-top: 6px; }
+  .pump.heats { color: var(--heat); }
+  .pump.stops { color: var(--stop); }
+  .result .note { color: var(--muted); margin-top: 8px; font-size: 13px; }
+  .floorbar { margin-top: 10px; font-size: 13px; color: var(--muted); }
+  .floorbar b { color: var(--accent2); font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Blockheat — Comfort target decision tree</h1>
+  <p>Interactive port of <code>automations/comfort_target.yaml</code>. Drag the inputs; the active branch and the Ohmigo value update live. <b>Reset to today</b> restores the captured Home&nbsp;Assistant snapshot.</p>
+</header>
+
+<div class="wrap">
+  <div class="left">
+    <div class="section">
+      <h2>Today's Home Assistant snapshot</h2>
+      <div class="snap">
+        <div class="ts" id="snapTs"></div>
+        <div class="kv" id="snapKv"></div>
+      </div>
+      <div style="margin-top:12px"><button id="resetBtn">↺ Reset to today</button></div>
+    </div>
+
+    <div class="section">
+      <h2>Inputs</h2>
+      <div id="inputs"></div>
+    </div>
+
+    <div class="section">
+      <h2>Parameters (tunable)</h2>
+      <div id="params"></div>
+    </div>
+  </div>
+
+  <div class="right">
+    <h2>Derived values</h2>
+    <div class="chips" id="chips"></div>
+
+    <h2>Decision</h2>
+    <div class="tree">
+      <div class="node" id="rootNode">
+        <div class="title">Comfort target (Ohmigo reported temp)</div>
+        <div class="desc">Ohmigo &lt; BOR → heat pump <b>runs</b>; Ohmigo &gt; BOR → heat pump <b>stops</b> (inverse setpoint).</div>
+      </div>
+      <div class="branch">
+        <div class="gut"></div>
+        <div>
+          <div class="cond" id="cond-heat"></div>
+          <div class="leaf heat" id="leaf-heat">
+            <div class="title">Heat rooms</div>
+            <div class="desc">Rooms below the floor → pull them up.</div>
+            <div class="formula">ohmigo = bor − 2.0 − boost</div>
+          </div>
+          <div class="cond" id="cond-storage"></div>
+          <div class="leaf storage" id="leaf-storage">
+            <div class="title">Charge storage</div>
+            <div class="desc">Rooms satisfied but thermal storage is cold.</div>
+            <div class="formula">ohmigo = bor − 2.5 − boost</div>
+          </div>
+          <div class="cond" id="cond-stop">else</div>
+          <div class="leaf stop" id="leaf-stop">
+            <div class="title">Stop heat pump</div>
+            <div class="desc">Satisfied &amp; no storage need (or hot, or warm+sunny backoff).</div>
+            <div class="formula">ohmigo = bor + 2.0</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="result">
+      <div>Resulting comfort target → Ohmigo</div>
+      <div class="big"><span id="ohmigo"></span> °C</div>
+      <div class="pump" id="pump"></div>
+      <div class="floorbar" id="floorbar"></div>
+      <div class="note" id="resultNote"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+// ---- Captured Home Assistant snapshot (via MCP) -------------------------
+// avg_forecast_24h and max_uv_24h computed from weather.get_forecasts(hourly).
+// Values below are from the verified automation trace at 2026-05-29 22:20
+// (Europe/Stockholm) — run_id 86184d73… — so this page reproduces that run exactly.
+const SNAPSHOT = {
+  ts: "2026-05-29 22:20 Europe/Stockholm (verified automation trace)",
+  inputs: {
+    bor: 22.0,            // input_number.blockheat_bor
+    room1: 24.6,          // sensor.lumi_lumi_sensor_ht_agl02_temperature ("Study")
+    room2: 25.0,          // sensor.sonoff_snzb_02d_bedroom_2_temperature (bedroom 2)
+    storage: 23.3,        // sensor.sonoff_snzb_02d_temp_humid_temperature
+    effective_outdoor: 12.2, // min(feels-like, 6h-min forecast feels-like)
+    avg_forecast_24h: 15.4,  // mean wind-chill-adj feels-like, next 24h
+    max_uv_24h: 5.3,         // max uv_index, next 24h (sunny afternoon tomorrow)
+  },
+  currently_backoff: true,   // input_boolean.blockheat_comfort_solar_backoff (now on)
+  // For reference only (not inputs to the comfort calc):
+  context: {
+    energy_saving_active: "on",
+    comfort_target: 24.0,
+    saving_target: 24.0,
+    ohmigo: 24.0,
+  },
+};
+
+const PARAMS_DEFAULT = {
+  comfort_margin: 0.25,
+  room_overheat_margin: 1.5,
+  warm_floor_drop: 2.0,
+  warm_t: 12.0, warm_hyst: 1.0,
+  uv_t: 4.0, uv_hyst: 0.5,
+};
+
+// ---- Logic port of comfort_target.yaml ----------------------------------
+function computeComfort(s, p) {
+  const bor = s.bor;
+  const effective_outdoor = s.effective_outdoor;
+  const boost = effective_outdoor < 2.0
+    ? Math.min(Math.max((2.0 - effective_outdoor) / 4.0, 0), 3.0) : 0.0;
+
+  const warm_thr = p.warm_t - (s.currently_backoff ? p.warm_hyst : 0);
+  const uv_thr   = p.uv_t   - (s.currently_backoff ? p.uv_hyst   : 0);
+  const warm_day  = s.avg_forecast_24h >= warm_thr;
+  const sunny_day = s.max_uv_24h >= uv_thr;
+  const solar_backoff = warm_day && sunny_day;
+
+  const floor = solar_backoff ? (bor - p.warm_floor_drop) : (bor - p.comfort_margin);
+  const satisfied = s.room1 >= floor && s.room2 >= floor;
+
+  const t = Math.min(Math.max((effective_outdoor + 5) / 15, 0), 1);
+  const storage_target = bor + 3.0 * (1 - t);
+  const storage_cold = s.storage < (storage_target - p.comfort_margin);
+  const rooms_overheated = s.room1 > bor + p.room_overheat_margin
+                        || s.room2 > bor + p.room_overheat_margin;
+
+  let raw, branch;
+  if (!satisfied) { raw = bor - 2.0 - boost; branch = "heat"; }
+  else if (storage_cold && !solar_backoff && !rooms_overheated) { raw = bor - 2.5 - boost; branch = "storage"; }
+  else { raw = bor + 2.0; branch = "stop"; }
+  const target = Math.min(Math.max(raw, 10.0), 26.0);
+
+  return { bor, effective_outdoor, boost, warm_thr, uv_thr, warm_day, sunny_day,
+           solar_backoff, floor, satisfied, storage_target, storage_cold,
+           rooms_overheated, raw, target, branch, heats: target < bor };
+}
+
+// ---- UI ------------------------------------------------------------------
+const INPUT_DEFS = [
+  { key: "bor",              label: "BOR-värde",            min: 18, max: 26, step: 0.5, unit: "°C", hint: "heat pump threshold" },
+  { key: "room1",            label: "Room 1 (Study)",       min: 10, max: 30, step: 0.1, unit: "°C" },
+  { key: "room2",            label: "Room 2 (bedroom 2)",   min: 10, max: 30, step: 0.1, unit: "°C" },
+  { key: "storage",          label: "Storage temp",         min: 10, max: 30, step: 0.1, unit: "°C" },
+  { key: "effective_outdoor",label: "Effective outdoor",    min: -20, max: 25, step: 0.5, unit: "°C", hint: "feels-like, min(now, 6h forecast)" },
+  { key: "avg_forecast_24h", label: "24h forecast avg",     min: -15, max: 28, step: 0.5, unit: "°C", hint: "wind-chill-adj feels-like" },
+  { key: "max_uv_24h",       label: "Max UV (next 24h)",    min: 0,  max: 9,  step: 0.1, unit: "",   hint: "sunshine proxy" },
+];
+const PARAM_DEFS = [
+  { key: "warm_floor_drop", label: "warm_floor_drop_c", min: 0, max: 5, step: 0.5, unit: "°C", hint: "room coast-down on backoff days" },
+  { key: "warm_t",          label: "warm_day_avg_forecast_c", min: 0, max: 20, step: 0.5, unit: "°C" },
+  { key: "uv_t",            label: "sunny_day_uv_max",  min: 0, max: 8, step: 0.1, unit: "" },
+  { key: "warm_hyst",       label: "warm_day_hysteresis_c", min: 0, max: 3, step: 0.5, unit: "°C" },
+  { key: "uv_hyst",         label: "sunny_day_uv_hysteresis", min: 0, max: 2, step: 0.1, unit: "" },
+];
+
+let state, params;
+
+function makeSlider(def, getObj, container) {
+  const wrap = document.createElement("div");
+  wrap.className = "ctrl";
+  wrap.innerHTML =
+    `<div class="row"><label>${def.label}</label>` +
+    `<span class="val"><span data-v="${def.key}"></span> ${def.unit}</span></div>` +
+    `<input type="range" min="${def.min}" max="${def.max}" step="${def.step}" data-k="${def.key}">` +
+    (def.hint ? `<div class="hint">${def.hint}</div>` : "");
+  const input = wrap.querySelector("input");
+  input.value = getObj()[def.key];
+  input.addEventListener("input", () => { getObj()[def.key] = parseFloat(input.value); render(); });
+  container.appendChild(wrap);
+  return input;
+}
+
+function buildControls() {
+  const inEl = document.getElementById("inputs");
+  const pEl = document.getElementById("params");
+  inEl.innerHTML = ""; pEl.innerHTML = "";
+
+  // solar_backoff hysteresis-state toggle
+  const tog = document.createElement("div");
+  tog.className = "toggle";
+  tog.innerHTML = `<input type="checkbox" id="backoffNow"><label for="backoffNow">currently_backoff (hysteresis state helper)</label>`;
+  inEl.appendChild(tog);
+  const cb = tog.querySelector("input");
+  cb.checked = state.currently_backoff;
+  cb.addEventListener("change", () => { state.currently_backoff = cb.checked; render(); });
+
+  INPUT_DEFS.forEach(d => makeSlider(d, () => state, inEl));
+  PARAM_DEFS.forEach(d => makeSlider(d, () => params, pEl));
+}
+
+function fmt(x, d = 1) { return Number(x).toFixed(d); }
+function boolChip(name, val, extra = "") {
+  return `<span class="chip ${val ? "true" : "false"}">${name}: <b>${val}</b>${extra}</span>`;
+}
+
+function render() {
+  const r = computeComfort(state, params);
+
+  // snapshot panel
+  document.getElementById("snapTs").textContent = "Captured " + SNAPSHOT.ts;
+  const kv = [
+    ["BOR", fmt(SNAPSHOT.inputs.bor)], ["Room 1 / Room 2", fmt(SNAPSHOT.inputs.room1) + " / " + fmt(SNAPSHOT.inputs.room2)],
+    ["Storage", fmt(SNAPSHOT.inputs.storage)], ["Eff. outdoor", fmt(SNAPSHOT.inputs.effective_outdoor)],
+    ["24h avg / max UV", fmt(SNAPSHOT.inputs.avg_forecast_24h) + " / " + fmt(SNAPSHOT.inputs.max_uv_24h)],
+    ["Energy-saving", SNAPSHOT.context.energy_saving_active],
+    ["Ohmigo (actual)", fmt(SNAPSHOT.context.ohmigo)],
+  ];
+  document.getElementById("snapKv").innerHTML =
+    kv.map(([k, v]) => `<div class="k">${k}</div><div class="v">${v}</div>`).join("");
+
+  // sync slider value labels
+  document.querySelectorAll("[data-v]").forEach(el => {
+    const k = el.getAttribute("data-v");
+    const v = (k in state) ? state[k] : params[k];
+    el.textContent = fmt(v, (k === "max_uv_24h" || k === "uv_t" || k === "uv_hyst") ? 1 : 1);
+  });
+  const cbNow = document.getElementById("backoffNow"); if (cbNow) cbNow.checked = state.currently_backoff;
+
+  // derived chips
+  document.getElementById("chips").innerHTML =
+    `<span class="chip">boost: <b>${fmt(r.boost)}</b></span>` +
+    `<span class="chip">storage_target: <b>${fmt(r.storage_target)}</b></span>` +
+    `<span class="chip">floor: <b>${fmt(r.floor)}</b></span>` +
+    boolChip("warm_day", r.warm_day, ` <span style="color:var(--muted)">(≥${fmt(r.warm_thr)})</span>`) +
+    boolChip("sunny_day", r.sunny_day, ` <span style="color:var(--muted)">(≥${fmt(r.uv_thr)})</span>`) +
+    boolChip("solar_backoff", r.solar_backoff) +
+    boolChip("satisfied", r.satisfied) +
+    boolChip("storage_cold", r.storage_cold) +
+    boolChip("rooms_overheated", r.rooms_overheated);
+
+  // branch conditions
+  document.getElementById("cond-heat").textContent = `if not satisfied  (rooms below floor ${fmt(r.floor)} °C)`;
+  document.getElementById("cond-storage").textContent =
+    `elif storage_cold and not solar_backoff and not overheated`;
+
+  // tree highlight
+  ["heat", "storage", "stop"].forEach(b => {
+    const el = document.getElementById("leaf-" + b);
+    el.classList.toggle("active", r.branch === b);
+  });
+  const storageLeaf = document.getElementById("leaf-storage");
+  storageLeaf.classList.toggle("gated", r.solar_backoff);
+
+  // result
+  document.getElementById("ohmigo").textContent = fmt(r.target);
+  const pump = document.getElementById("pump");
+  if (r.heats) { pump.textContent = `heat pump HEATS  (Ohmigo ${fmt(r.target)} < BOR ${fmt(r.bor)})`; pump.className = "pump heats"; }
+  else { pump.textContent = `heat pump STOPS  (Ohmigo ${fmt(r.target)} ≥ BOR ${fmt(r.bor)})`; pump.className = "pump stops"; }
+
+  document.getElementById("floorbar").innerHTML =
+    `Room floor on this day: <b>${fmt(r.floor)} °C</b> ` +
+    (r.solar_backoff
+      ? `(lowered by warm+sunny backoff — rooms may coast ${fmt(params.warm_floor_drop)} °C cooler)`
+      : `(normal: bor − ${fmt(params.comfort_margin)})`);
+
+  const branchName = { heat: "Heat rooms", storage: "Charge storage", stop: "Stop heat pump" }[r.branch];
+  document.getElementById("resultNote").textContent =
+    `Active branch: ${branchName}. raw = ${fmt(r.raw)} → clamped to [10, 26].`;
+}
+
+function resetToToday() {
+  state = Object.assign({}, SNAPSHOT.inputs, { currently_backoff: SNAPSHOT.currently_backoff });
+  params = Object.assign({}, PARAMS_DEFAULT);
+  buildControls();
+  render();
+}
+
+document.getElementById("resetBtn").addEventListener("click", resetToToday);
+resetToToday();
+</script>
+</body>
+</html>

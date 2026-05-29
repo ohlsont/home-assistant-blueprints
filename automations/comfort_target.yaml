@@ -22,16 +22,27 @@
 #   The forecast look-ahead (6 hourly slots from weather.forecast_home) allows the
 #   floor to preheat before cold weather arrives, not just react to it.
 #
-#   satisfied: all rooms >= bor - comfort_margin_c
+#   solar_backoff: warm AND sunny day ahead -> let rooms coast cooler so afternoon
+#                  solar gain (esp. in NW rooms) doesn't overheat them.
+#       warm_day  = avg 24h forecast feels-like >= warm_day_avg_forecast_c (12.0)
+#       sunny_day = max uv_index over next 24h >= sunny_day_uv_max (4.0)
+#       solar_backoff = warm_day and sunny_day  (both hysteresis-stickied via helper)
+#     When solar_backoff: lower the room floor (bor - warm_floor_drop_c instead of
+#     bor - comfort_margin_c) AND skip the storage-charging branch.
+#
+#   satisfied: all rooms >= floor, where
+#       floor = bor - warm_floor_drop_c  if solar_backoff  else  bor - comfort_margin_c
 #   storage_target: bor + 3.0*(1-t), where t = clamp((effective_outdoor+5)/15, 0, 1)
 #                   bor+3.0 at -5 C outdoor, bor+0.0 at +10 C outdoor
 #   storage_cold: storage < storage_target - comfort_margin_c
 #   rooms_overheated: any room > bor + room_overheat_margin_c
 #
 #   Ohmigo values (reported room temp to heat pump, BOR from helper):
-#   if not satisfied:                          ohmigo = bor - 2.0 - boost  (heat rooms)
-#   elif storage_cold and not overheated:      ohmigo = bor - 2.5 - boost  (charge storage)
-#   else (satisfied, no storage need, or hot): ohmigo = bor + 2.0          (stop heat pump)
+#   if not satisfied:                              ohmigo = bor - 2.0 - boost  (heat rooms)
+#   elif storage_cold and not solar_backoff
+#        and not overheated:                       ohmigo = bor - 2.5 - boost  (charge storage)
+#   else (satisfied, no storage need, hot, or      ohmigo = bor + 2.0          (stop heat pump)
+#         solar backoff):
 #   clamped to [10, 26] °C
 #
 # Parameters:
@@ -43,7 +54,13 @@
 #   cold_threshold        = 2.0 °C
 #   max_boost             = 3.0 °C
 #   boost_slope_c         = 4.0
-#   forecast_lookahead_h  = 6 (hourly slots)
+#   forecast_lookahead_h  = 6 (hourly slots, cold-weather boost)
+#   warm_day_avg_forecast_c = 12.0 °C  (24h feels-like avg; warm side of solar backoff)
+#   warm_day_hysteresis_c   = 1.0 °C
+#   sunny_day_uv_max        = 4.0      (max uv_index over next 24h; sunny side)
+#   sunny_day_uv_hysteresis = 0.5
+#   warm_floor_drop_c       = 2.0 °C   (lowered room floor on warm+sunny days)
+#   backoff_lookahead_h     = 24 (hourly slots, warm+sunny detection)
 
 alias: "Blockheat — Comfort Target"
 description: >
@@ -102,9 +119,36 @@ action:
         {% else %}
           {{ 0.0 }}
         {% endif %}
+      avg_forecast_24h: >
+        {% set fc = forecast_data['weather.forecast_home']['forecast'][:24] %}
+        {% set ns = namespace(temps=[]) %}
+        {% for f in fc %}
+          {% set t = f.temperature | float(999) %}
+          {% set v = f.wind_speed | float(0) %}
+          {% if t <= 10 and v > 4.8 %}
+            {% set wc = 13.12 + 0.6215 * t - 11.37 * (v ** 0.16) + 0.3965 * t * (v ** 0.16) %}
+            {% set ns.temps = ns.temps + [wc | round(1)] %}
+          {% else %}
+            {% set ns.temps = ns.temps + [t] %}
+          {% endif %}
+        {% endfor %}
+        {{ (ns.temps | sum) / (ns.temps | length) if ns.temps | length > 0 else outdoor }}
+      max_uv_24h: >
+        {% set fc = forecast_data['weather.forecast_home']['forecast'][:24] %}
+        {% set uvs = fc | map(attribute='uv_index') | map('float', 0) | list %}
+        {{ uvs | max if uvs | length > 0 else 0.0 }}
+      currently_backoff: >
+        {{ is_state('input_boolean.blockheat_comfort_solar_backoff', 'on') }}
+      warm_day: >
+        {{ avg_forecast_24h >= (11.0 if currently_backoff else 12.0) }}
+      sunny_day: >
+        {{ max_uv_24h >= (3.5 if currently_backoff else 4.0) }}
+      solar_backoff: >
+        {{ warm_day and sunny_day }}
       satisfied: >
+        {% set floor = (bor - 2.0) if solar_backoff else (bor - 0.25) %}
         {{ room1 is not none and room2 is not none
-           and room1 >= (bor - 0.25) and room2 >= (bor - 0.25) }}
+           and room1 >= floor and room2 >= floor }}
       storage_target: >
         {% set t = [[(effective_outdoor + 5) / 15, 0.0] | max, 1.0] | min %}
         {{ bor + 3.0 * (1 - t) }}
@@ -116,7 +160,7 @@ action:
       raw: >
         {% if not satisfied %}
           {{ bor - 2.0 - boost }}
-        {% elif storage_cold and not rooms_overheated %}
+        {% elif storage_cold and not solar_backoff and not rooms_overheated %}
           {{ bor - 2.5 - boost }}
         {% else %}
           {{ bor + 2.0 }}
@@ -128,3 +172,15 @@ action:
       entity_id: input_number.blockheat_target_comfort
     data:
       value: "{{ target }}"
+  # Persist the warm+sunny backoff state so the threshold hysteresis above is sticky.
+  - if:
+      - condition: template
+        value_template: "{{ solar_backoff }}"
+    then:
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.blockheat_comfort_solar_backoff
+    else:
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.blockheat_comfort_solar_backoff
