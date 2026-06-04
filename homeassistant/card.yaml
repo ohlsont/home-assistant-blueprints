@@ -7,29 +7,26 @@ cards:
   - type: entities
     entities:
       - entity: sensor.solar_self_consumption_value_today
-        name: Solar self-consumed
+        name: Solar self-consumed (full retail)
         icon: mdi:solar-power-variant
-      - entity: sensor.battery_discharge_value_today
-        name: Battery discharge value
-        icon: mdi:battery-arrow-up
-      - entity: sensor.battery_charge_cost_today
-        name: Battery charge cost
-        icon: mdi:battery-arrow-down
-      - type: divider
       - entity: sensor.tibber_pulse_tarngatan_2_accumulated_reward
         name: Grid export reward
         icon: mdi:transmission-tower-export
-      - entity: sensor.accumulated_cost_tarngatan_2
-        name: Grid cost
-        icon: mdi:transmission-tower-import
-      - type: divider
       - entity: sensor.checkwatt_checkwatt_daily_net_income
         name: Checkwatt income
         icon: mdi:cash-check
+      - type: divider
+      - entity: sensor.savings_total_today
+        name: Total saved today
+        icon: mdi:piggy-bank
+
+  # ── Section 2: Today — energy & grid (context, not savings) ──
+  - type: markdown
+    content: "## Today — energy & grid"
 
   - type: entities
     entities:
-      - entity: sensor.solar_self_consumption_today
+      - entity: sensor.solar_self_consumption_energy_today
         name: Self-consumed solar
         icon: mdi:solar-power
       - entity: sensor.accumulated_consumption_tarngatan_2
@@ -38,8 +35,11 @@ cards:
       - entity: sensor.accumulated_production_tarngatan_2
         name: Grid export
         icon: mdi:transmission-tower-export
+      - entity: sensor.accumulated_cost_tarngatan_2
+        name: Grid cost
+        icon: mdi:cash-minus
 
-  # ── Section 2: Real-time ──
+  # ── Section 3: Real-time ──
   - type: markdown
     content: "## Real-time"
 
@@ -62,17 +62,14 @@ cards:
 
   - type: entities
     entities:
+      - entity: sensor.solar_self_consumption_power
+        name: Solar self-consumption
+        icon: mdi:solar-power
       - entity: sensor.solar_self_consumption_savings_rate
         name: Solar savings rate
         icon: mdi:solar-power-variant
-      - entity: sensor.battery_discharge_savings_rate
-        name: Battery discharge rate
-        icon: mdi:battery-arrow-up
-      - entity: sensor.battery_charge_cost_rate
-        name: Battery charge rate
-        icon: mdi:battery-arrow-down
 
-  # ── Section 3: Monthly / Annual ──
+  # ── Section 4: Monthly & Annual ──
   - type: markdown
     content: "## Monthly & Annual"
 
@@ -81,33 +78,20 @@ cards:
       - entity: sensor.solar_self_consumption_value_monthly
         name: Solar self-consumed (month)
         icon: mdi:solar-power-variant
-      - entity: sensor.battery_discharge_value_monthly
-        name: Battery discharge value (month)
-        icon: mdi:battery-arrow-up
-      - entity: sensor.battery_charge_cost_monthly
-        name: Battery charge cost (month)
-        icon: mdi:battery-arrow-down
-      - type: divider
+      - entity: sensor.grid_export_reward_monthly
+        name: Grid export reward (month)
+        icon: mdi:transmission-tower-export
       - entity: sensor.checkwatt_checkwatt_monthly_net_income
-        name: Checkwatt monthly income
+        name: Checkwatt income (month)
         icon: mdi:cash-check
+      - type: divider
+      - entity: sensor.savings_total_monthly
+        name: Total saved (month)
+        icon: mdi:piggy-bank
       - type: divider
       - entity: sensor.solar_self_consumption_value_yearly
         name: Solar self-consumed (year)
         icon: mdi:solar-power-variant
-      - entity: sensor.battery_discharge_value_yearly
-        name: Battery discharge value (year)
-        icon: mdi:battery-arrow-up
-      - entity: sensor.battery_charge_cost_yearly
-        name: Battery charge cost (year)
-        icon: mdi:battery-arrow-down
-      - type: divider
-      - entity: sensor.grid_fee_savings_yearly
-        name: Vattenfall grid savings (year)
-        icon: mdi:transmission-tower-off
-      - entity: sensor.tibber_spot_savings_yearly
-        name: Tibber spot savings (year)
-        icon: mdi:flash
       - entity: sensor.grid_export_reward_yearly
         name: Grid export reward (year)
         icon: mdi:transmission-tower-export
@@ -116,5 +100,10 @@ cards:
         icon: mdi:cash-check
       - type: divider
       - entity: sensor.total_annual_savings
-        name: Total annual savings
+        name: Total saved (year)
         icon: mdi:piggy-bank
+
+  - type: markdown
+    content: >-
+      _Yearly figures count since the meters were last reset, not necessarily
+      since 1 January._

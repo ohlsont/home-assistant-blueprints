@@ -1,64 +1,67 @@
 # ─── Solar & Battery Savings Sensors ─────────────────────────────────
+#
+# Savings model (see docs / README):
+#   The battery is operated by Checkwatt for FCR-D grid services, so its
+#   cycling is NOT home arbitrage — its value is captured by Checkwatt income
+#   and the Tibber grid cost/reward. Battery charge/discharge are therefore
+#   deliberately excluded from the savings totals.
+#
+#   Genuine, non-overlapping benefit streams:
+#     1. Solar self-consumed (full retail) = solar serving house load, valued
+#        at electricity_price + grid_fee (the avoided all-in import price).
+#     2. Grid export reward (Tibber pays for exported energy).
+#     3. Checkwatt income (battery FCR revenue, already net).
+#
+#   Requires helper: input_number.solar_grid_fee_sek_kwh (grid-side avoided
+#   cost — Vattenfall transfer fee + energy tax, incl VAT; default 0.93).
 
 template:
   - sensor:
-      # Solar self-consumption savings rate (SEK/h)
-      - name: "Solar Self-Consumption Savings Rate"
-        unique_id: solar_self_consumption_savings_rate
-        unit_of_measurement: "SEK/h"
-        device_class: monetary
+      # Self-consumed solar power (W) — solar that serves house load.
+      # Robust to Checkwatt battery cycling: the battery and grid terms are
+      # netted into home_load, then solar is capped at the load it can serve.
+      - name: "Solar Self-Consumption Power"
+        unique_id: solar_self_consumption_power
+        unit_of_measurement: "W"
+        device_class: power
         attributes:
           description: >-
-            Self-consumed solar x spot price.
-            Formula: max(PV_AC - grid_export, 0) / 1000 x price.
-            PV_AC = (Vpv1 x Ipv1 + Vpv2 x Ipv2) x 0.95
+            Solar serving house load (W).
+            home_load = PV_AC + discharge + grid_import - charge - grid_export.
+            self_consumed = max(min(PV_AC, home_load), 0).
+            PV_AC = (Vpv1 x Ipv1 + Vpv2 x Ipv2) x 0.95.
         state: >-
           {% set inv = 'sensor.inverter_5015kett248l0096_power' %}
           {% set vpv1 = state_attr(inv, 'vpv1') | float(0) %}
           {% set ipv1 = state_attr(inv, 'ipv1') | float(0) %}
           {% set vpv2 = state_attr(inv, 'vpv2') | float(0) %}
           {% set ipv2 = state_attr(inv, 'ipv2') | float(0) %}
-          {% set pv_dc = vpv1 * ipv1 + vpv2 * ipv2 %}
-          {% set pv_ac = pv_dc * 0.95 %}
-          {% set export = states('sensor.power_production_tarngatan_2') | float(0) %}
+          {% set pv_ac = (vpv1 * ipv1 + vpv2 * ipv2) * 0.95 %}
+          {% set batt = state_attr(inv, 'total_pbattery') | float(0) %}
+          {% set grid_imp = states('sensor.power_tarngatan_2') | float(0) %}
+          {% set grid_exp = states('sensor.power_production_tarngatan_2') | float(0) %}
+          {% set discharge = [batt, 0] | max %}
+          {% set charge = [0 - batt, 0] | max %}
+          {% set home_load = pv_ac + discharge + grid_imp - charge - grid_exp %}
+          {{ ([[pv_ac, home_load] | min, 0] | max) | round(0) }}
+
+      # Solar self-consumption savings rate (SEK/h) — full retail value.
+      - name: "Solar Self-Consumption Savings Rate"
+        unique_id: solar_self_consumption_savings_rate
+        unit_of_measurement: "SEK/h"
+        device_class: monetary
+        attributes:
+          description: >-
+            Self-consumed solar valued at the avoided all-in import price.
+            Formula: self_consumed_W / 1000 x (electricity_price + grid_fee).
+            grid_fee = input_number.solar_grid_fee_sek_kwh.
+        state: >-
+          {% set power = states('sensor.solar_self_consumption_power') | float(0) %}
           {% set price = states('sensor.electricity_price_tarngatan_2') | float(0) %}
-          {{ (([pv_ac - export, 0] | max) / 1000 * price) | round(2) }}
+          {% set grid_fee = states('input_number.solar_grid_fee_sek_kwh') | float(0.93) %}
+          {{ (power / 1000 * (price + grid_fee)) | round(2) }}
         availability: >-
           {{ states('sensor.electricity_price_tarngatan_2') | is_number }}
-
-      # Battery discharge savings rate (SEK/h)
-      - name: "Battery Discharge Savings Rate"
-        unique_id: battery_discharge_savings_rate
-        unit_of_measurement: "SEK/h"
-        device_class: monetary
-        attributes:
-          description: >-
-            Battery discharge x spot price.
-            Formula: max(battery_power, 0) / 1000 x spot_price
-        state: >-
-          {% set batt = state_attr('sensor.inverter_5015kett248l0096_power', 'total_pbattery') | float(0) %}
-          {% set price = states('sensor.electricity_price_tarngatan_2') | float(0) %}
-          {{ (([batt, 0] | max) / 1000 * price) | round(2) }}
-        availability: >-
-          {{ states('sensor.electricity_price_tarngatan_2') | is_number
-            and state_attr('sensor.inverter_5015kett248l0096_power', 'total_pbattery') is not none }}
-
-      # Battery charge cost rate (SEK/h)
-      - name: "Battery Charge Cost Rate"
-        unique_id: battery_charge_cost_rate
-        unit_of_measurement: "SEK/h"
-        device_class: monetary
-        attributes:
-          description: >-
-            Battery charge x spot price.
-            Formula: max(-battery_power, 0) / 1000 x spot_price
-        state: >-
-          {% set batt = state_attr('sensor.inverter_5015kett248l0096_power', 'total_pbattery') | float(0) %}
-          {% set price = states('sensor.electricity_price_tarngatan_2') | float(0) %}
-          {{ (([0 - batt, 0] | max) / 1000 * price) | round(2) }}
-        availability: >-
-          {{ states('sensor.electricity_price_tarngatan_2') | is_number
-            and state_attr('sensor.inverter_5015kett248l0096_power', 'total_pbattery') is not none }}
 
       # PV power (AC estimate from string data)
       - name: "Solar PV Power"
@@ -107,104 +110,59 @@ template:
             {{ state_attr('sensor.inverter_5015kett248l0096_power', 'soc') | float(0) }}
           {% endif %}
 
-      # Self-consumed solar energy today (kWh)
-      - name: "Solar Self-Consumption Today"
-        unique_id: solar_self_consumption_today
-        unit_of_measurement: "kWh"
-        device_class: energy
-        attributes:
-          description: >-
-            Self-consumed solar energy today.
-            Formula: PV_daily - grid_export_daily (kWh), floored at 0.
-        state: >-
-          {% set pv_day = state_attr('sensor.inverter_5015kett248l0096_power', 'eday') | float(0) %}
-          {% set export_day = states('sensor.accumulated_production_tarngatan_2') | float(0) %}
-          {{ ([pv_day - export_day, 0] | max) | round(2) }}
+      # ── Net savings totals (non-overlapping streams) ──
 
-      # Battery net savings today (SEK) — convenience template
-      - name: "Battery Net Savings Today"
-        unique_id: battery_net_savings_today
+      # Today's total savings (SEK)
+      - name: "Savings Total Today"
+        unique_id: savings_total_today
         unit_of_measurement: "SEK"
         device_class: monetary
         attributes:
           description: >-
-            Net battery savings today.
-            Formula: discharge_value_today - charge_cost_today.
+            Net savings today: solar self-consumed (full retail)
+            + grid export reward + Checkwatt income.
         state: >-
-          {% set discharge = states('sensor.battery_discharge_value_today') | float(0) %}
-          {% set charge = states('sensor.battery_charge_cost_today') | float(0) %}
-          {{ (discharge - charge) | round(2) }}
+          {% set solar = states('sensor.solar_self_consumption_value_today') | float(0) %}
+          {% set reward = states('sensor.tibber_pulse_tarngatan_2_accumulated_reward') | float(0) %}
+          {% set checkwatt = states('sensor.checkwatt_checkwatt_daily_net_income') | float(0) %}
+          {{ (solar + reward + checkwatt) | round(2) }}
 
-      # Grid fee savings rate (SEK/h) — avoided Vattenfall grid fee at 0.93 SEK/kWh
-      - name: "Grid Fee Savings Rate"
-        unique_id: grid_fee_savings_rate
-        unit_of_measurement: "SEK/h"
-        device_class: monetary
-        attributes:
-          description: >-
-            Avoided Vattenfall grid fee.
-            Formula: (self_consumed + discharge - charge) / 1000 x 0.93 SEK/kWh.
-        state: >-
-          {% set inv = 'sensor.inverter_5015kett248l0096_power' %}
-          {% set vpv1 = state_attr(inv, 'vpv1') | float(0) %}
-          {% set ipv1 = state_attr(inv, 'ipv1') | float(0) %}
-          {% set vpv2 = state_attr(inv, 'vpv2') | float(0) %}
-          {% set ipv2 = state_attr(inv, 'ipv2') | float(0) %}
-          {% set pv_ac = (vpv1 * ipv1 + vpv2 * ipv2) * 0.95 %}
-          {% set export = states('sensor.power_production_tarngatan_2') | float(0) %}
-          {% set batt = state_attr(inv, 'total_pbattery') | float(0) %}
-          {% set self_consumed = [pv_ac - export, 0] | max %}
-          {% set discharge = [batt, 0] | max %}
-          {% set charge = [0 - batt, 0] | max %}
-          {{ ((self_consumed + discharge - charge) / 1000 * 0.93) | round(2) }}
-        availability: >-
-          {{ state_attr('sensor.inverter_5015kett248l0096_power', 'total_pbattery') is not none }}
-
-      # Tibber spot savings (year) — variable spot component of annual savings
-      - name: "Tibber Spot Savings Yearly"
-        unique_id: tibber_spot_savings_yearly
+      # This month's total savings (SEK)
+      - name: "Savings Total Monthly"
+        unique_id: savings_total_monthly
         unit_of_measurement: "SEK"
         device_class: monetary
         attributes:
           description: >-
-            Variable spot component of annual savings.
-            Formula: solar_yearly + discharge_yearly - charge_yearly - grid_fee_yearly.
+            Net savings this month: solar self-consumed (full retail)
+            + grid export reward + Checkwatt income.
         state: >-
-          {% set solar = states('sensor.solar_self_consumption_value_yearly') | float(0) %}
-          {% set discharge = states('sensor.battery_discharge_value_yearly') | float(0) %}
-          {% set charge = states('sensor.battery_charge_cost_yearly') | float(0) %}
-          {% set grid_fee = states('sensor.grid_fee_savings_yearly') | float(0) %}
-          {{ (solar + discharge - charge - grid_fee) | round(2) }}
+          {% set solar = states('sensor.solar_self_consumption_value_monthly') | float(0) %}
+          {% set reward = states('sensor.grid_export_reward_monthly') | float(0) %}
+          {% set checkwatt = states('sensor.checkwatt_checkwatt_monthly_net_income') | float(0) %}
+          {{ (solar + reward + checkwatt) | round(2) }}
 
-      # Total annual savings (SEK)
+      # Annual total savings (SEK)
       - name: "Total Annual Savings"
         unique_id: total_annual_savings
         unit_of_measurement: "SEK"
         device_class: monetary
         attributes:
           description: >-
-            Total annual savings from solar and battery.
-            Formula: solar + discharge - charge + grid_export_reward + checkwatt_income.
+            Net savings this year: solar self-consumed (full retail)
+            + grid export reward + Checkwatt income.
+            Note: yearly meters count since their last reset, not necessarily
+            since 1 Jan.
         state: >-
           {% set solar = states('sensor.solar_self_consumption_value_yearly') | float(0) %}
-          {% set batt_discharge = states('sensor.battery_discharge_value_yearly') | float(0) %}
-          {% set batt_charge = states('sensor.battery_charge_cost_yearly') | float(0) %}
-          {% set grid_reward = states('sensor.grid_export_reward_yearly') | float(0) %}
+          {% set reward = states('sensor.grid_export_reward_yearly') | float(0) %}
           {% set checkwatt = states('sensor.checkwatt_checkwatt_annual_net_income') | float(0) %}
-          {{ (solar + batt_discharge - batt_charge + grid_reward + checkwatt) | round(0) }}
+          {{ (solar + reward + checkwatt) | round(0) }}
 
-# ─── Riemann Sum Integration (SEK/h → SEK) ──────────────────────────
+# ─── Riemann Sum Integration ────────────────────────────────────────
 
 sensor:
-  - platform: integration
-    source: sensor.grid_fee_savings_rate
-    name: "Grid Fee Savings"
-    unique_id: grid_fee_savings
-    unit_prefix: ~
-    unit_time: h
-    round: 2
-    method: left
-
+  # Self-consumption value (SEK/h → SEK)
   - platform: integration
     source: sensor.solar_self_consumption_savings_rate
     name: "Solar Self-Consumption Value"
@@ -214,43 +172,24 @@ sensor:
     round: 2
     method: left
 
+  # Self-consumption energy (W → kWh)
   - platform: integration
-    source: sensor.battery_discharge_savings_rate
-    name: "Battery Discharge Value"
-    unique_id: battery_discharge_value
-    unit_prefix: ~
+    source: sensor.solar_self_consumption_power
+    name: "Solar Self-Consumption Energy"
+    unique_id: solar_self_consumption_energy
+    unit_prefix: k
     unit_time: h
     round: 2
     method: left
 
-  - platform: integration
-    source: sensor.battery_charge_cost_rate
-    name: "Battery Charge Cost"
-    unique_id: battery_charge_cost
-    unit_prefix: ~
-    unit_time: h
-    round: 2
-    method: left
-
-# ─── Utility Meters (daily reset) ───────────────────────────────────
+# ─── Utility Meters ─────────────────────────────────────────────────
 
 utility_meter:
+  # Self-consumption value (full retail)
   solar_self_consumption_value_today:
     source: sensor.solar_self_consumption_value
     name: "Solar Self-Consumption Value Today"
     unique_id: solar_self_consumption_value_today
-    cycle: daily
-
-  battery_discharge_value_today:
-    source: sensor.battery_discharge_value
-    name: "Battery Discharge Value Today"
-    unique_id: battery_discharge_value_today
-    cycle: daily
-
-  battery_charge_cost_today:
-    source: sensor.battery_charge_cost
-    name: "Battery Charge Cost Today"
-    unique_id: battery_charge_cost_today
     cycle: daily
 
   solar_self_consumption_value_monthly:
@@ -259,42 +198,25 @@ utility_meter:
     unique_id: solar_self_consumption_value_monthly
     cycle: monthly
 
-  battery_discharge_value_monthly:
-    source: sensor.battery_discharge_value
-    name: "Battery Discharge Value Monthly"
-    unique_id: battery_discharge_value_monthly
-    cycle: monthly
-
-  battery_charge_cost_monthly:
-    source: sensor.battery_charge_cost
-    name: "Battery Charge Cost Monthly"
-    unique_id: battery_charge_cost_monthly
-    cycle: monthly
-
   solar_self_consumption_value_yearly:
     source: sensor.solar_self_consumption_value
     name: "Solar Self-Consumption Value Yearly"
     unique_id: solar_self_consumption_value_yearly
     cycle: yearly
 
-  battery_discharge_value_yearly:
-    source: sensor.battery_discharge_value
-    name: "Battery Discharge Value Yearly"
-    unique_id: battery_discharge_value_yearly
-    cycle: yearly
+  # Self-consumption energy (kWh)
+  solar_self_consumption_energy_today:
+    source: sensor.solar_self_consumption_energy
+    name: "Solar Self-Consumption Energy Today"
+    unique_id: solar_self_consumption_energy_today
+    cycle: daily
 
-  battery_charge_cost_yearly:
-    source: sensor.battery_charge_cost
-    name: "Battery Charge Cost Yearly"
-    unique_id: battery_charge_cost_yearly
-    cycle: yearly
-
-  grid_fee_savings_yearly:
-    source: sensor.grid_fee_savings
-    name: "Grid Fee Savings Yearly"
-    unique_id: grid_fee_savings_yearly
-    cycle: yearly
-    net_consumption: true
+  # Grid export reward
+  grid_export_reward_monthly:
+    source: sensor.tibber_pulse_tarngatan_2_accumulated_reward
+    name: "Grid Export Reward Monthly"
+    unique_id: grid_export_reward_monthly
+    cycle: monthly
 
   grid_export_reward_yearly:
     source: sensor.tibber_pulse_tarngatan_2_accumulated_reward
