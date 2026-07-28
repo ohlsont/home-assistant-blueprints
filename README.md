@@ -15,6 +15,13 @@ flow, and configuration details.
 The physical heating system (Qvantum ETK6500 heat pump, Ohmigo WiFi sensor) is
 documented in [`docs/home-architecture.md`](docs/home-architecture.md).
 
+## Garden Irrigation
+
+Unrelated to heating, but lives in the same Home Assistant instance. Valve topology,
+the Ilex crenata 'Caroline Upright' hedges, and the watering schedule are documented in
+[`docs/garden-irrigation.md`](docs/garden-irrigation.md), with the deployable automation
+config in [`docs/garden-watering.yaml`](docs/garden-watering.yaml).
+
 ## Energy Savings Dashboard
 
 `homeassistant/solar_savings.yaml` (template/integration/utility-meter sensors)
