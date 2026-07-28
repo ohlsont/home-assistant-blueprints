@@ -294,13 +294,18 @@ off, revert to daily first and diagnose after.
 
 ### Optional improvements, in rough priority order
 
-1. **Move a working soil moisture sensor into a hedge drip line.** The existing ones are
-   not in irrigated ground — see
-   [What the volume does NOT establish](#what-the-volume-does-not-establish). This turns
-   the whole question from argument into data, and would let the schedule be driven by
-   soil state rather than a calendar.
+1. **Dig at a hedge end after a session** to settle whether water reaches the run ends —
+   see [Finding: the hedge ends show no response to irrigation](#finding-the-hedge-ends-show-no-response-to-irrigation).
+   Everything else depends on the answer.
+1. **Fix the two dead sensors.** `outside_garden_3` battery (flat since 2026-07-22) and
+   the black currant sensor reading 0.0. Two of three garden sensors are currently
+   useless, and the surviving one is doing all the work.
+1. **Rename the garden sensors** once their locations are confirmed —
+   `Garden 2` / `Garden 3` do not say which hedge they are on. Follow the entity-rename
+   impact workflow; check dashboards and automations for consumers first.
 1. **Fit a pressure reducer** downstream of the main valve (`switch.sonoff_swv_2`).
-   Buys even distribution along each run and lower water use. Not urgent.
+   Buys even distribution along each run and lower water use. Not urgent — but if the
+   dig shows dry run ends, even distribution stops being cosmetic.
 1. **Re-measure if it is fitted**, with `sensor.cubic_secure_laundry_total_volume` — run
    one zone alone and read the delta, per zone, so the per-metre rate is measured rather
    than derived. Then reset durations.
