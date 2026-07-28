@@ -31,6 +31,15 @@ the soil.
 
 All are SONOFF SWV Zigbee valves.
 
+**AquaPrecise** is a separate multi-contour drip controller teed into the line just
+before the bottom-hedge valve:
+
+- `select.aquaprecise_watering` — contour selection (`contour_1` = "Gräs"/lawn, `rest` = off)
+- `number.aquaprecise_manual_watering_time` — run time in seconds
+
+The terrace outlet is on-demand only: connect a hose to water the terrace, or a drip
+hose for the tomato/strawberry urns.
+
 ### Drip hose
 
 [Biltema Droppslang 1/2", 25 m, art. 14-5002](https://www.biltema.se/fritid/tradgard/bevattning/slangar/droppslang-12-25-m-2000057335),
@@ -117,15 +126,6 @@ the target volume is reached in a few minutes.
 
 **Re-measure after fitting it.** The flow rate will change substantially, invalidating
 every run time below.
-
-**AquaPrecise** is a separate multi-contour drip controller teed into the line just
-before the bottom-hedge valve:
-
-- `select.aquaprecise_watering` — contour selection (`contour_1` = "Gräs"/lawn, `rest` = off)
-- `number.aquaprecise_manual_watering_time` — run time in seconds
-
-The terrace outlet is on-demand only: connect a hose to water the terrace, or a drip
-hose for the tomato/strawberry urns.
 
 ## Hardware and plumbing constraints
 
