@@ -142,9 +142,9 @@ crenata is about water *sitting* around the roots, not volume passing through. B
 drip at 15-20 cm into free-draining soil moves down and away, in which case high volume
 is far less dangerous than the generic guidance implies.
 
-**To settle it:** relocate a working soil moisture sensor into a hedge drip line and
-watch whether it spikes and then drains, or spikes and stays high. Until then the
-volume figures are a water-cost fact, not a plant-health verdict.
+**To settle it:** dig at hose depth, per
+[Finding: the hedge ends show no response to irrigation](#finding-the-hedge-ends-show-no-response-to-irrigation).
+Until then the volume figures are a water-cost fact, not a plant-health verdict.
 
 **Optional fix: a pressure reducer** on the garden line, downstream of the main valve so
 all zones benefit. Biltema sells one intended for this hose. With both the plant-health
