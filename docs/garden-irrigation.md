@@ -109,20 +109,46 @@ which is consistent with the line running well above 1.5 bar.
 
 Consequences:
 
-1. **Gross over-watering.** ~810 L/week on a 10 m hedge row is several times what an
-   established hedge needs. For Ilex crenata this is the dangerous direction — see
-   [Watering strategy](#watering-strategy).
+1. **Mechanical risk.** PE/PP/ABS well over working pressure, at cut ends and
+   quick-couplings, risks splitting. This one is independent of how the plants are
+   doing.
 1. **Uneven distribution.** Above rated pressure the hose delivers hard near the feed
    and less at the far end, so run length matters more than it should. Worst on the
    23 m centre-fed bottom hedge.
-1. **Mechanical risk.** PE/PP/ABS well over working pressure, at cut ends and
-   quick-couplings, risks splitting.
+1. **High water use.** ~4 700 L/week during the watering season.
+
+### What the volume does NOT establish
+
+An earlier revision of this document called ~810 L/week on a 10 m hedge row "gross
+over-watering, several times what the hedge needs." **That was overstated.** It rested
+on a generic 20-25 mm/week target and an assumed 0.4-0.6 m wetted strip — neither
+measured here.
+
+Against it:
+
+- The hedges have run on the daily schedule for an extended period and are **visibly
+  healthy** (owner's direct observation, 2026-07-28). That is better evidence about
+  plant health than a rule of thumb.
+- Soil moisture telemetry does not support the over-watering claim either.
+  `sensor.outside_garden_2_soil_moisture` sat flat at 14-18 for the week to 2026-07-27
+  with **no daily 06:00 spike**, so it is not in an irrigated zone and says nothing
+  about the hedge root zone. `sensor.outdoor_flower_sensor_soil_moisture` reads 0.0;
+  `sensor.outside_garden_3_soil_moisture`, `sensor.palmen_soil_moisture_2` and
+  `sensor.begonia_soil_moisture` are unavailable — likely flat batteries.
+
+The likely reconciliation is that **the soil drains freely.** Phytophthora risk in Ilex
+crenata is about water *sitting* around the roots, not volume passing through. Buried
+drip at 15-20 cm into free-draining soil moves down and away, in which case high volume
+is far less dangerous than the generic guidance implies.
+
+**To settle it:** relocate a working soil moisture sensor into a hedge drip line and
+watch whether it spikes and then drains, or spikes and stays high. Until then the
+volume figures are a water-cost fact, not a plant-health verdict.
 
 **Fix: fit a pressure reducer** on the garden line, downstream of the main valve so all
 zones benefit. Biltema sells one intended for this hose and recommends it in the product
-description. Until that is fitted, run times cannot be tuned meaningfully — a deep soak
-and a sensible weekly volume are not simultaneously achievable at this flow rate, since
-the target volume is reached in a few minutes.
+description. The strongest argument for it is the burst risk and even distribution, not
+plant health — see [What the volume does NOT establish](#what-the-volume-does-not-establish).
 
 **Re-measure after fitting it.** The flow rate will change substantially, invalidating
 every run time below.
