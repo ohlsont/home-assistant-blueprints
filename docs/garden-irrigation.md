@@ -212,7 +212,7 @@ Other care, not automated:
 
 ## Schedule
 
-**Deployed 2026-07-28. Interim — frequency cut only.**
+**Deployed 2026-07-28. Mon/Thu — a deliberate water-saving trial, not a fix.**
 
 Automation: `automation.garden_watering_daily_unless_rain`
 (alias "Garden watering — Mon/Thu unless rain"). Deployable config:
@@ -231,23 +231,34 @@ Total run ≈ 06:00 → 07:06. Each session opens and closes the main valve inde
 so the main is never open longer than ~23 min 20 s.
 
 **Durations are deliberately unchanged from the old daily schedule.** Only the frequency
-dropped, 7 days/week → 2, taking weekly use from ~4 700 L to ~1 350 L. Frequency is the
-one lever that can be pulled safely without knowing the post-reducer flow rate: at the
-measured ~11.6 L/min a sensible weekly volume for a 10 m hedge is reached in ~3-4 min,
-and runs that short water shallowly and unevenly, which works against root depth. The
-right fix is to bring the line to the hose's rated 1.5 bar first.
+dropped, 7 days/week → 2, taking weekly use from ~4 700 L to ~1 350 L.
 
-### Next steps
+The hedges were healthy on the daily schedule, so this is **not fixing a problem** — it
+is a test of whether the same hedges stay healthy on ~29 % of the water. Duration was
+left alone on purpose: frequency is the safe lever, since at the measured ~11.6 L/min
+a short run would water shallowly and unevenly, working against root depth.
 
-1. **Fit a pressure reducer** downstream of the main valve (`switch.sonoff_swv_2`) so
-   all zones benefit. Biltema sells one intended for this hose.
-1. **Re-measure** with `sensor.cubic_secure_laundry_total_volume` — run one zone alone
-   and read the delta, ideally per zone so the per-metre rate is measured rather than
-   derived.
-1. **Set deep-soak durations** from the new flow rate, and move back to ~3 sessions a
-   week. Target roughly 20-25 mm/week over the wetted strip, minus rainfall.
-1. **Check the cut ends.** The hose was cut from 25 m rolls; at well above rated
-   pressure a marginal end cap or coupling is a burst risk.
+**Revert is one line** — change `weekday: [mon, thu]` back to no weekday condition.
+
+### What to watch
+
+Ilex crenata signals drought stress before it dies: dull or slightly greyed foliage,
+then leaf drop, worst at the far ends of the 23 m bottom hedge where end-of-line
+pressure is lowest. Peak summer with a 3-4 day gap is the stress test. If anything looks
+off, revert to daily first and diagnose after.
+
+### Optional improvements, in rough priority order
+
+1. **Move a working soil moisture sensor into a hedge drip line.** The existing ones are
+   not in irrigated ground — see
+   [What the volume does NOT establish](#what-the-volume-does-not-establish). This turns
+   the whole question from argument into data, and would let the schedule be driven by
+   soil state rather than a calendar.
+1. **Fit a pressure reducer** downstream of the main valve (`switch.sonoff_swv_2`).
+   Buys even distribution along each run and lower water use. Not urgent.
+1. **Re-measure if it is fitted**, with `sensor.cubic_secure_laundry_total_volume` — run
+   one zone alone and read the delta, per zone, so the per-metre rate is measured rather
+   than derived. Then reset durations.
 
 ### Tuning
 
