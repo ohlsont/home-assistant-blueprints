@@ -133,12 +133,9 @@ Against it:
 - The hedges have run on the daily schedule for an extended period and are **visibly
   healthy** (owner's direct observation, 2026-07-28). That is better evidence about
   plant health than a rule of thumb.
-- Soil moisture telemetry does not support the over-watering claim either.
-  `sensor.outside_garden_2_soil_moisture` sat flat at 14-18 for the week to 2026-07-27
-  with **no daily 06:00 spike**, so it is not in an irrigated zone and says nothing
-  about the hedge root zone. `sensor.outdoor_flower_sensor_soil_moisture` reads 0.0;
-  `sensor.outside_garden_3_soil_moisture`, `sensor.palmen_soil_moisture_2` and
-  `sensor.begonia_soil_moisture` are unavailable — likely flat batteries.
+- Soil moisture telemetry does not support the over-watering claim either — see
+  [Soil moisture sensors](#soil-moisture-sensors). The two hedge-end sensors show no
+  response at all to daily irrigation.
 
 The likely reconciliation is that **the soil drains freely.** Phytophthora risk in Ilex
 crenata is about water *sitting* around the roots, not volume passing through. Buried
@@ -156,6 +153,54 @@ each run and lower water use — worth doing, not urgent.
 
 **Re-measure if it is fitted.** The flow rate will change substantially, invalidating
 every run time below.
+
+## Soil moisture sensors
+
+Three sensors are in the garden:
+
+| Sensor                                       | Location                   | Status 2026-07-28                             |
+| -------------------------------------------- | -------------------------- | --------------------------------------------- |
+| `sensor.outdoor_flower_sensor_soil_moisture` | Black currant bush         | Reads 0.0 — almost certainly faulty           |
+| `sensor.outside_garden_2_soil_moisture`      | End of a hedge run         | Working                                       |
+| `sensor.outside_garden_3_soil_moisture`      | End of the other hedge run | `unavailable` since 2026-07-22 — flat battery |
+
+(`sensor.palmen_soil_moisture_2` and `sensor.begonia_soil_moisture` are potted plants,
+not garden ground.) Which of Garden 2 / Garden 3 is the middle hedge and which is the
+top hedge is not yet recorded — worth pinning down and renaming the entities.
+
+### Finding: the hedge ends show no response to irrigation
+
+Both hedge-end sensors sat **completely flat through daily 06:00 watering**:
+
+- `outside_garden_2`: 14-18 % all week to 2026-07-27, no daily spike. Then jumped to a
+  max of **58 %** on 2026-07-27 afternoon — a rain event — and decayed back toward 25 %
+  over the following hours.
+- `outside_garden_3`: 16-20 % flat from 2026-07-16 until its battery died 2026-07-22.
+  No daily spike either.
+
+So a rain event moves the sensor by 40 points, while ten minutes of drip irrigation
+moves it by zero. Two independent sensors at two different hedge ends agree.
+
+Two explanations, not yet distinguished:
+
+1. **Water is not reaching the hedge ends.** End-of-line pressure drop, or uneven
+   perforation along the cut hose. This is the distribution problem in
+   [The pressure problem](#the-pressure-problem), showing up as a real measurement
+   rather than a theory.
+1. **Sensor probes sit above the drip line.** The hose is buried 15-20 cm; these probes
+   typically go in 5-10 cm. Rain wets top-down and registers strongly; sub-surface drip
+   wets downward and laterally and may never reach the probe. Both sensors were
+   presumably installed the same way, which makes a systematic mismatch plausible.
+
+**How to distinguish — dig.** After a session, dig beside the drip line at a hedge end
+and at the feed end of the same run, and feel for moisture at hose depth (15-20 cm).
+
+- Feed end wet, far end dry → distribution problem, explanation 1.
+- Both wet at hose depth → the sensors are simply too shallow, explanation 2, and the
+  telemetry is not measuring the root zone.
+
+This matters for the schedule: if the ends really are dry, cutting to Mon/Thu makes them
+drier, and the hedge ends are exactly where drought stress would first appear.
 
 ## Hardware and plumbing constraints
 
