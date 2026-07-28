@@ -182,58 +182,61 @@ Other care, not automated:
 
 ## Schedule
 
-> **Status: NOT DEPLOYED.** The schedule below was designed to hold weekly volumes
-> roughly constant while switching to deep+infrequent soaks. The measurements in
-> [Measured water use](#measured-water-use) came later and show the *existing* weekly
-> volume is already ~5x too high, so holding it constant is the wrong target. Fit the
-> pressure reducer, re-measure, then set run times from the new flow rate. The live
-> automation is still on the old daily schedule.
+**Deployed 2026-07-28. Interim — frequency cut only.**
 
 Automation: `automation.garden_watering_daily_unless_rain`
-(alias "Garden watering — Mon/Wed/Fri unless rain"). Deployable config:
+(alias "Garden watering — Mon/Thu unless rain"). Deployable config:
 [`garden-watering.yaml`](garden-watering.yaml).
 
-Trigger 06:00, condition `weekday: [mon, wed, fri]`, skipped if 3-day forecast rain
-≥ 10 mm.
+Trigger 06:00, condition `weekday: [mon, thu]`, skipped if 3-day forecast rain ≥ 10 mm.
 
-| #   | Session      | Zone                          | Soak   |
+| #   | Session      | Zone                          | Run    |
 | --- | ------------ | ----------------------------- | ------ |
-| 1   | Lawn         | AquaPrecise `contour_1`       | 25 min |
-| 2   | Top hedge    | `switch.sonoff_valve_terrace` | 25 min |
-| 3   | Middle hedge | `switch.sonoff_valve_back`    | 25 min |
-| 4   | Bottom hedge | `switch.sonoff_swv`           | 25 min |
-| 5   | Bottom hedge | `switch.sonoff_swv`           | 25 min |
+| 1   | Lawn         | AquaPrecise `contour_1`       | 15 min |
+| 2   | Top hedge    | `switch.sonoff_valve_terrace` | 10 min |
+| 3   | Middle hedge | `switch.sonoff_valve_back`    | 10 min |
+| 4   | Bottom hedge | `switch.sonoff_swv`           | 23 min |
 
-Sessions 4 and 5 are one 50-minute soak split across two valve opens, because 50 min
-exceeds the hardware cap. The ~20 s gap between them resets the valve timer but is far
-too short for the soil to notice.
+Total run ≈ 06:00 → 07:06. Each session opens and closes the main valve independently,
+so the main is never open longer than ~23 min 20 s.
 
-Total run ≈ 06:00 → 08:15. Each session opens and closes the main valve independently,
-so the main is never open longer than ~25 min 20 s.
+**Durations are deliberately unchanged from the old daily schedule.** Only the frequency
+dropped, 7 days/week → 2, taking weekly use from ~4 700 L to ~1 350 L. Frequency is the
+one lever that can be pulled safely without knowing the post-reducer flow rate: at the
+measured ~11.6 L/min a sensible weekly volume for a 10 m hedge is reached in ~3-4 min,
+and runs that short water shallowly and unevenly, which works against root depth. The
+right fix is to bring the line to the hose's rated 1.5 bar first.
 
-### Weekly totals vs. the previous schedule
+### Next steps
 
-| Zone         | Was (daily)      | Now (Mon/Wed/Fri) |
-| ------------ | ---------------- | ----------------- |
-| Lawn         | 15 min × 7 = 105 | 25 min × 3 = 75   |
-| Top hedge    | 10 min × 7 = 70  | 25 min × 3 = 75   |
-| Middle hedge | 10 min × 7 = 70  | 25 min × 3 = 75   |
-| Bottom hedge | 23 min × 7 = 161 | 50 min × 3 = 150  |
-
-Hedge volumes are roughly unchanged; what changed is that the same water now arrives in
-3 deep soaks instead of 7 shallow ones. The lawn drops ~30 %, which is the one figure
-worth watching — grass browns before it dies, so raise session 1 if it suffers.
+1. **Fit a pressure reducer** downstream of the main valve (`switch.sonoff_swv_2`) so
+   all zones benefit. Biltema sells one intended for this hose.
+1. **Re-measure** with `sensor.cubic_secure_laundry_total_volume` — run one zone alone
+   and read the delta, ideally per zone so the per-metre rate is measured rather than
+   derived.
+1. **Set deep-soak durations** from the new flow rate, and move back to ~3 sessions a
+   week. Target roughly 20-25 mm/week over the wetted strip, minus rainfall.
+1. **Check the cut ends.** The hose was cut from 25 m rolls; at well above rated
+   pressure a marginal end cap or coupling is a burst risk.
 
 ### Tuning
 
-Run times are set conservatively because the sweating-hose flow rating and the soil type
-are not known. **Calibrate empirically:** after a session, dig a small hole next to the
-drip line and check how deep the water actually reached. Aim for moisture through the
-root zone (~20-30 cm), not a wet surface over dry subsoil.
+Once the reducer is in, calibrate empirically rather than from any spec: after a
+session, dig a small hole next to the drip line and check how deep the water actually
+reached. Aim for moisture through the root zone (~20-30 cm), not a wet surface over dry
+subsoil. Cross-check the volume against the Cubic Secure meter.
 
-- Water not reaching depth → raise the per-session soak (max ~25 min per open; add a
-  second open like the bottom hedge rather than exceeding it).
-- Soil still wet at the next session → drop to Mon/Thu, or shorten the soaks.
+- Water not reaching depth → raise the per-session run (max ~25 min per valve open;
+  split into two opens rather than exceeding the hardware cap).
+- Soil still wet at the next session → cut frequency before cutting duration.
+
+### Superseded plan
+
+An earlier revision moved to Mon/Wed/Fri with 25-min soaks (bottom hedge 2 × 25),
+designed to hold weekly volume roughly constant while making each soak deeper. The
+measurements above then showed the existing weekly volume was itself the problem, so
+holding it constant was the wrong target. That plan was never deployed. It becomes
+viable again once flow is at spec, with durations recalculated.
 
 ## Related automations
 
