@@ -114,18 +114,18 @@ Consequences:
    23 m centre-fed bottom hedge.
 1. **High water use.** ~4 700 L/week during the watering season.
 
-**Burst risk: not a real concern here.** Rated working pressure is a continuous-duty
-figure carrying a safety margin, not burst pressure — burst is typically 2-3x working
-for this hose class. The system has run at this pressure for an extended period without
-a failure (owner, 2026-07-28), on intermittent duty of about an hour a day in cool
-ground. An earlier revision of this document treated the 1.5 bar rating as if failure
-were imminent; that was wrong.
+**Burst risk is not a concern here — do not re-raise it.** Rated working pressure is a
+continuous-duty figure carrying a safety margin, not burst pressure; burst is typically
+2-3x working for this hose class. The system has run at this pressure for an extended
+period without a failure (owner, 2026-07-28), on intermittent duty of about an hour a
+day in cool ground. The 1.5 bar rating looks alarming next to 5.16 bar and invites the
+conclusion that failure is imminent. It isn't.
 
 ### What the volume does NOT establish
 
-An earlier revision of this document called ~810 L/week on a 10 m hedge row "gross
-over-watering, several times what the hedge needs." **That was overstated.** It rested
-on a generic 20-25 mm/week target and an assumed 0.4-0.6 m wetted strip — neither
+The numbers above look like gross over-watering — ~810 L/week onto a 10 m hedge row is
+several times a textbook figure. **Resist that conclusion.** It rests on a generic
+20-25 mm/week target and an assumed 0.4-0.6 m wetted strip, neither of which has been
 measured here.
 
 Against it:
