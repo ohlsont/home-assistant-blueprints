@@ -109,13 +109,17 @@ which is consistent with the line running well above 1.5 bar.
 
 Consequences:
 
-1. **Mechanical risk.** PE/PP/ABS well over working pressure, at cut ends and
-   quick-couplings, risks splitting. This one is independent of how the plants are
-   doing.
 1. **Uneven distribution.** Above rated pressure the hose delivers hard near the feed
    and less at the far end, so run length matters more than it should. Worst on the
    23 m centre-fed bottom hedge.
 1. **High water use.** ~4 700 L/week during the watering season.
+
+**Burst risk: not a real concern here.** Rated working pressure is a continuous-duty
+figure carrying a safety margin, not burst pressure — burst is typically 2-3x working
+for this hose class. The system has run at this pressure for an extended period without
+a failure (owner, 2026-07-28), on intermittent duty of about an hour a day in cool
+ground. An earlier revision of this document treated the 1.5 bar rating as if failure
+were imminent; that was wrong.
 
 ### What the volume does NOT establish
 
@@ -145,12 +149,12 @@ is far less dangerous than the generic guidance implies.
 watch whether it spikes and then drains, or spikes and stays high. Until then the
 volume figures are a water-cost fact, not a plant-health verdict.
 
-**Fix: fit a pressure reducer** on the garden line, downstream of the main valve so all
-zones benefit. Biltema sells one intended for this hose and recommends it in the product
-description. The strongest argument for it is the burst risk and even distribution, not
-plant health — see [What the volume does NOT establish](#what-the-volume-does-not-establish).
+**Optional fix: a pressure reducer** on the garden line, downstream of the main valve so
+all zones benefit. Biltema sells one intended for this hose. With both the plant-health
+and burst-risk arguments withdrawn, the remaining case for it is even distribution along
+each run and lower water use — worth doing, not urgent.
 
-**Re-measure after fitting it.** The flow rate will change substantially, invalidating
+**Re-measure if it is fitted.** The flow rate will change substantially, invalidating
 every run time below.
 
 ## Hardware and plumbing constraints
@@ -268,7 +272,11 @@ viable again once flow is at spec, with durations recalculated.
 
 - `garden_watering_daily_unless_rain` — the main schedule above.
 - `garden_valve_failsafe_auto_close_if_left_open` — forces the main valve closed if it
-  has been open more than 20 min.
+  has been open 20 min **while no watering run is active** (the trigger is gated on the
+  watering automation's `current` attribute), plus a hard 70-min backstop regardless of
+  state. Verified 2026-07-28 that this does not clip the 23-min bottom-hedge session:
+  the per-zone session design keeps continuous main-valve open time to ~23 min 20 s, and
+  the 20-min rule is suppressed while the run is in progress.
 - `smart_valve_auto_off_all` — turns any valve off 30 min after it switches on
   (general backstop).
 
