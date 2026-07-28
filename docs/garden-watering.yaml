@@ -1,0 +1,196 @@
+# Garden watering — deployable config for automation.garden_watering_daily_unless_rain
+#
+# NOT part of the Blockheat automation set. Kept in docs/ (not automations/) because
+# it is a separate system and uses modern plural triggers/conditions/actions keys.
+# Rationale, plant species and tuning guidance: docs/garden-irrigation.md
+#
+# Deploy with:
+#   ha_config_set_automation(
+#       identifier="automation.garden_watering_daily_unless_rain", config={...})
+#
+# Constraints encoded below:
+#   - Only ONE zone open at a time (shared supply pressure).
+#   - SONOFF SWV valves hardware-close ~30 min after opening; closing and reopening
+#     resets that timer. No valve is commanded open longer than ~25 min 20 s.
+#   - Ilex crenata 'Caroline Upright' wants deep + infrequent, not daily + shallow.
+
+id: '1783625446726'
+alias: Garden watering — Mon/Wed/Fri unless rain
+description: >-
+  Deep, infrequent watering for Ilex crenata 'Caroline Upright' (japansk järnek)
+  hedges. Mon/Wed/Fri at 06:00, skipped if 3-day forecast rain >= 10 mm. Each zone is
+  its OWN session (open main -> water one zone -> close main) so no SONOFF valve is
+  ever commanded open past its ~30-min hardware auto-close. Soaks: lawn 25 min, top
+  hedge 25, middle hedge 25, bottom hedge 2x25 (split because 50 min exceeds the
+  hardware cap; the 20 s gap resets the valve timer). Terrace excluded — manual only.
+  Rationale and sources: docs/garden-irrigation.md
+mode: single
+
+triggers:
+  - trigger: time
+    at: "06:00:00"
+
+conditions:
+  - condition: time
+    weekday: [mon, wed, fri]
+    note: >-
+      Every-other-day-ish. Ilex crenata is drought-sensitive but dies far more often
+      from Phytophthora root rot in constantly wet soil, so deep+infrequent beats
+      daily+shallow. Daily short runs also keep roots shallow.
+
+actions:
+  - action: weather.get_forecasts
+    data:
+      type: daily
+    target:
+      entity_id: weather.forecast_home
+    response_variable: fc
+
+  - variables:
+      rain_3d: >-
+        {{ (fc['weather.forecast_home']['forecast'][:3]
+            | map(attribute='precipitation') | map('float', 0) | sum) | round(1) }}
+
+  - if:
+      - "{{ rain_3d < 10 }}"
+    then:
+      - action: switch.turn_off
+        target:
+          entity_id:
+            - switch.sonoff_swv
+            - switch.sonoff_valve_back
+            - switch.sonoff_valve_terrace
+            - switch.outside_sonoff_hedge_down_right
+        continue_on_error: true
+        note: >-
+          Clean slate — only one zone may ever be open at a time (shared pressure).
+      - action: select.select_option
+        target:
+          entity_id: select.aquaprecise_watering
+        data:
+          option: rest
+        continue_on_error: true
+
+      # --- Session 1/5: lawn (AquaPrecise contour_1), 25 min ---
+      - action: switch.turn_on
+        target:
+          entity_id: switch.sonoff_swv_2
+        note: Session 1 of 5 — lawn (AquaPrecise contour_1).
+      - delay: {seconds: 10}
+      - action: number.set_value
+        target:
+          entity_id: number.aquaprecise_manual_watering_time
+        data:
+          value: 1500
+      - action: select.select_option
+        target:
+          entity_id: select.aquaprecise_watering
+        data:
+          option: contour_1
+      - delay: {minutes: 25}
+      - action: select.select_option
+        target:
+          entity_id: select.aquaprecise_watering
+        data:
+          option: rest
+      - delay: {seconds: 10}
+      - action: switch.turn_off
+        target:
+          entity_id: switch.sonoff_swv_2
+      - delay: {seconds: 20}
+
+      # --- Session 2/5: top hedge (10 m), 25 min ---
+      - action: switch.turn_on
+        target:
+          entity_id: switch.sonoff_swv_2
+        note: >-
+          Session 2 of 5 — top hedge (10 m). entity_id says 'terrace' but this valve
+          is the TOP HEDGE.
+      - delay: {seconds: 10}
+      - action: switch.turn_on
+        target:
+          entity_id: switch.sonoff_valve_terrace
+      - delay: {minutes: 25}
+      - action: switch.turn_off
+        target:
+          entity_id: switch.sonoff_valve_terrace
+      - delay: {seconds: 10}
+      - action: switch.turn_off
+        target:
+          entity_id: switch.sonoff_swv_2
+      - delay: {seconds: 20}
+
+      # --- Session 3/5: middle hedge (10 m), 25 min ---
+      - action: switch.turn_on
+        target:
+          entity_id: switch.sonoff_swv_2
+        note: Session 3 of 5 — middle hedge (10 m).
+      - delay: {seconds: 10}
+      - action: switch.turn_on
+        target:
+          entity_id: switch.sonoff_valve_back
+      - delay: {minutes: 25}
+      - action: switch.turn_off
+        target:
+          entity_id: switch.sonoff_valve_back
+      - delay: {seconds: 10}
+      - action: switch.turn_off
+        target:
+          entity_id: switch.sonoff_swv_2
+      - delay: {seconds: 20}
+
+      # --- Session 4/5: bottom hedge (23 m, centre-fed), first half of 50 min ---
+      - action: switch.turn_on
+        target:
+          entity_id: switch.sonoff_swv_2
+        note: >-
+          Session 4 of 5 — bottom hedge (23 m, centre-fed), first half of a 50-min
+          soak. Longest run and lowest end-of-line pressure, so it gets double the
+          time of the 10 m hedges.
+      - delay: {seconds: 10}
+      - action: switch.turn_on
+        target:
+          entity_id: switch.sonoff_swv
+      - delay: {minutes: 25}
+      - action: switch.turn_off
+        target:
+          entity_id: switch.sonoff_swv
+      - delay: {seconds: 10}
+      - action: switch.turn_off
+        target:
+          entity_id: switch.sonoff_swv_2
+      - delay: {seconds: 20}
+
+      # --- Session 5/5: bottom hedge, second half ---
+      - action: switch.turn_on
+        target:
+          entity_id: switch.sonoff_swv_2
+        note: >-
+          Session 5 of 5 — bottom hedge, second half. Reopening after the close resets
+          the SONOFF 30-min hardware timer; the 20 s gap is short enough that the soil
+          sees one continuous soak.
+      - delay: {seconds: 10}
+      - action: switch.turn_on
+        target:
+          entity_id: switch.sonoff_swv
+      - delay: {minutes: 25}
+      - action: switch.turn_off
+        target:
+          entity_id: switch.sonoff_swv
+      - delay: {seconds: 10}
+      - action: switch.turn_off
+        target:
+          entity_id: switch.sonoff_swv_2
+
+      - action: logbook.log
+        data:
+          name: Garden watering
+          message: >-
+            Deep soak: lawn 25 + top 25 + middle 25 + bottom 50 min (per-zone
+            sessions). 3-day forecast rain {{ rain_3d }} mm.
+    else:
+      - action: logbook.log
+        data:
+          name: Garden watering
+          message: >-
+            Skipped watering — 3-day forecast rain {{ rain_3d }} mm >= 10 mm.
