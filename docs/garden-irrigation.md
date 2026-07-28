@@ -21,15 +21,102 @@ Water path: one outdoor tap → **garden main valve** (supplies all garden water
 Each zone steps 25 mm → 20 mm → 15 mm microdrip / "sweating" hose buried just under
 the soil.
 
-| Zone            | Entity                                    | Friendly name              | Notes                                                        |
-| --------------- | ----------------------------------------- | -------------------------- | ------------------------------------------------------------ |
-| **Main**        | `switch.sonoff_swv_2`                     | Garden valve               | Feeds everything; also called the "garage" valve             |
-| **Top hedge**   | `switch.sonoff_valve_terrace`             | Hedge valve top            | 10 m. entity_id says "terrace" — it is the **top hedge**     |
-| **Middle hedge**| `switch.sonoff_valve_back`                | SONOFF valve hedge middle  | 10 m                                                          |
-| **Bottom hedge**| `switch.sonoff_swv`                       | Sonoff valve hedge bottom  | 23 m, hose enters at the **centre** (~11.5 m each way)        |
-| **Terrace**     | `switch.outside_sonoff_hedge_down_right`  | SONOFF valve terrace       | Manual only. entity_id says "hedge_down_right" — it is the **terrace** |
+| Zone             | Entity                                   | Friendly name             | Notes                                                                  |
+| ---------------- | ---------------------------------------- | ------------------------- | ---------------------------------------------------------------------- |
+| **Main**         | `switch.sonoff_swv_2`                    | Garden valve              | Feeds everything; also called the "garage" valve                       |
+| **Top hedge**    | `switch.sonoff_valve_terrace`            | Hedge valve top           | 10 m. entity_id says "terrace" — it is the **top hedge**               |
+| **Middle hedge** | `switch.sonoff_valve_back`               | SONOFF valve hedge middle | 10 m                                                                   |
+| **Bottom hedge** | `switch.sonoff_swv`                      | Sonoff valve hedge bottom | 23 m, hose enters at the **centre** (~11.5 m each way)                 |
+| **Terrace**      | `switch.outside_sonoff_hedge_down_right` | SONOFF valve terrace      | Manual only. entity_id says "hedge_down_right" — it is the **terrace** |
 
 All are SONOFF SWV Zigbee valves.
+
+### Drip hose
+
+[Biltema Droppslang 1/2", 25 m, art. 14-5002](https://www.biltema.se/fritid/tradgard/bevattning/slangar/droppslang-12-25-m-2000057335),
+bought in 25 m rolls and cut to length per zone.
+
+| Spec                 | Value       |
+| -------------------- | ----------- |
+| Length (per roll)    | 25 m        |
+| Diameter             | 22 mm       |
+| Hose connection      | 1/2"        |
+| **Working pressure** | **1.5 bar** |
+| Material             | PE, PP, ABS |
+
+Biltema's own description: *"För precis bevattning ovan eller under jord, rek djup
+15–20 cm. Minskar vattenförbrukningen med upp till 70 %. Slangen kan användas
+tillsammans med Biltemas reduceringsventil."* — i.e. recommended burial depth
+**15-20 cm**, and it is explicitly meant to be paired with a **pressure reducer**.
+
+No flow rate is published for this hose, so run times cannot be derived from the
+spec sheet. They have been measured instead — see
+[Measured water use](#measured-water-use).
+
+## Measured water use
+
+`sensor.cubic_secure_laundry_total_volume` (LK Systems Cubic Secure, whole-house
+incoming meter, litres) captures garden watering, so actual consumption is measurable
+rather than estimated. Hourly statistics, 2026-07-22 → 2026-07-28, on the old daily
+06:00 schedule (lawn 15 / top 10 / middle 10 / bottom 23 min = 58 min of watering):
+
+| Date       | 06:00 bucket | 07:00 bucket | Run total |
+| ---------- | ------------ | ------------ | --------- |
+| 2026-07-22 | 671 L        | 230 L        | 901 L\*   |
+| 2026-07-23 | 550 L        | 113 L        | 663 L     |
+| 2026-07-24 | 581 L        | 81 L         | 662 L     |
+| 2026-07-25 | 638 L        | 52 L         | 690 L     |
+| 2026-07-26 | 669 L        | 22 L         | 691 L     |
+| 2026-07-28 | 662 L        | 17 L         | 679 L     |
+
+\* likely includes household morning use. Baseline consumption in a quiet hour is
+0-20 L, so the run itself is **~650-700 L**.
+
+Derived, assuming total flow is roughly constant across zones (supply-limited rather
+than emitter-limited, which is what running far above the hose's rated pressure
+implies):
+
+- **~11.6 L/min ≈ 700 L/h** while any one zone is open
+- **~70 L/m/h** along the drip hose
+
+| Zone         | Per run | Per week (daily schedule) |
+| ------------ | ------- | ------------------------- |
+| Lawn         | ~174 L  | ~1 220 L                  |
+| Top hedge    | ~116 L  | ~810 L                    |
+| Middle hedge | ~116 L  | ~810 L                    |
+| Bottom hedge | ~267 L  | ~1 870 L                  |
+| **Total**    | ~670 L  | **~4 700 L**              |
+
+### The pressure problem
+
+`sensor.cubic_secure_laundry_water_pressure` reads **~5 160 hPa = 5.16 bar** at the
+incoming main. The drip hose is rated **1.5 bar**.
+
+The pressure actually reaching the buried hose is lower than 5.16 bar — the reading is
+at the house main, and the garden tap, the SONOFF valves and the 25 → 20 → 15 mm
+step-downs all drop pressure, more so under flow. But the measured ~70 L/m/h is roughly
+an order of magnitude above what this class of hose delivers at its rated pressure,
+which is consistent with the line running well above 1.5 bar.
+
+Consequences:
+
+1. **Gross over-watering.** ~810 L/week on a 10 m hedge row is several times what an
+   established hedge needs. For Ilex crenata this is the dangerous direction — see
+   [Watering strategy](#watering-strategy).
+1. **Uneven distribution.** Above rated pressure the hose delivers hard near the feed
+   and less at the far end, so run length matters more than it should. Worst on the
+   23 m centre-fed bottom hedge.
+1. **Mechanical risk.** PE/PP/ABS well over working pressure, at cut ends and
+   quick-couplings, risks splitting.
+
+**Fix: fit a pressure reducer** on the garden line, downstream of the main valve so all
+zones benefit. Biltema sells one intended for this hose and recommends it in the product
+description. Until that is fitted, run times cannot be tuned meaningfully — a deep soak
+and a sensible weekly volume are not simultaneously achievable at this flow rate, since
+the target volume is reached in a few minutes.
+
+**Re-measure after fitting it.** The flow rate will change substantially, invalidating
+every run time below.
 
 **AquaPrecise** is a separate multi-contour drip controller teed into the line just
 before the bottom-hedge valve:
@@ -95,6 +182,13 @@ Other care, not automated:
 
 ## Schedule
 
+> **Status: NOT DEPLOYED.** The schedule below was designed to hold weekly volumes
+> roughly constant while switching to deep+infrequent soaks. The measurements in
+> [Measured water use](#measured-water-use) came later and show the *existing* weekly
+> volume is already ~5x too high, so holding it constant is the wrong target. Fit the
+> pressure reducer, re-measure, then set run times from the new flow rate. The live
+> automation is still on the old daily schedule.
+
 Automation: `automation.garden_watering_daily_unless_rain`
 (alias "Garden watering — Mon/Wed/Fri unless rain"). Deployable config:
 [`garden-watering.yaml`](garden-watering.yaml).
@@ -102,13 +196,13 @@ Automation: `automation.garden_watering_daily_unless_rain`
 Trigger 06:00, condition `weekday: [mon, wed, fri]`, skipped if 3-day forecast rain
 ≥ 10 mm.
 
-| # | Session      | Zone                          | Soak    |
-| - | ------------ | ----------------------------- | ------- |
-| 1 | Lawn         | AquaPrecise `contour_1`       | 25 min  |
-| 2 | Top hedge    | `switch.sonoff_valve_terrace` | 25 min  |
-| 3 | Middle hedge | `switch.sonoff_valve_back`    | 25 min  |
-| 4 | Bottom hedge | `switch.sonoff_swv`           | 25 min  |
-| 5 | Bottom hedge | `switch.sonoff_swv`           | 25 min  |
+| #   | Session      | Zone                          | Soak   |
+| --- | ------------ | ----------------------------- | ------ |
+| 1   | Lawn         | AquaPrecise `contour_1`       | 25 min |
+| 2   | Top hedge    | `switch.sonoff_valve_terrace` | 25 min |
+| 3   | Middle hedge | `switch.sonoff_valve_back`    | 25 min |
+| 4   | Bottom hedge | `switch.sonoff_swv`           | 25 min |
+| 5   | Bottom hedge | `switch.sonoff_swv`           | 25 min |
 
 Sessions 4 and 5 are one 50-minute soak split across two valve opens, because 50 min
 exceeds the hardware cap. The ~20 s gap between them resets the valve timer but is far
@@ -119,12 +213,12 @@ so the main is never open longer than ~25 min 20 s.
 
 ### Weekly totals vs. the previous schedule
 
-| Zone         | Was (daily)       | Now (Mon/Wed/Fri)  |
-| ------------ | ----------------- | ------------------ |
-| Lawn         | 15 min × 7 = 105  | 25 min × 3 = 75    |
-| Top hedge    | 10 min × 7 = 70   | 25 min × 3 = 75    |
-| Middle hedge | 10 min × 7 = 70   | 25 min × 3 = 75    |
-| Bottom hedge | 23 min × 7 = 161  | 50 min × 3 = 150   |
+| Zone         | Was (daily)      | Now (Mon/Wed/Fri) |
+| ------------ | ---------------- | ----------------- |
+| Lawn         | 15 min × 7 = 105 | 25 min × 3 = 75   |
+| Top hedge    | 10 min × 7 = 70  | 25 min × 3 = 75   |
+| Middle hedge | 10 min × 7 = 70  | 25 min × 3 = 75   |
+| Bottom hedge | 23 min × 7 = 161 | 50 min × 3 = 150  |
 
 Hedge volumes are roughly unchanged; what changed is that the same water now arrives in
 3 deep soaks instead of 7 shallow ones. The lawn drops ~30 %, which is the one figure
