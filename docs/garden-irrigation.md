@@ -321,13 +321,17 @@ subsoil. Cross-check the volume against the Cubic Secure meter.
   split into two opens rather than exceeding the hardware cap).
 - Soil still wet at the next session → cut frequency before cutting duration.
 
-### Superseded plan
+### Alternative considered: Mon/Wed/Fri deep soaks
 
-An earlier revision moved to Mon/Wed/Fri with 25-min soaks (bottom hedge 2 × 25),
-designed to hold weekly volume roughly constant while making each soak deeper. The
-measurements above then showed the existing weekly volume was itself the problem, so
-holding it constant was the wrong target. That plan was never deployed. It becomes
-viable again once flow is at spec, with durations recalculated.
+Mon/Wed/Fri with 25-min soaks (bottom hedge 2 × 25, split across two valve opens to stay
+under the ~30-min hardware cap) would hold weekly volume roughly constant while making
+each soak deeper — the textbook deep-and-infrequent pattern for Ilex crenata. It was
+written and never deployed; Mon/Thu at unchanged durations was chosen instead, to test
+the water saving first.
+
+It remains the obvious next configuration if Mon/Thu proves too dry, and is the natural
+target once a pressure reducer is fitted and durations are recalculated from a
+re-measured flow rate.
 
 ## Related automations
 
