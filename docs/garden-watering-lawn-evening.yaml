@@ -1,0 +1,118 @@
+# Garden watering — lawn evening top-up
+# Deployable config for automation.garden_watering_lawn_evening_top_up_mon_thu
+#
+# NOT part of the Blockheat automation set. Kept in docs/ (not automations/) because
+# it is a separate system and uses modern plural triggers/conditions/actions keys.
+# Rationale: docs/garden-irrigation.md#lawn-evening-top-up
+#
+# Second lawn-only session, doubling lawn water from 15 to 30 min per watering day
+# (30 -> 60 min/week). The lawn was the one zone whose weekly total dropped when the
+# main schedule went from daily to Mon/Thu.
+#
+# TWO THINGS NOT TO BREAK:
+#
+# 1. The 15-min run length is a hard ceiling, not a preference.
+#    garden_valve_failsafe_auto_close_if_left_open force-closes the main valve at
+#    20 min, and its exemption checks ONLY the morning automation's `current`
+#    attribute — it does not know this automation exists. Anything over ~19 min here
+#    gets silently chopped at 20 min while appearing to work. Whitelist this
+#    automation in the failsafe BEFORE lengthening the session.
+#
+# 2. Lawn only. The hedges are not watered here, and only ONE zone may ever be open
+#    at a time because they share one supply line.
+
+id: '1785393943126'
+alias: Garden watering — lawn evening top-up (Mon/Thu)
+description: >-
+  Second lawn-only session at 19:00 on Mon/Thu, doubling lawn water from 15 to 30 min
+  per watering day (30 -> 60 min/week). Added 2026-07-30 at owner's request; the lawn
+  was the one zone whose weekly total dropped when the schedule went from daily to
+  Mon/Thu. Lawn only — the hedges are NOT watered here. Kept as a separate automation
+  so the morning run stays short. 19:00 rather than later so the grass has a couple of
+  hours to dry before dark (wet grass overnight invites fungal disease). Held to 15 min
+  because garden_valve_failsafe_auto_close_if_left_open force-closes the main at 20 min
+  for any run it does not recognise, and it only whitelists the morning automation.
+  Rationale: docs/garden-irrigation.md
+mode: single
+
+triggers:
+  - trigger: time
+    at: "19:00:00"
+
+conditions:
+  - condition: time
+    weekday: [mon, thu]
+    note: >-
+      Matches the morning schedule, so the lawn gets two sessions on the same two days
+      rather than spreading over more days.
+  - condition: numeric_state
+    entity_id: automation.garden_watering_daily_unless_rain
+    attribute: current
+    below: 1
+    note: >-
+      Only ONE zone may run at a time (shared supply pressure). The morning run
+      finishes ~07:06 so overlap is not expected, but this is cheap insurance if it is
+      ever delayed or manually triggered.
+
+actions:
+  - action: weather.get_forecasts
+    data:
+      type: daily
+    target:
+      entity_id: weather.forecast_home
+    response_variable: fc
+
+  - variables:
+      rain_3d: >-
+        {{ (fc['weather.forecast_home']['forecast'][:3]
+            | map(attribute='precipitation') | map('float', 0) | sum) | round(1) }}
+
+  - if:
+      - "{{ rain_3d < 10 }}"
+    then:
+      - action: switch.turn_off
+        target:
+          entity_id:
+            - switch.sonoff_swv
+            - switch.sonoff_valve_back
+            - switch.sonoff_valve_terrace
+            - switch.outside_sonoff_hedge_down_right
+        continue_on_error: true
+        note: Clean slate — make sure no hedge zone is open before feeding the lawn.
+
+      - action: switch.turn_on
+        target:
+          entity_id: switch.sonoff_swv_2
+      - delay: {seconds: 10}
+      - action: number.set_value
+        target:
+          entity_id: number.aquaprecise_manual_watering_time
+        data:
+          value: 900
+      - action: select.select_option
+        target:
+          entity_id: select.aquaprecise_watering
+        data:
+          option: contour_1
+      - delay: {minutes: 15}
+      - action: select.select_option
+        target:
+          entity_id: select.aquaprecise_watering
+        data:
+          option: rest
+      - delay: {seconds: 10}
+      - action: switch.turn_off
+        target:
+          entity_id: switch.sonoff_swv_2
+
+      - action: logbook.log
+        data:
+          name: Garden watering
+          message: >-
+            Lawn evening top-up 15 min. 3-day forecast rain {{ rain_3d }} mm.
+    else:
+      - action: logbook.log
+        data:
+          name: Garden watering
+          message: >-
+            Skipped lawn evening top-up — 3-day forecast rain {{ rain_3d }} mm >= 10 mm.

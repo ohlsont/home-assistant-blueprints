@@ -18,9 +18,12 @@ documented in [`docs/home-architecture.md`](docs/home-architecture.md).
 ## Garden Irrigation
 
 Unrelated to heating, but lives in the same Home Assistant instance. Valve topology,
-the Ilex crenata 'Caroline Upright' hedges, and the watering schedule are documented in
-[`docs/garden-irrigation.md`](docs/garden-irrigation.md), with the deployable automation
-config in [`docs/garden-watering.yaml`](docs/garden-watering.yaml).
+the Ilex crenata 'Caroline Upright' hedges, measured water use, and the watering
+schedule are documented in
+[`docs/garden-irrigation.md`](docs/garden-irrigation.md). Deployable automation configs:
+[`docs/garden-watering.yaml`](docs/garden-watering.yaml) (morning, all zones) and
+[`docs/garden-watering-lawn-evening.yaml`](docs/garden-watering-lawn-evening.yaml)
+(lawn evening top-up).
 
 ## Energy Savings Dashboard
 
