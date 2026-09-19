@@ -19,7 +19,7 @@ flowchart TD
     pv["sensor.pv_power\n(PV production)"]
     outdoor["sensor.hue_outdoor_motion_sensor_1_temperature\n(outdoor temp)"]
     room1["sensor.lumi_lumi_sensor_ht_agl02_temperature\n(room 1)"]
-    room2["sensor.sonoff_snzb_02d_bedroom_2_temperature\n(room 2)"]
+    room2["sensor.alpstuga_bedroom_2_temperature\n(room 2, Sonoff fallback)"]
     storage["sensor.sonoff_snzb_02d_temp_humid_temperature\n(storage)"]
     forecast["weather.forecast_home\n(hourly forecast)"]
 
