@@ -30,7 +30,8 @@
 #     When solar_backoff: lower the room floor (bor - warm_floor_drop_c instead of
 #     bor - comfort_margin_c) AND skip the storage-charging branch.
 #
-#   satisfied: all rooms >= floor, where
+#   satisfied: all reporting rooms >= floor (an unavailable room is skipped;
+#              if no room reports, not satisfied), where
 #       floor = bor - warm_floor_drop_c  if solar_backoff  else  bor - comfort_margin_c
 #   storage_target: bor + 3.0*(1-t), where t = clamp((effective_outdoor+5)/15, 0, 1)
 #                   bor+3.0 at -5 C outdoor, bor+0.0 at +10 C outdoor
@@ -46,6 +47,9 @@
 #   clamped to [10, 26] °C
 #
 # Parameters:
+#   room1 (Bedroom 1)     = sensor.lumi_lumi_sensor_ht_agl02_temperature
+#   room2 (Bedroom 2)     = sensor.alpstuga_bedroom_2_temperature, falling back to
+#                           sensor.sonoff_snzb_02d_bedroom_2_temperature if unavailable
 #   bor_c                 = from input_number.blockheat_bor  (heat pump BOR-värde)
 #   comfort_target_c      = 22.0 °C  (desired room temp)
 #   storage_target_c      = dynamic: bor+3.0 at outdoor<=-5 C, bor+0.0 at outdoor>=+10 C
@@ -73,6 +77,7 @@ trigger:
   - platform: state
     entity_id:
       - sensor.lumi_lumi_sensor_ht_agl02_temperature
+      - sensor.alpstuga_bedroom_2_temperature
       - sensor.sonoff_snzb_02d_bedroom_2_temperature
       - sensor.sonoff_snzb_02d_temp_humid_temperature
       - sensor.forecast_home_temperature_feels_like
@@ -91,8 +96,11 @@ action:
       bor: "{{ states('input_number.blockheat_bor') | float(22.0) }}"
       room1: >
         {{ states('sensor.lumi_lumi_sensor_ht_agl02_temperature') | float(none) }}
+      # Bedroom 2: ALPSTUGA (Thread) first, Sonoff (Zigbee) as fallback.
       room2: >
-        {{ states('sensor.sonoff_snzb_02d_bedroom_2_temperature') | float(none) }}
+        {% set alp = states('sensor.alpstuga_bedroom_2_temperature') | float(none) %}
+        {{ alp if alp is not none
+           else states('sensor.sonoff_snzb_02d_bedroom_2_temperature') | float(none) }}
       storage: >
         {{ states('sensor.sonoff_snzb_02d_temp_humid_temperature') | float(none) }}
       outdoor: >
@@ -145,10 +153,12 @@ action:
         {{ max_uv_24h >= (3.5 if currently_backoff else 4.0) }}
       solar_backoff: >
         {{ warm_day and sunny_day }}
+      # Judge only the rooms that are reporting: one dead sensor must not force
+      # the heat branch. With no room reporting at all, heat (fail warm).
       satisfied: >
         {% set floor = (bor - 2.0) if solar_backoff else (bor - 0.25) %}
-        {{ room1 is not none and room2 is not none
-           and room1 >= floor and room2 >= floor }}
+        {% set rooms = [room1, room2] | reject('none') | list %}
+        {{ rooms | length > 0 and rooms | min >= floor }}
       storage_target: >
         {% set t = [[(effective_outdoor + 5) / 15, 0.0] | max, 1.0] | min %}
         {{ bor + 3.0 * (1 - t) }}
