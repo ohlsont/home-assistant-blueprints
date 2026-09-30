@@ -30,7 +30,8 @@
 #     When solar_backoff: lower the room floor (bor - warm_floor_drop_c instead of
 #     bor - comfort_margin_c) AND skip the storage-charging branch.
 #
-#   satisfied: all rooms >= floor, where
+#   satisfied: all reporting rooms >= floor (an unavailable room is skipped;
+#              if no room reports, not satisfied), where
 #       floor = bor - warm_floor_drop_c  if solar_backoff  else  bor - comfort_margin_c
 #   storage_target: bor + 3.0*(1-t), where t = clamp((effective_outdoor+5)/15, 0, 1)
 #                   bor+3.0 at -5 C outdoor, bor+0.0 at +10 C outdoor
@@ -152,10 +153,12 @@ action:
         {{ max_uv_24h >= (3.5 if currently_backoff else 4.0) }}
       solar_backoff: >
         {{ warm_day and sunny_day }}
+      # Judge only the rooms that are reporting: one dead sensor must not force
+      # the heat branch. With no room reporting at all, heat (fail warm).
       satisfied: >
         {% set floor = (bor - 2.0) if solar_backoff else (bor - 0.25) %}
-        {{ room1 is not none and room2 is not none
-           and room1 >= floor and room2 >= floor }}
+        {% set rooms = [room1, room2] | reject('none') | list %}
+        {{ rooms | length > 0 and rooms | min >= floor }}
       storage_target: >
         {% set t = [[(effective_outdoor + 5) / 15, 0.0] | max, 1.0] | min %}
         {{ bor + 3.0 * (1 - t) }}
