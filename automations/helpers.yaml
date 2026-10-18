@@ -1,5 +1,5 @@
 # Blockheat replacement helpers
-# Apply via MCP: ha_config_set_helper × 5
+# Apply via MCP: ha_config_set_helper × 10
 #
 # These replace the unavailable blockheat integration entities:
 #   binary_sensor.blockheat_energy_saving_active  → input_boolean.energy_saving_active
@@ -10,6 +10,8 @@
 #   input_number.blockheat_bor  — heat pump BOR-värde (indoor setpoint)
 #   input_boolean.blockheat_comfort_solar_backoff — comfort warm+sunny backoff state
 #     (hysteresis flag written by comfort_target.yaml; see that file's solar_backoff logic)
+#   input_boolean.blockheat_sensor_alert_* — notify-once flags written by
+#     sensor_health.yaml (on = an alert went out; off = sensor healthy again)
 
 - platform: input_boolean
   name: energy_saving_active
@@ -45,3 +47,23 @@
   unit_of_measurement: "°C"
   icon: mdi:thermometer-high
   mode: box
+
+- platform: input_boolean
+  name: blockheat_sensor_alert_room1
+  icon: mdi:thermometer-alert
+
+- platform: input_boolean
+  name: blockheat_sensor_alert_room2
+  icon: mdi:thermometer-alert
+
+- platform: input_boolean
+  name: blockheat_sensor_alert_room2_fallback
+  icon: mdi:thermometer-alert
+
+- platform: input_boolean
+  name: blockheat_sensor_alert_storage
+  icon: mdi:thermometer-alert
+
+- platform: input_boolean
+  name: blockheat_sensor_alert_blind
+  icon: mdi:thermometer-alert
