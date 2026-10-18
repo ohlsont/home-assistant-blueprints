@@ -37,7 +37,7 @@ flowchart TD
     saving_target --> ib_saving["input_number.blockheat_target_saving"]
 
     bor --> comfort_target
-    outdoor --> comfort_target["comfort_target.yaml\nroom/storage satisfaction\n+ 6-h forecast boost\n+ warm+sunny backoff"]
+    outdoor --> comfort_target["comfort_target.yaml\nroom/storage satisfaction\n+ 6-h forecast boost\n+ warm+sunny backoff\n+ overheat guard"]
     room1 --> comfort_target
     room2 --> comfort_target
     storage --> comfort_target
@@ -66,10 +66,10 @@ flowchart TD
 
 | File                  | Purpose                                                   |
 | --------------------- | --------------------------------------------------------- |
-| `helpers.yaml`        | Defines 10 helpers (7 input_boolean + 3 input_number)     |
+| `helpers.yaml`        | Defines 11 helpers (8 input_boolean + 3 input_number)     |
 | `policy.yaml`         | Energy-saving policy: top-N price slots + hysteresis      |
 | `saving_target.yaml`  | Ohmigo saving-mode temperature target                     |
-| `comfort_target.yaml` | Ohmigo comfort target: 6-h boost + warm+sunny backoff     |
+| `comfort_target.yaml` | Ohmigo comfort target: boost, backoff, overheat guard     |
 | `final_writer.yaml`   | Writes Ohmigo setpoint with deadband; re-asserts on drift |
 | `daikin_policy.yaml`  | Daikin on/off per energy-saving flag                      |
 | `dehumidifier.yaml`   | Dehumidifier control (updated entity reference)           |
@@ -94,6 +94,13 @@ ha_config_set_helper(
     helper_type="input_boolean",
     name="blockheat_comfort_solar_backoff",
     icon="mdi:weather-sunny",
+)
+
+# input_boolean.blockheat_comfort_overheat_guard
+ha_config_set_helper(
+    helper_type="input_boolean",
+    name="blockheat_comfort_overheat_guard",
+    icon="mdi:thermometer-alert",
 )
 
 # input_boolean.blockheat_sensor_alert_{room1,room2,room2_fallback,storage,blind}
@@ -203,7 +210,10 @@ days of history: the Sonoffs report in 0.2 °C steps and sit still for up to
 | bor_c                        | from `input_number.blockheat_bor` (heat pump BOR-värde, default 22.0 °C)        |
 | comfort_target_c             | 22.0 °C (desired room temp)                                                     |
 | storage_target_c             | dynamic: bor+3.0 at outdoor \<=-5 °C, bor+0.0 at outdoor >=+10 °C (feels-like)  |
-| room_overheat_margin_c       | 1.5 °C (above BOR, hard ceiling for storage heating)                            |
+| room_overheat_margin_c       | 1.5 °C (above BOR; a bedroom above it trips the overheat guard)                 |
+| bathroom_overheat_margin_c   | 3.0 °C (above BOR; the storage/bathroom sensor above it trips the guard)        |
+| overheat_hysteresis_c        | 0.5 °C (guard releases 0.5 °C below the trip limits)                            |
+| guard_min_room_drop_c        | 1.0 °C (guard yields when the coldest bedroom falls below bor − 1.5)            |
 | comfort_margin_c             | 0.25 °C                                                                         |
 | cold_threshold               | 2.0 °C                                                                          |
 | max_boost                    | 3.0 °C                                                                          |
