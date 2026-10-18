@@ -36,13 +36,26 @@
 #   storage_target: bor + 3.0*(1-t), where t = clamp((effective_outdoor+5)/15, 0, 1)
 #                   bor+3.0 at -5 C outdoor, bor+0.0 at +10 C outdoor
 #   storage_cold: storage < storage_target - comfort_margin_c
-#   rooms_overheated: any room > bor + room_overheat_margin_c
+#
+#   overheat_guard: some heated space is too hot -> stop the heat pump, even
+#                   when another room is still below the floor. Without it the
+#                   coldest room alone keeps the heat pump running and the
+#                   floor-heated bathroom downstairs (the storage sensor)
+#                   overheats. Hysteresis-stickied via helper:
+#       hot (trip)    = room1 or room2 > bor + room_overheat_margin_c (1.5)
+#                       or storage > bor + bathroom_overheat_margin_c (3.0)
+#       hot (release) = same limits minus overheat_hysteresis_c (0.5)
+#       The guard yields once the coldest reporting room is truly cold, so a
+#       stuck-hot sensor cannot freeze the house:
+#       trips only while coldest room >= bor - guard_min_room_drop_c (1.0)
+#       releases when  coldest room <  bor - guard_min_room_drop_c - 0.5
+#       No room reporting -> guard off (fail warm).
 #
 #   Ohmigo values (reported room temp to heat pump, BOR from helper):
-#   if not satisfied:                              ohmigo = bor - 2.0 - boost  (heat rooms)
-#   elif storage_cold and not solar_backoff
-#        and not overheated:                       ohmigo = bor - 2.5 - boost  (charge storage)
-#   else (satisfied, no storage need, hot, or      ohmigo = bor + 2.0          (stop heat pump)
+#   if overheat_guard:                             ohmigo = bor + 2.0          (stop heat pump)
+#   elif not satisfied:                            ohmigo = bor - 2.0 - boost  (heat rooms)
+#   elif storage_cold and not solar_backoff:       ohmigo = bor - 2.5 - boost  (charge storage)
+#   else (satisfied, no storage need, or           ohmigo = bor + 2.0          (stop heat pump)
 #         solar backoff):
 #   clamped to [10, 26] °C
 #
@@ -53,7 +66,10 @@
 #   bor_c                 = from input_number.blockheat_bor  (heat pump BOR-värde)
 #   comfort_target_c      = 22.0 °C  (desired room temp)
 #   storage_target_c      = dynamic: bor+3.0 at outdoor<=-5 C, bor+0.0 at outdoor>=+10 C
-#   room_overheat_margin_c = 1.5 C  (above BOR, hard ceiling for storage heating)
+#   room_overheat_margin_c = 1.5 C  (above BOR, bedroom ceiling for the overheat guard)
+#   bathroom_overheat_margin_c = 3.0 °C  (above BOR, bathroom/storage ceiling)
+#   overheat_hysteresis_c = 0.5 °C
+#   guard_min_room_drop_c = 1.0 °C  (guard yields below bor - 1.0, re-arms at bor - 1.0)
 #   comfort_margin_c      = 0.25 °C
 #   cold_threshold        = 2.0 °C
 #   max_boost             = 3.0 °C
@@ -164,13 +180,23 @@ action:
         {{ bor + 3.0 * (1 - t) }}
       storage_cold: >
         {{ storage is not none and storage < (storage_target - 0.25) }}
-      rooms_overheated: >
-        {{ (room1 is not none and room1 > bor + 1.5)
-           or (room2 is not none and room2 > bor + 1.5) }}
+      currently_guard: >
+        {{ is_state('input_boolean.blockheat_comfort_overheat_guard', 'on') }}
+      # A hot room or bathroom stops the heat pump even while another room is
+      # below the floor. Release limits sit 0.5 °C below the trip limits.
+      overheat_guard: >
+        {% set slack = 0.5 if currently_guard else 0.0 %}
+        {% set hot = (room1 is not none and room1 > bor + 1.5 - slack)
+           or (room2 is not none and room2 > bor + 1.5 - slack)
+           or (storage is not none and storage > bor + 3.0 - slack) %}
+        {% set rooms = [room1, room2] | reject('none') | list %}
+        {{ hot and rooms | length > 0 and rooms | min >= bor - 1.0 - slack }}
       raw: >
-        {% if not satisfied %}
+        {% if overheat_guard %}
+          {{ bor + 2.0 }}
+        {% elif not satisfied %}
           {{ bor - 2.0 - boost }}
-        {% elif storage_cold and not solar_backoff and not rooms_overheated %}
+        {% elif storage_cold and not solar_backoff %}
           {{ bor - 2.5 - boost }}
         {% else %}
           {{ bor + 2.0 }}
@@ -194,3 +220,15 @@ action:
       - action: input_boolean.turn_off
         target:
           entity_id: input_boolean.blockheat_comfort_solar_backoff
+  # Persist the overheat guard so its hysteresis is sticky.
+  - if:
+      - condition: template
+        value_template: "{{ overheat_guard }}"
+    then:
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.blockheat_comfort_overheat_guard
+    else:
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.blockheat_comfort_overheat_guard

@@ -148,6 +148,12 @@
       <div class="branch">
         <div class="gut"></div>
         <div>
+          <div class="cond" id="cond-guard"></div>
+          <div class="leaf stop" id="leaf-guard">
+            <div class="title">Overheat guard</div>
+            <div class="desc">A bedroom or the bathroom is too hot → stop, even if another room is below the floor.</div>
+            <div class="formula">ohmigo = bor + 2.0</div>
+          </div>
           <div class="cond" id="cond-heat"></div>
           <div class="leaf heat" id="leaf-heat">
             <div class="title">Heat rooms</div>
@@ -163,7 +169,7 @@
           <div class="cond" id="cond-stop">else</div>
           <div class="leaf stop" id="leaf-stop">
             <div class="title">Stop heat pump</div>
-            <div class="desc">Satisfied &amp; no storage need (or hot, or warm+sunny backoff).</div>
+            <div class="desc">Satisfied &amp; no storage need (or warm+sunny backoff).</div>
             <div class="formula">ohmigo = bor + 2.0</div>
           </div>
         </div>
@@ -211,6 +217,8 @@ const SNAPSHOT = {
 const PARAMS_DEFAULT = {
   comfort_margin: 0.25,
   room_overheat_margin: 1.5,
+  bathroom_overheat_margin: 3.0,
+  guard_min_room_drop: 1.0,
   warm_floor_drop: 2.0,
   warm_t: 12.0, warm_hyst: 1.0,
   uv_t: 4.0, uv_hyst: 0.5,
@@ -235,18 +243,22 @@ function computeComfort(s, p) {
   const t = Math.min(Math.max((effective_outdoor + 5) / 15, 0), 1);
   const storage_target = bor + 3.0 * (1 - t);
   const storage_cold = s.storage < (storage_target - p.comfort_margin);
-  const rooms_overheated = s.room1 > bor + p.room_overheat_margin
-                        || s.room2 > bor + p.room_overheat_margin;
+  // Trip limits only: the sticky 0.5 °C release band lives in the helper.
+  const hot = s.room1 > bor + p.room_overheat_margin
+           || s.room2 > bor + p.room_overheat_margin
+           || s.storage > bor + p.bathroom_overheat_margin;
+  const overheat_guard = hot && Math.min(s.room1, s.room2) >= bor - p.guard_min_room_drop;
 
   let raw, branch;
-  if (!satisfied) { raw = bor - 2.0 - boost; branch = "heat"; }
-  else if (storage_cold && !solar_backoff && !rooms_overheated) { raw = bor - 2.5 - boost; branch = "storage"; }
+  if (overheat_guard) { raw = bor + 2.0; branch = "guard"; }
+  else if (!satisfied) { raw = bor - 2.0 - boost; branch = "heat"; }
+  else if (storage_cold && !solar_backoff) { raw = bor - 2.5 - boost; branch = "storage"; }
   else { raw = bor + 2.0; branch = "stop"; }
   const target = Math.min(Math.max(raw, 10.0), 26.0);
 
   return { bor, effective_outdoor, boost, warm_thr, uv_thr, warm_day, sunny_day,
            solar_backoff, floor, satisfied, storage_target, storage_cold,
-           rooms_overheated, raw, target, branch, heats: target < bor };
+           overheat_guard, raw, target, branch, heats: target < bor };
 }
 
 // ---- UI ------------------------------------------------------------------
@@ -265,6 +277,7 @@ const PARAM_DEFS = [
   { key: "uv_t",            label: "sunny_day_uv_max",  min: 0, max: 8, step: 0.1, unit: "" },
   { key: "warm_hyst",       label: "warm_day_hysteresis_c", min: 0, max: 3, step: 0.5, unit: "°C" },
   { key: "uv_hyst",         label: "sunny_day_uv_hysteresis", min: 0, max: 2, step: 0.1, unit: "" },
+  { key: "bathroom_overheat_margin", label: "bathroom_overheat_margin_c", min: 0, max: 5, step: 0.5, unit: "°C", hint: "bathroom ceiling above BOR" },
 ];
 
 let state, params;
@@ -340,15 +353,16 @@ function render() {
     boolChip("solar_backoff", r.solar_backoff) +
     boolChip("satisfied", r.satisfied) +
     boolChip("storage_cold", r.storage_cold) +
-    boolChip("rooms_overheated", r.rooms_overheated);
+    boolChip("overheat_guard", r.overheat_guard);
 
   // branch conditions
-  document.getElementById("cond-heat").textContent = `if not satisfied  (rooms below floor ${fmt(r.floor)} °C)`;
+  document.getElementById("cond-guard").textContent = `if overheat_guard  (room > ${fmt(r.bor + params.room_overheat_margin)} or bathroom > ${fmt(r.bor + params.bathroom_overheat_margin)} °C)`;
+  document.getElementById("cond-heat").textContent = `elif not satisfied  (rooms below floor ${fmt(r.floor)} °C)`;
   document.getElementById("cond-storage").textContent =
-    `elif storage_cold and not solar_backoff and not overheated`;
+    `elif storage_cold and not solar_backoff`;
 
   // tree highlight
-  ["heat", "storage", "stop"].forEach(b => {
+  ["guard", "heat", "storage", "stop"].forEach(b => {
     const el = document.getElementById("leaf-" + b);
     el.classList.toggle("active", r.branch === b);
   });
@@ -367,7 +381,7 @@ function render() {
       ? `(lowered by warm+sunny backoff — rooms may coast ${fmt(params.warm_floor_drop)} °C cooler)`
       : `(normal: bor − ${fmt(params.comfort_margin)})`);
 
-  const branchName = { heat: "Heat rooms", storage: "Charge storage", stop: "Stop heat pump" }[r.branch];
+  const branchName = { guard: "Overheat guard", heat: "Heat rooms", storage: "Charge storage", stop: "Stop heat pump" }[r.branch];
   document.getElementById("resultNote").textContent =
     `Active branch: ${branchName}. raw = ${fmt(r.raw)} → clamped to [10, 26].`;
 }
