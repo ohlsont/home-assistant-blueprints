@@ -16,7 +16,8 @@ The two devices are **independent** — the Daikin policy does not affect the Oh
 ```mermaid
 flowchart TD
     nordpool["sensor.nordpool_kwh_se3_sek_3_10_025\n(spot price)"]
-    pv["sensor.pv_power\n(PV production)"]
+    pv["sensor.solar_pv_power\n(PV production)"]
+    grid["sensor.power_tarngatan_2\n(grid import)"]
     outdoor["sensor.hue_outdoor_motion_sensor_1_temperature\n(outdoor temp)"]
     room1["sensor.lumi_lumi_sensor_ht_agl02_temperature\n(room 1)"]
     room2["sensor.alpstuga_bedroom_2_temperature\n(room 2, Sonoff fallback)"]
@@ -25,7 +26,8 @@ flowchart TD
 
     nordpool --> policy
     pv --> policy
-    policy["policy.yaml\ntop-N price slots\n+ hysteresis + PV bypass"]
+    grid --> policy
+    policy["policy.yaml\ntop-N price slots\n+ hysteresis + one-slot bridge\n+ debounced PV-export bypass"]
 
     policy --> flag["input_boolean.energy_saving_active"]
 
@@ -59,15 +61,15 @@ flowchart TD
 
 ## Files
 
-| File                  | Purpose                                                   |
-| --------------------- | --------------------------------------------------------- |
-| `helpers.yaml`        | Defines 5 helpers (2 input_boolean + 3 input_number)      |
-| `policy.yaml`         | Energy-saving policy: top-N price slots + hysteresis      |
-| `saving_target.yaml`  | Ohmigo saving-mode temperature target                     |
-| `comfort_target.yaml` | Ohmigo comfort target: 6-h boost + warm+sunny backoff     |
-| `final_writer.yaml`   | Writes Ohmigo setpoint with deadband; re-asserts on drift |
-| `daikin_policy.yaml`  | Daikin on/off per energy-saving flag                      |
-| `dehumidifier.yaml`   | Dehumidifier control (updated entity reference)           |
+| File                  | Purpose                                                    |
+| --------------------- | ---------------------------------------------------------- |
+| `helpers.yaml`        | Defines 5 helpers (2 input_boolean + 3 input_number)       |
+| `policy.yaml`         | Energy-saving policy: top-N price slots, bridge, PV export |
+| `saving_target.yaml`  | Ohmigo saving-mode temperature target                      |
+| `comfort_target.yaml` | Ohmigo comfort target: 6-h boost + warm+sunny backoff      |
+| `final_writer.yaml`   | Writes Ohmigo setpoint with deadband; re-asserts on drift  |
+| `daikin_policy.yaml`  | Daikin on/off per energy-saving flag                       |
+| `dehumidifier.yaml`   | Dehumidifier control (updated entity reference)            |
 
 > **Note:** `comfort_target.yaml` uses `weather.get_forecasts` which requires HA 2023.9+.
 
@@ -158,29 +160,32 @@ ha_call_service("automation.trigger", {"entity_id": "automation.blockheat_energy
 
 ## Parameters used
 
-| Parameter                    | Value                                                                           |
-| ---------------------------- | ------------------------------------------------------------------------------- |
-| minutes_to_block             | 240 min → 16 slots                                                              |
-| price_ignore_below           | 0.6 SEK/kWh                                                                     |
-| pv_ignore_above_w            | 3000 W                                                                          |
-| saving_offset_c              | 0.5 °C (below BOR during saving)                                                |
-| warm_shutdown_avg_forecast_c | 2.0 °C (feels-like, wind-chill-adjusted)                                        |
-| warm_shutdown_hysteresis_c   | 1.0 °C                                                                          |
-| bor_c                        | from `input_number.blockheat_bor` (heat pump BOR-värde, default 22.0 °C)        |
-| comfort_target_c             | 22.0 °C (desired room temp)                                                     |
-| storage_target_c             | dynamic: bor+3.0 at outdoor \<=-5 °C, bor+0.0 at outdoor >=+10 °C (feels-like)  |
-| room_overheat_margin_c       | 1.5 °C (above BOR, hard ceiling for storage heating)                            |
-| comfort_margin_c             | 0.25 °C                                                                         |
-| cold_threshold               | 2.0 °C                                                                          |
-| max_boost                    | 3.0 °C                                                                          |
-| boost_slope_c                | 4.0                                                                             |
-| warm_day_avg_forecast_c      | 12.0 °C (24h feels-like avg; warm side of comfort solar backoff)                |
-| warm_day_hysteresis_c        | 1.0 °C                                                                          |
-| sunny_day_uv_max             | 4.0 (max `uv_index` over next 24h; sunny side of comfort solar backoff)         |
-| sunny_day_uv_hysteresis      | 0.5                                                                             |
-| warm_floor_drop_c            | 2.0 °C (lowered room floor on warm+sunny days: bor − 2.0 instead of bor − 0.25) |
-| control_min_c                | 10.0 °C                                                                         |
-| control_max_c                | 26.0 °C                                                                         |
-| min_toggle_interval_min      | 15                                                                              |
-| price_hysteresis_fraction    | 0.05 (5%)                                                                       |
-| control_write_delta_c        | 0.2 °C                                                                          |
+| Parameter                    | Value                                                                            |
+| ---------------------------- | -------------------------------------------------------------------------------- |
+| minutes_to_block             | 240 min → 16 slots                                                               |
+| price_ignore_below           | 0.6 SEK/kWh                                                                      |
+| grid_import_on_min_w         | 500 W (saving starts only while importing at least this much)                    |
+| export_debounce_s            | 300 s (0 W import must hold this long to end a saving window)                    |
+| pv_export_min_w              | 500 W (`sensor.solar_pv_power`; below it, 0 W import is the battery, not export) |
+| price_dip_bridge_slots       | 1 (a saving window rides through one cheaper slot if the next one qualifies)     |
+| saving_offset_c              | 0.5 °C (below BOR during saving)                                                 |
+| warm_shutdown_avg_forecast_c | 2.0 °C (feels-like, wind-chill-adjusted)                                         |
+| warm_shutdown_hysteresis_c   | 1.0 °C                                                                           |
+| bor_c                        | from `input_number.blockheat_bor` (heat pump BOR-värde, default 22.0 °C)         |
+| comfort_target_c             | 22.0 °C (desired room temp)                                                      |
+| storage_target_c             | dynamic: bor+3.0 at outdoor \<=-5 °C, bor+0.0 at outdoor >=+10 °C (feels-like)   |
+| room_overheat_margin_c       | 1.5 °C (above BOR, hard ceiling for storage heating)                             |
+| comfort_margin_c             | 0.25 °C                                                                          |
+| cold_threshold               | 2.0 °C                                                                           |
+| max_boost                    | 3.0 °C                                                                           |
+| boost_slope_c                | 4.0                                                                              |
+| warm_day_avg_forecast_c      | 12.0 °C (24h feels-like avg; warm side of comfort solar backoff)                 |
+| warm_day_hysteresis_c        | 1.0 °C                                                                           |
+| sunny_day_uv_max             | 4.0 (max `uv_index` over next 24h; sunny side of comfort solar backoff)          |
+| sunny_day_uv_hysteresis      | 0.5                                                                              |
+| warm_floor_drop_c            | 2.0 °C (lowered room floor on warm+sunny days: bor − 2.0 instead of bor − 0.25)  |
+| control_min_c                | 10.0 °C                                                                          |
+| control_max_c                | 26.0 °C                                                                          |
+| min_toggle_interval_min      | 15                                                                               |
+| price_hysteresis_fraction    | 0.05 (5%)                                                                        |
+| control_write_delta_c        | 0.2 °C                                                                           |
