@@ -55,19 +55,25 @@ flowchart TD
 
     flag --> dehumidifier["dehumidifier.yaml"]
     dehumidifier --> fan["fan\n(dehumidifier on/off)"]
+
+    room1 -.-> sensor_health["sensor_health.yaml\ndead / stuck / blind alerts"]
+    room2 -.-> sensor_health
+    storage -.-> sensor_health
+    sensor_health --> notify["script.notify_household\n(push to household)"]
 ```
 
 ## Files
 
 | File                  | Purpose                                                   |
 | --------------------- | --------------------------------------------------------- |
-| `helpers.yaml`        | Defines 6 helpers (3 input_boolean + 3 input_number)      |
+| `helpers.yaml`        | Defines 11 helpers (8 input_boolean + 3 input_number)     |
 | `policy.yaml`         | Energy-saving policy: top-N price slots + hysteresis      |
 | `saving_target.yaml`  | Ohmigo saving-mode temperature target                     |
 | `comfort_target.yaml` | Ohmigo comfort target: boost, backoff, overheat guard     |
 | `final_writer.yaml`   | Writes Ohmigo setpoint with deadband; re-asserts on drift |
 | `daikin_policy.yaml`  | Daikin on/off per energy-saving flag                      |
 | `dehumidifier.yaml`   | Dehumidifier control (updated entity reference)           |
+| `sensor_health.yaml`  | Push alert when a room/storage sensor is dead or stuck    |
 
 > **Note:** `comfort_target.yaml` uses `weather.get_forecasts` which requires HA 2023.9+.
 
@@ -96,6 +102,15 @@ ha_config_set_helper(
     name="blockheat_comfort_overheat_guard",
     icon="mdi:thermometer-alert",
 )
+
+# input_boolean.blockheat_sensor_alert_{room1,room2,room2_fallback,storage,blind}
+# Notify-once flags for sensor_health.yaml
+for key in ["room1", "room2", "room2_fallback", "storage", "blind"]:
+    ha_config_set_helper(
+        helper_type="input_boolean",
+        name=f"blockheat_sensor_alert_{key}",
+        icon="mdi:thermometer-alert",
+    )
 
 # input_number.blockheat_bor
 ha_config_set_helper(
@@ -147,6 +162,7 @@ Order matters for initial population:
 1. `final_writer.yaml` — write Ohmigo setpoint
 1. `daikin_policy.yaml` — apply Daikin on/off state
 1. `dehumidifier.yaml` — replace old dehumidifier automation
+1. `sensor_health.yaml` — sensor dead/stuck alerts (needs the 5 alert helpers)
 
 ### 4. Verify
 
@@ -162,6 +178,24 @@ ha_call_service("automation.trigger", {"entity_id": "automation.blockheat_energy
 # Check input_boolean.energy_saving_active reflects price vs cutoff
 # Check number.ohmigo_temperature_2 matches expected setpoint (±0.2 °C deadband)
 ```
+
+## Sensor health alerts
+
+`sensor_health.yaml` watches the four `comfort_target.yaml` inputs and pushes
+via `script.notify_household`. It polls every 10 min, so a sensor that is
+already dead when HA starts is still caught (a `for:` trigger would miss it).
+
+| Alert | Fires when                                                                                       |
+| ----- | ------------------------------------------------------------------------------------------------ |
+| dead  | `unavailable`/`unknown` for more than 1 h                                                        |
+| stuck | value unchanged for more than 3 h (Lumi), 2 h (ALPSTUGA) or 8 h (Sonoffs)                        |
+| blind | Bedroom 1, Bedroom 2 and its fallback all dead for more than 1 h; urgent, time-sensitive push    |
+| back  | an alerted sensor changes from one number to another (a return from `unavailable` is not enough) |
+
+Each alert goes out once: an `input_boolean.blockheat_sensor_alert_*` flag
+holds it until the sensor's next fresh reading. The stuck limits come from 10
+days of history: the Sonoffs report in 0.2 °C steps and sit still for up to
+6 h when healthy.
 
 ## Parameters used
 
