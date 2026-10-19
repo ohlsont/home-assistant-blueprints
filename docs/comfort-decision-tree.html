@@ -218,6 +218,7 @@ const PARAMS_DEFAULT = {
   comfort_margin: 0.25,
   room_overheat_margin: 1.5,
   bathroom_overheat_margin: 3.0,
+  other_bedroom_warm: 0.5,
   guard_min_room_drop: 1.0,
   warm_floor_drop: 2.0,
   warm_t: 12.0, warm_hyst: 1.0,
@@ -244,8 +245,10 @@ function computeComfort(s, p) {
   const storage_target = bor + 3.0 * (1 - t);
   const storage_cold = s.storage < (storage_target - p.comfort_margin);
   // Trip limits only: the sticky 0.5 °C release band lives in the helper.
-  const hot = s.room1 > bor + p.room_overheat_margin
-           || s.room2 > bor + p.room_overheat_margin
+  // A hot bedroom only counts while the other bedroom is warm too.
+  const other_warm = bor + p.other_bedroom_warm;
+  const hot = (s.room1 > bor + p.room_overheat_margin && s.room2 >= other_warm)
+           || (s.room2 > bor + p.room_overheat_margin && s.room1 >= other_warm)
            || s.storage > bor + p.bathroom_overheat_margin;
   const overheat_guard = hot && Math.min(s.room1, s.room2) >= bor - p.guard_min_room_drop;
 

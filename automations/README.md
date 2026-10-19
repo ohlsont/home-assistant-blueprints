@@ -213,6 +213,7 @@ days of history: the Sonoffs report in 0.2 °C steps and sit still for up to
 | room_overheat_margin_c       | 1.5 °C (above BOR; a bedroom above it trips the overheat guard)                 |
 | bathroom_overheat_margin_c   | 3.0 °C (above BOR; the storage/bathroom sensor above it trips the guard)        |
 | overheat_hysteresis_c        | 0.5 °C (guard releases 0.5 °C below the trip limits)                            |
+| other_bedroom_warm_c         | 0.5 °C (above BOR; other bedroom must be this warm for a hot one to trip)       |
 | guard_min_room_drop_c        | 1.0 °C (guard yields when the coldest bedroom falls below bor − 1.5)            |
 | comfort_margin_c             | 0.25 °C                                                                         |
 | cold_threshold               | 2.0 °C                                                                          |
