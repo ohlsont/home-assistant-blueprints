@@ -1,0 +1,5 @@
+[mcp_servers.home-assistant]
+command = "uvx"
+args = ["--python", "3.14", "ha-mcp@9.3.0"]
+env_vars = ["HOMEASSISTANT_URL", "HOMEASSISTANT_TOKEN"]
+startup_timeout_sec = 60

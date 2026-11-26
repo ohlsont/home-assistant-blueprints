@@ -12,12 +12,17 @@ flow, and configuration details.
 
 ## Home Assistant MCP
 
-[`.mcp.json`](.mcp.json) configures [HA-MCP](https://github.com/homeassistant-ai/ha-mcp)
-for Claude Code. Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/)
-and launch Claude Code with `HOMEASSISTANT_URL` set to your Home Assistant base
-URL and `HOMEASSISTANT_TOKEN` set to your long-lived access token. `uvx` runs
-HA-MCP locally using Python 3.14. Approve the project server when prompted and
-check its connection with `/mcp`.
+[HA-MCP](https://github.com/homeassistant-ai/ha-mcp) is configured for Claude Code
+in [`.mcp.json`](.mcp.json) and for Codex in [`.codex/config.toml`](.codex/config.toml).
+Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/) and make
+`uvx` available on your client's `PATH`. Set `HOMEASSISTANT_URL` to your Home
+Assistant base URL and `HOMEASSISTANT_TOKEN` to your long-lived access token in
+the environment that starts the client. `uvx` runs HA-MCP locally using Python
+3.14.
+
+Trust the project in Codex or approve the project server in Claude Code. Use
+`/mcp` to check the connection, then ask the client to read the Home Assistant
+system overview to verify live access.
 
 ## Hardware
 
