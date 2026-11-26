@@ -10,6 +10,15 @@ All logic is implemented as native Home Assistant automations. See
 [`automations/README.md`](automations/README.md) for setup instructions, data
 flow, and configuration details.
 
+## Home Assistant MCP
+
+[`.mcp.json`](.mcp.json) configures [HA-MCP](https://github.com/homeassistant-ai/ha-mcp)
+for Claude Code. Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/)
+and launch Claude Code with `HOMEASSISTANT_URL` set to your Home Assistant base
+URL and `HOMEASSISTANT_TOKEN` set to your long-lived access token. `uvx` runs
+HA-MCP locally using Python 3.14. Approve the project server when prompted and
+check its connection with `/mcp`.
+
 ## Hardware
 
 The physical heating system (Qvantum ETK6500 heat pump, Ohmigo WiFi sensor) is
