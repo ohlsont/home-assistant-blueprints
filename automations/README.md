@@ -9,7 +9,13 @@ Native HA automations replacing the unavailable blockheat HACS integration.
 | **Ohmigo** floor-heat thermostat | `number.ohmigo_temperature_2`            | Controls the whole-house floor-heating heat pump. Ohmigo reports a **fake room temperature** to the heat pump, which compares it against its BOR-värde (from `input_number.blockheat_bor`). Values **below** BOR make the heat pump run; values **above** BOR make it stop. This is inverse to a normal setpoint. |
 | **Daikin** AC/heat pump          | `climate.daikinap75809_room_temperature` | Living-room AC unit. Turned on/off by the energy-saving flag only. HVAC mode (heat/cool) is managed by separate automations and is never overridden here.                                                                                                                                                         |
 
-The two devices are **independent** — the Daikin policy does not affect the Ohmigo setpoint calculations, and vice versa.
+The Daikin can keep the bedrooms warm while the washroom cools. The Ohmigo
+writer reads `sensor.sonoff_snzb_02d_washing_temperature` to maintain a separate
+washroom minimum. It starts a heat call below BOR − 1.0 °C and holds that call
+until BOR − 0.5 °C. While active, it caps the reported Ohmigo temperature at
+BOR − 2.0 °C in both comfort and saving mode. The existing comfort overheat
+guard suppresses the extra call, and an unavailable washroom reading clears
+the call so the writer falls back to the normal targets.
 
 ## Data flow
 
@@ -47,6 +53,8 @@ flowchart TD
     flag --> final_writer["final_writer.yaml\nselect saving/comfort\n+ 0.2 °C deadband\n+ re-arm on drift / every 10 min"]
     ib_saving --> final_writer
     ib_comfort --> final_writer
+    washroom["Washroom air temperature"] --> final_writer
+    comfort_target -->|overheat guard| final_writer
     final_writer --> ohmigo["number.ohmigo_temperature_2\n(floor-heat setpoint)"]
     ohmigo -.re-arm.-> final_writer
 
@@ -64,16 +72,16 @@ flowchart TD
 
 ## Files
 
-| File                  | Purpose                                                   |
-| --------------------- | --------------------------------------------------------- |
-| `helpers.yaml`        | Defines 11 helpers (8 input_boolean + 3 input_number)     |
-| `policy.yaml`         | Energy-saving policy: top-N price slots + hysteresis      |
-| `saving_target.yaml`  | Ohmigo saving-mode temperature target                     |
-| `comfort_target.yaml` | Ohmigo comfort target: boost, backoff, overheat guard     |
-| `final_writer.yaml`   | Writes Ohmigo setpoint with deadband; re-asserts on drift |
-| `daikin_policy.yaml`  | Daikin on/off per energy-saving flag                      |
-| `dehumidifier.yaml`   | Dehumidifier control (updated entity reference)           |
-| `sensor_health.yaml`  | Push alert when a room/storage sensor is dead or stuck    |
+| File                  | Purpose                                                |
+| --------------------- | ------------------------------------------------------ |
+| `helpers.yaml`        | Defines 12 helpers (9 input_boolean + 3 input_number)  |
+| `policy.yaml`         | Energy-saving policy: top-N price slots + hysteresis   |
+| `saving_target.yaml`  | Ohmigo saving-mode temperature target                  |
+| `comfort_target.yaml` | Ohmigo comfort target: boost, backoff, overheat guard  |
+| `final_writer.yaml`   | Applies washroom minimum and writes the Ohmigo target  |
+| `daikin_policy.yaml`  | Daikin on/off per energy-saving flag                   |
+| `dehumidifier.yaml`   | Dehumidifier control (updated entity reference)        |
+| `sensor_health.yaml`  | Push alert when a room/storage sensor is dead or stuck |
 
 > **Note:** `comfort_target.yaml` uses `weather.get_forecasts` which requires HA 2023.9+.
 
@@ -101,6 +109,13 @@ ha_config_set_helper(
     helper_type="input_boolean",
     name="blockheat_comfort_overheat_guard",
     icon="mdi:thermometer-alert",
+)
+
+# input_boolean.blockheat_washroom_heat_demand
+ha_config_set_helper(
+    helper_type="input_boolean",
+    name="blockheat_washroom_heat_demand",
+    icon="mdi:heating-coil",
 )
 
 # input_boolean.blockheat_sensor_alert_{room1,room2,room2_fallback,storage,blind}
@@ -177,6 +192,12 @@ ha_get_state("input_number.blockheat_target_comfort")
 ha_call_service("automation.trigger", {"entity_id": "automation.blockheat_energy_saving_policy"})
 # Check input_boolean.energy_saving_active reflects price vs cutoff
 # Check number.ohmigo_temperature_2 matches expected setpoint (±0.2 °C deadband)
+
+# Trigger the writer and check the washroom demand and selected output
+ha_call_service("automation.trigger", {"entity_id": "automation.blockheat_final_writer"})
+ha_get_state("sensor.sonoff_snzb_02d_washing_temperature")
+ha_get_state("input_boolean.blockheat_washroom_heat_demand")
+ha_get_state("number.ohmigo_temperature_2")
 ```
 
 ## Sensor health alerts

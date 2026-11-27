@@ -1,6 +1,6 @@
 # Blockheat — Final Writer
-# Selects saving or comfort target based on energy-saving policy state,
-# then writes to the heat pump setpoint if the change exceeds the deadband.
+# Selects the saving or comfort target and enforces a washroom minimum before
+# writing the reported temperature to Ohmigo.
 #
 # Parameters:
 #   control_write_delta_c = 0.2 °C  (only write if |target - current| >= 0.2)
@@ -18,7 +18,8 @@
 
 alias: "Blockheat — Final Writer"
 description: >
-  Selects saving or comfort target, clamps to [10, 26] °C, and writes to
+  Selects saving or comfort target, with a washroom minimum in either mode.
+  Clamps to [10, 26] °C and writes to
   number.ohmigo_temperature_2 only when the change exceeds the 0.2 °C deadband.
   Re-asserts the target when the Ohmigo drifts on its own or after a restart.
 mode: single
@@ -30,6 +31,8 @@ trigger:
       - input_number.blockheat_target_saving
       - input_number.blockheat_target_comfort
       - input_number.blockheat_bor
+      - input_boolean.blockheat_comfort_overheat_guard
+      - sensor.sonoff_snzb_02d_washing_temperature
   - platform: state
     entity_id: number.ohmigo_temperature_2
     for: "00:00:30"
@@ -47,16 +50,35 @@ condition:
           - unavailable
 action:
   - variables:
+      bor: >
+        {{ states('input_number.blockheat_bor') | float(22.0) }}
+      washroom: >
+        {{ states('sensor.sonoff_snzb_02d_washing_temperature') | float(none) }}
+      washroom_demand_active: >
+        {{ is_state('input_boolean.blockheat_washroom_heat_demand', 'on') }}
+      washroom_heat_demand: >
+        {{ washroom is not none and washroom < bor - (0.5 if washroom_demand_active else 1.0) }}
       saving: >
         {{ states('input_number.blockheat_target_saving') | float(21) }}
       comfort: >
         {{ states('input_number.blockheat_target_comfort') | float(22) }}
-      raw: >
+      normal_target: >
         {{ saving if is_state('input_boolean.energy_saving_active', 'on') else comfort }}
+      raw: >
+        {{ [normal_target, bor - 2.0] | min
+           if washroom_heat_demand and is_state('input_boolean.blockheat_comfort_overheat_guard', 'off')
+           else normal_target }}
       target: >
         {{ [[raw, 10.0] | max, 26.0] | min }}
       current: >
         {{ states('number.ohmigo_temperature_2') | float(0) }}
+  - if:
+      - condition: template
+        value_template: "{{ washroom_heat_demand != washroom_demand_active }}"
+    then:
+      - action: "{{ 'input_boolean.turn_on' if washroom_heat_demand else 'input_boolean.turn_off' }}"
+        target:
+          entity_id: input_boolean.blockheat_washroom_heat_demand
   - choose:
       - conditions:
           - condition: template
