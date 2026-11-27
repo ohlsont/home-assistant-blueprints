@@ -9,7 +9,13 @@ Native HA automations replacing the unavailable blockheat HACS integration.
 | **Ohmigo** floor-heat thermostat | `number.ohmigo_temperature_2`            | Controls the whole-house floor-heating heat pump. Ohmigo reports a **fake room temperature** to the heat pump, which compares it against its BOR-värde (from `input_number.blockheat_bor`). Values **below** BOR make the heat pump run; values **above** BOR make it stop. This is inverse to a normal setpoint. |
 | **Daikin** AC/heat pump          | `climate.daikinap75809_room_temperature` | Living-room AC unit. Turned on/off by the energy-saving flag only. HVAC mode (heat/cool) is managed by separate automations and is never overridden here.                                                                                                                                                         |
 
-The two devices are **independent** — the Daikin policy does not affect the Ohmigo setpoint calculations, and vice versa.
+The Daikin can keep the bedrooms warm while the washroom cools. The Ohmigo
+writer reads `sensor.sonoff_snzb_02d_washing_temperature` to maintain a separate
+washroom minimum. It starts a heat call below BOR − 1.0 °C and holds that call
+until BOR − 0.5 °C. While active, it caps the reported Ohmigo temperature at
+BOR − 2.0 °C in both comfort and saving mode. The existing comfort overheat
+guard suppresses the extra call, and an unavailable washroom reading clears
+the call so the writer falls back to the normal targets.
 
 ## Data flow
 
@@ -49,6 +55,8 @@ flowchart TD
     flag --> final_writer["final_writer.yaml\nselect saving/comfort\n+ 0.2 °C deadband\n+ re-arm on drift / every 10 min"]
     ib_saving --> final_writer
     ib_comfort --> final_writer
+    washroom["Washroom air temperature"] --> final_writer
+    comfort_target -->|overheat guard| final_writer
     final_writer --> ohmigo["number.ohmigo_temperature_2\n(floor-heat setpoint)"]
     ohmigo -.re-arm.-> final_writer
 
@@ -57,19 +65,25 @@ flowchart TD
 
     flag --> dehumidifier["dehumidifier.yaml"]
     dehumidifier --> fan["fan\n(dehumidifier on/off)"]
+
+    room1 -.-> sensor_health["sensor_health.yaml\ndead / stuck / blind alerts"]
+    room2 -.-> sensor_health
+    storage -.-> sensor_health
+    sensor_health --> notify["script.notify_household\n(push to household)"]
 ```
 
 ## Files
 
-| File                  | Purpose                                                    |
-| --------------------- | ---------------------------------------------------------- |
-| `helpers.yaml`        | Defines 6 helpers (3 input_boolean + 3 input_number)       |
-| `policy.yaml`         | Energy-saving policy: top-N price slots, bridge, PV export |
-| `saving_target.yaml`  | Ohmigo saving-mode temperature target                      |
-| `comfort_target.yaml` | Ohmigo comfort target: boost, backoff, overheat guard      |
-| `final_writer.yaml`   | Writes Ohmigo setpoint with deadband; re-asserts on drift  |
-| `daikin_policy.yaml`  | Daikin on/off per energy-saving flag                       |
-| `dehumidifier.yaml`   | Dehumidifier control (updated entity reference)            |
+| File                  | Purpose                                                               |
+| --------------------- | --------------------------------------------------------------------- |
+| `helpers.yaml`        | Defines 12 helpers (9 input_boolean + 3 input_number)                 |
+| `policy.yaml`         | Energy saving by price, with a one-slot bridge and a PV-export bypass |
+| `saving_target.yaml`  | Ohmigo saving-mode temperature target                                 |
+| `comfort_target.yaml` | Ohmigo comfort target: boost, backoff, overheat guard                 |
+| `final_writer.yaml`   | Applies washroom minimum and writes the Ohmigo target                 |
+| `daikin_policy.yaml`  | Daikin on/off per energy-saving flag                                  |
+| `dehumidifier.yaml`   | Dehumidifier control (updated entity reference)                       |
+| `sensor_health.yaml`  | Push alert when a room/storage sensor is dead or stuck                |
 
 > **Note:** `comfort_target.yaml` uses `weather.get_forecasts` which requires HA 2023.9+.
 
@@ -98,6 +112,22 @@ ha_config_set_helper(
     name="blockheat_comfort_overheat_guard",
     icon="mdi:thermometer-alert",
 )
+
+# input_boolean.blockheat_washroom_heat_demand
+ha_config_set_helper(
+    helper_type="input_boolean",
+    name="blockheat_washroom_heat_demand",
+    icon="mdi:heating-coil",
+)
+
+# input_boolean.blockheat_sensor_alert_{room1,room2,room2_fallback,storage,blind}
+# Notify-once flags for sensor_health.yaml
+for key in ["room1", "room2", "room2_fallback", "storage", "blind"]:
+    ha_config_set_helper(
+        helper_type="input_boolean",
+        name=f"blockheat_sensor_alert_{key}",
+        icon="mdi:thermometer-alert",
+    )
 
 # input_number.blockheat_bor
 ha_config_set_helper(
@@ -149,6 +179,7 @@ Order matters for initial population:
 1. `final_writer.yaml` — write Ohmigo setpoint
 1. `daikin_policy.yaml` — apply Daikin on/off state
 1. `dehumidifier.yaml` — replace old dehumidifier automation
+1. `sensor_health.yaml` — sensor dead/stuck alerts (needs the 5 alert helpers)
 
 ### 4. Verify
 
@@ -163,39 +194,64 @@ ha_get_state("input_number.blockheat_target_comfort")
 ha_call_service("automation.trigger", {"entity_id": "automation.blockheat_energy_saving_policy"})
 # Check input_boolean.energy_saving_active reflects price vs cutoff
 # Check number.ohmigo_temperature_2 matches expected setpoint (±0.2 °C deadband)
+
+# Trigger the writer and check the washroom demand and selected output
+ha_call_service("automation.trigger", {"entity_id": "automation.blockheat_final_writer"})
+ha_get_state("sensor.sonoff_snzb_02d_washing_temperature")
+ha_get_state("input_boolean.blockheat_washroom_heat_demand")
+ha_get_state("number.ohmigo_temperature_2")
 ```
+
+## Sensor health alerts
+
+`sensor_health.yaml` watches the four `comfort_target.yaml` inputs and pushes
+via `script.notify_household`. It polls every 10 min, so a sensor that is
+already dead when HA starts is still caught (a `for:` trigger would miss it).
+
+| Alert | Fires when                                                                                       |
+| ----- | ------------------------------------------------------------------------------------------------ |
+| dead  | `unavailable`/`unknown` for more than 1 h                                                        |
+| stuck | value unchanged for more than 3 h (Lumi), 2 h (ALPSTUGA) or 8 h (Sonoffs)                        |
+| blind | Bedroom 1, Bedroom 2 and its fallback all dead for more than 1 h; urgent, time-sensitive push    |
+| back  | an alerted sensor changes from one number to another (a return from `unavailable` is not enough) |
+
+Each alert goes out once: an `input_boolean.blockheat_sensor_alert_*` flag
+holds it until the sensor's next fresh reading. The stuck limits come from 10
+days of history: the Sonoffs report in 0.2 °C steps and sit still for up to
+6 h when healthy.
 
 ## Parameters used
 
-| Parameter                    | Value                                                                            |
-| ---------------------------- | -------------------------------------------------------------------------------- |
-| minutes_to_block             | 240 min → 16 slots                                                               |
-| price_ignore_below           | 0.6 SEK/kWh                                                                      |
-| grid_import_on_min_w         | 500 W (saving starts only while importing at least this much)                    |
-| export_debounce_s            | 300 s (0 W import must hold this long to end a saving window)                    |
-| pv_export_min_w              | 500 W (`sensor.solar_pv_power`; below it, 0 W import is the battery, not export) |
-| price_dip_bridge_slots       | 1 (a saving window rides through one cheaper slot if the next one qualifies)     |
-| saving_offset_c              | 0.5 °C (below BOR during saving)                                                 |
-| warm_shutdown_avg_forecast_c | 2.0 °C (feels-like, wind-chill-adjusted)                                         |
-| warm_shutdown_hysteresis_c   | 1.0 °C                                                                           |
-| bor_c                        | from `input_number.blockheat_bor` (heat pump BOR-värde, default 22.0 °C)         |
-| comfort_target_c             | 22.0 °C (desired room temp)                                                      |
-| storage_target_c             | dynamic: bor+3.0 at outdoor \<=-5 °C, bor+0.0 at outdoor >=+10 °C (feels-like)   |
-| room_overheat_margin_c       | 1.5 °C (above BOR; a bedroom above it trips the overheat guard)                  |
-| bathroom_overheat_margin_c   | 3.0 °C (above BOR; the storage/bathroom sensor above it trips the guard)         |
-| overheat_hysteresis_c        | 0.5 °C (guard releases 0.5 °C below the trip limits)                             |
-| guard_min_room_drop_c        | 1.0 °C (guard yields when the coldest bedroom falls below bor − 1.5)             |
-| comfort_margin_c             | 0.25 °C                                                                          |
-| cold_threshold               | 2.0 °C                                                                           |
-| max_boost                    | 3.0 °C                                                                           |
-| boost_slope_c                | 4.0                                                                              |
-| warm_day_avg_forecast_c      | 12.0 °C (24h feels-like avg; warm side of comfort solar backoff)                 |
-| warm_day_hysteresis_c        | 1.0 °C                                                                           |
-| sunny_day_uv_max             | 4.0 (max `uv_index` over next 24h; sunny side of comfort solar backoff)          |
-| sunny_day_uv_hysteresis      | 0.5                                                                              |
-| warm_floor_drop_c            | 2.0 °C (lowered room floor on warm+sunny days: bor − 2.0 instead of bor − 0.25)  |
-| control_min_c                | 10.0 °C                                                                          |
-| control_max_c                | 26.0 °C                                                                          |
-| min_toggle_interval_min      | 15                                                                               |
-| price_hysteresis_fraction    | 0.05 (5%)                                                                        |
-| control_write_delta_c        | 0.2 °C                                                                           |
+| Parameter                    | Value                                                                             |
+| ---------------------------- | --------------------------------------------------------------------------------- |
+| minutes_to_block             | 240 min → 16 slots                                                                |
+| price_ignore_below           | 0.6 SEK/kWh                                                                       |
+| grid_import_on_min_w         | 500 W (when PV is producing, lower import prevents a new saving window)           |
+| export_debounce_s            | 300 s (zero grid import must hold this long for PV export to end a saving window) |
+| pv_export_min_w              | 500 W from `sensor.solar_pv_power` before low grid import counts as PV export     |
+| price_dip_bridge_slots       | 1 (a saving window continues through a cheaper slot if the next one qualifies)    |
+| saving_offset_c              | 0.5 °C (below BOR during saving)                                                  |
+| warm_shutdown_avg_forecast_c | 2.0 °C (feels-like, wind-chill-adjusted)                                          |
+| warm_shutdown_hysteresis_c   | 1.0 °C                                                                            |
+| bor_c                        | from `input_number.blockheat_bor` (heat pump BOR-värde, default 22.0 °C)          |
+| comfort_target_c             | 22.0 °C (desired room temp)                                                       |
+| storage_target_c             | dynamic: bor+3.0 at outdoor \<=-5 °C, bor+0.0 at outdoor >=+10 °C (feels-like)    |
+| room_overheat_margin_c       | 1.5 °C (above BOR; a bedroom above it trips the overheat guard)                   |
+| bathroom_overheat_margin_c   | 3.0 °C (above BOR; the storage/bathroom sensor above it trips the guard)          |
+| overheat_hysteresis_c        | 0.5 °C (guard releases 0.5 °C below the trip limits)                              |
+| other_bedroom_warm_c         | 0.5 °C (above BOR; other bedroom must be this warm for a hot one to trip)         |
+| guard_min_room_drop_c        | 1.0 °C (guard yields when the coldest bedroom falls below bor − 1.5)              |
+| comfort_margin_c             | 0.25 °C                                                                           |
+| cold_threshold               | 2.0 °C                                                                            |
+| max_boost                    | 3.0 °C                                                                            |
+| boost_slope_c                | 4.0                                                                               |
+| warm_day_avg_forecast_c      | 12.0 °C (24h feels-like avg; warm side of comfort solar backoff)                  |
+| warm_day_hysteresis_c        | 1.0 °C                                                                            |
+| sunny_day_uv_max             | 4.0 (max `uv_index` over next 24h; sunny side of comfort solar backoff)           |
+| sunny_day_uv_hysteresis      | 0.5                                                                               |
+| warm_floor_drop_c            | 2.0 °C (lowered room floor on warm+sunny days: bor − 2.0 instead of bor − 0.25)   |
+| control_min_c                | 10.0 °C                                                                           |
+| control_max_c                | 26.0 °C                                                                           |
+| min_toggle_interval_min      | 15                                                                                |
+| price_hysteresis_fraction    | 0.05 (5%)                                                                         |
+| control_write_delta_c        | 0.2 °C                                                                            |

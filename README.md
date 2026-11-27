@@ -4,11 +4,29 @@ Automations-based heating control for Home Assistant. Blockheat decides when to
 save energy (based on electricity price, PV production, and time windows) and
 computes temperature targets for a heat pump.
 
+The Qvantum can maintain a washroom minimum independently of the bedrooms
+heated by the Daikin. At a BOR of 22 °C, a washroom reading below 21 °C calls
+for heat until the room reaches 21.5 °C, subject to the overheat guard.
+
 ## How It Works
 
 All logic is implemented as native Home Assistant automations. See
 [`automations/README.md`](automations/README.md) for setup instructions, data
 flow, and configuration details.
+
+## Home Assistant MCP
+
+[HA-MCP](https://github.com/homeassistant-ai/ha-mcp) is configured for Claude Code
+in [`.mcp.json`](.mcp.json) and for Codex in [`.codex/config.toml`](.codex/config.toml).
+Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/) and make
+`uvx` available on your client's `PATH`. Set `HOMEASSISTANT_URL` to your Home
+Assistant base URL and `HOMEASSISTANT_TOKEN` to your long-lived access token in
+the environment that starts the client. `uvx` runs HA-MCP locally using Python
+3.14.
+
+Trust the project in Codex or approve the project server in Claude Code. Use
+`/mcp` to check the connection, then ask the client to read the Home Assistant
+system overview to verify live access.
 
 ## Hardware
 

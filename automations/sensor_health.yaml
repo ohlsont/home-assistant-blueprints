@@ -1,0 +1,205 @@
+# Blockheat — Sensor Health
+# Notifies the household when a comfort_target input sensor is dead or frozen,
+# so a failed sensor is noticed before the house runs hot or cold.
+#
+# Why: in 2026-10 every room sensor Blockheat reads failed within a few days
+# and nobody noticed until the bathroom got hot. comfort_target skips a dead
+# room, and with no bedroom reporting at all it heats blind (fail warm).
+#
+# Rules (checked every 10 min):
+#   dead    = unavailable/unknown for more than dead_s (1 h)
+#   stuck   = numeric value unchanged for more than the sensor's stuck_s
+#   blind   = Bedroom 1, Bedroom 2 and its fallback all dead for more than dead_s
+#             -> urgent, time-sensitive push
+#   back    = the first fresh reading (one number changing to another) of an
+#             alerted sensor -> recovery notice
+#
+# stuck_s per sensor, from 10 days of history (2026-10-08..18):
+#   Lumi     healthy updates ~55 min apart; the 3-8 h gaps came only in the
+#            degraded stretch before it died               -> 3 h
+#   ALPSTUGA healthy gaps under 30 min                     -> 2 h
+#   Sonoffs  0.2 °C steps, healthy plateaus up to 6 h 10 m -> 8 h
+#
+# Why a poll and not `for:` state triggers: a `for:` timer is lost on restart,
+# and a sensor that is already dead when HA starts never makes the transition
+# that arms it (the Lumi stayed dead across the 2026-10-15 power-cycle). The
+# poll reads last_changed instead, which a restart re-stamps, so a sensor dead
+# across a restart is still caught dead_s after start-up.
+#
+# Why "back" needs a value change: a dead Zigbee sensor can flap between its
+# last cached value and unavailable (the bathroom Sonoff cycled 25.9 <->
+# unavailable every 6 h for 2 days), so coming back from unavailable is not
+# proof it works.
+#
+# Notify-once state lives in one input_boolean per sensor (plus one for blind),
+# so restarts and flapping never repeat an alert. They are set before the push
+# so a failing notifier cannot turn into a stream of retries. A missing helper
+# reads as "not alerted", so forgetting to create one repeats the alert every
+# 10 min instead of silencing it.
+#
+# Helpers: input_boolean.blockheat_sensor_alert_{room1,room2,room2_fallback,
+#          storage,blind} (see helpers.yaml)
+
+alias: "Blockheat — Sensor Health"
+description: >
+  Notifies the household via script.notify_household when a Blockheat room or
+  storage sensor has been unavailable for 1 h or stuck on one value for longer
+  than it stays still when healthy. Urgent push when no bedroom sensor reports
+  (comfort_target then heats blind). Recovery notice on the first fresh reading.
+mode: queued
+max: 10
+max_exceeded: silent
+variables:
+  dead_s: 3600
+  blind_flag: input_boolean.blockheat_sensor_alert_blind
+  watched:
+    - entity: sensor.lumi_lumi_sensor_ht_agl02_temperature
+      name: Bedroom 1 (Lumi)
+      flag: input_boolean.blockheat_sensor_alert_room1
+      stuck_s: 10800
+    - entity: sensor.alpstuga_bedroom_2_temperature
+      name: Bedroom 2 (ALPSTUGA)
+      flag: input_boolean.blockheat_sensor_alert_room2
+      stuck_s: 7200
+    - entity: sensor.sonoff_snzb_02d_bedroom_2_temperature
+      name: Bedroom 2 fallback (Sonoff)
+      flag: input_boolean.blockheat_sensor_alert_room2_fallback
+      stuck_s: 28800
+    - entity: sensor.sonoff_snzb_02d_temp_humid_temperature
+      name: Downstairs bathroom / storage (Sonoff)
+      flag: input_boolean.blockheat_sensor_alert_storage
+      stuck_s: 28800
+  bedroom_entities:
+    - sensor.lumi_lumi_sensor_ht_agl02_temperature
+    - sensor.alpstuga_bedroom_2_temperature
+    - sensor.sonoff_snzb_02d_bedroom_2_temperature
+  # The watched entry for the sensor that fired the `reading` trigger, else none.
+  me: >
+    {{ (watched | selectattr('entity', 'eq', trigger.entity_id | default(''))
+       | list + [none]) | first }}
+trigger:
+  - platform: time_pattern
+    id: poll
+    minutes: "/10"
+  # A fresh reading: one number changing to another.
+  - platform: state
+    id: reading
+    entity_id:
+      - sensor.lumi_lumi_sensor_ht_agl02_temperature
+      - sensor.alpstuga_bedroom_2_temperature
+      - sensor.sonoff_snzb_02d_bedroom_2_temperature
+      - sensor.sonoff_snzb_02d_temp_humid_temperature
+    not_from:
+      - unavailable
+      - unknown
+    not_to:
+      - unavailable
+      - unknown
+condition:
+  # Readings arrive every few minutes; only queue a run when one can clear an alert.
+  - condition: or
+    conditions:
+      - condition: trigger
+        id: poll
+      - condition: template
+        value_template: >
+          {{ me is not none
+             and (is_state(me.flag, 'on')
+                  or (me.entity in bedroom_entities and is_state(blind_flag, 'on'))) }}
+action:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: reading
+        sequence:
+          - variables:
+              sensor_back: "{{ is_state(me.flag, 'on') }}"
+              bedroom_back: >
+                {{ me.entity in bedroom_entities and is_state(blind_flag, 'on') }}
+          - action: input_boolean.turn_off
+            target:
+              entity_id: >
+                {{ ([me.flag] if sensor_back else [])
+                   + ([blind_flag] if bedroom_back else []) }}
+          - action: script.notify_household
+            data:
+              title: >
+                {{ 'Blockheat has a bedroom reading again' if bedroom_back
+                   else 'Blockheat sensor back' }}
+              message: >
+                {{ me.name }} is reporting again ({{ trigger.to_state.state }} °C).
+                {{- ' Comfort heating is back on room feedback.' if bedroom_back else '' }}
+              tag: "{{ 'blockheat_blind' if bedroom_back else '' }}"
+    # Poll (or a manual run): look for new problems.
+    default:
+      - variables:
+          new_alerts: >
+            {% set ns = namespace(out=[]) %}
+            {% for s in watched if not is_state(s.flag, 'on') %}
+              {% set st = states[s.entity] %}
+              {% set value = st.state if st is not none else 'missing' %}
+              {% set age = (now() - st.last_changed).total_seconds() if st is not none else 999999 %}
+              {% set hours = (age / 3600) | round(0) | int %}
+              {% if value in ['unavailable', 'unknown', 'missing'] and age > dead_s %}
+                {% set ns.out = ns.out + [{'flag': s.flag,
+                     'line': s.name ~ ' has been ' ~ value ~ ' for ' ~ hours ~ ' h.'}] %}
+              {% elif is_number(value) and age > s.stuck_s %}
+                {% set ns.out = ns.out + [{'flag': s.flag,
+                     'line': s.name ~ ' has reported ' ~ value ~ ' °C unchanged for '
+                             ~ hours ~ ' h. It may be frozen.'}] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.out }}
+          # Seconds since the last bedroom sensor stopped reporting; 0 while any reports.
+          blind_s: >
+            {% set ns = namespace(ages=[]) %}
+            {% for e in bedroom_entities %}
+              {% set st = states[e] %}
+              {% if st is none %}
+                {% set ns.ages = ns.ages + [999999] %}
+              {% elif is_number(st.state) %}
+                {% set ns.ages = ns.ages + [0] %}
+              {% else %}
+                {% set ns.ages = ns.ages + [(now() - st.last_changed).total_seconds()] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.ages | min }}
+      - if:
+          - condition: template
+            value_template: "{{ new_alerts | count > 0 }}"
+        then:
+          - action: input_boolean.turn_on
+            target:
+              entity_id: "{{ new_alerts | map(attribute='flag') | list }}"
+          - action: script.notify_household
+            data:
+              title: Blockheat sensor problem
+              message: >
+                {{ new_alerts | map(attribute='line') | join('\n') }}
+                Blockheat ignores a dead sensor and keeps using a frozen one.
+      - if:
+          - condition: template
+            value_template: "{{ blind_s > dead_s }}"
+          - condition: not
+            conditions:
+              - condition: state
+                entity_id: input_boolean.blockheat_sensor_alert_blind
+                state: "on"
+        then:
+          - action: input_boolean.turn_on
+            target:
+              entity_id: input_boolean.blockheat_sensor_alert_blind
+          - action: script.notify_household
+            data:
+              title: "URGENT: Blockheat is heating blind"
+              message: >
+                No bedroom sensor has reported for {{ (blind_s / 3600) | round(0) | int }} h
+                (Bedroom 1 Lumi, Bedroom 2 ALPSTUGA and its Sonoff fallback).
+                Comfort heating now runs without room feedback and can overheat
+                the house. Check the bedroom sensors.
+              tag: blockheat_blind
+              extra_data:
+                push:
+                  interruption-level: time-sensitive
+                priority: high
+                ttl: 0

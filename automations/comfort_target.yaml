@@ -45,6 +45,10 @@
 #       hot (trip)    = room1 or room2 > bor + room_overheat_margin_c (1.5)
 #                       or storage > bor + bathroom_overheat_margin_c (3.0)
 #       hot (release) = same limits minus overheat_hysteresis_c (0.5)
+#       A hot bedroom only counts while the other bedroom (if reporting) is
+#       warm too: >= bor + other_bedroom_warm_c (0.5) to trip, >= bor to hold.
+#       Otherwise one sun-warmed bedroom keeps the heat off for hours while
+#       the other cools. The bathroom limit has no such check.
 #       The guard yields once the coldest reporting room is truly cold, so a
 #       stuck-hot sensor cannot freeze the house:
 #       trips only while coldest room >= bor - guard_min_room_drop_c (1.0)
@@ -69,6 +73,7 @@
 #   room_overheat_margin_c = 1.5 C  (above BOR, bedroom ceiling for the overheat guard)
 #   bathroom_overheat_margin_c = 3.0 °C  (above BOR, bathroom/storage ceiling)
 #   overheat_hysteresis_c = 0.5 °C
+#   other_bedroom_warm_c  = 0.5 °C  (above BOR, other bedroom needed to trip; holds down to BOR)
 #   guard_min_room_drop_c = 1.0 °C  (guard yields below bor - 1.0, re-arms at bor - 1.0)
 #   comfort_margin_c      = 0.25 °C
 #   cold_threshold        = 2.0 °C
@@ -184,10 +189,17 @@ action:
         {{ is_state('input_boolean.blockheat_comfort_overheat_guard', 'on') }}
       # A hot room or bathroom stops the heat pump even while another room is
       # below the floor. Release limits sit 0.5 °C below the trip limits.
+      # A hot bedroom only counts while the other bedroom is at least BOR
+      # (BOR + 0.5 to trip), so one sunny room can't leave the rest to cool.
       overheat_guard: >
         {% set slack = 0.5 if currently_guard else 0.0 %}
-        {% set hot = (room1 is not none and room1 > bor + 1.5 - slack)
-           or (room2 is not none and room2 > bor + 1.5 - slack)
+        {% set room_limit = bor + 1.5 - slack %}
+        {% set other_warm = bor + 0.5 - slack %}
+        {% set room1_hot = room1 is not none and room1 > room_limit
+           and (room2 is none or room2 >= other_warm) %}
+        {% set room2_hot = room2 is not none and room2 > room_limit
+           and (room1 is none or room1 >= other_warm) %}
+        {% set hot = room1_hot or room2_hot
            or (storage is not none and storage > bor + 3.0 - slack) %}
         {% set rooms = [room1, room2] | reject('none') | list %}
         {{ hot and rooms | length > 0 and rooms | min >= bor - 1.0 - slack }}
