@@ -4,16 +4,26 @@
 #   - Minimum price floor (0.6 SEK/kWh)
 #   - Net grid status (bypass saving when exporting to grid)
 #     Hysteresis: saving only activates when grid import > 500 W,
-#     but deactivates as soon as grid import hits 0 (exporting).
+#     but deactivates once grid import has held at 0 (exporting) for
+#     export_debounce_s (300 s). The meter often reads exactly 0 W for a single
+#     10 s sample while importing; without the debounce each of those blips
+#     ended the window, and the toggle guard then kept it off for 15 min.
+#     Only counts as exporting while sensor.solar_pv_power >= pv_export_min_w
+#     (500 W): at dusk the house battery covers the load and the meter reads
+#     0 W, which is not free solar power.
 #   - 15-min toggle guard (min_toggle_interval_min)
 #   - 5% hysteresis on the cutoff price to prevent flip-flop
+#   - One-slot bridge: while saving, a single slot below the cutoff does not end
+#     the window when the next slot qualifies again (next slot read from
+#     raw_today + raw_tomorrow)
 
 alias: "Blockheat — Energy Saving Policy"
 description: >
   Turns input_boolean.energy_saving_active on when the current Nordpool price is
   among the top 16 most expensive 15-min slots of the day (and above 0.6 SEK/kWh
-  and the house is importing from the grid). Includes 5% hysteresis and a 15-min
-  toggle guard.
+  and the house is importing from the grid). Includes 5% hysteresis, a 15-min
+  toggle guard, a 5-min debounce on grid export and a one-slot bridge for
+  short price dips.
 mode: single
 trigger:
   - platform: state
@@ -39,12 +49,33 @@ action:
         {{ states('sensor.power_tarngatan_2') }}
       grid_import: >
         {{ grid_import_raw | float(-1) if grid_import_raw not in ['unavailable', 'unknown'] else -1 }}
+      # Seconds the meter has read 0 W without a break (0 when importing).
+      grid_zero_s: >
+        {{ (now() - states.sensor.power_tarngatan_2.last_changed).total_seconds()
+           if grid_import == 0 else 0 }}
+      # Low import only means surplus when the panels are producing; otherwise
+      # it is the house battery covering the peak.
+      pv_producing: >
+        {{ states('sensor.solar_pv_power') | float(0) >= 500 }}
       exporting_to_grid: >
-        {{ grid_import == 0 if currently_on else grid_import >= 0 and grid_import < 500 }}
+        {{ pv_producing and (grid_zero_s >= 300 if currently_on
+                             else grid_import >= 0 and grid_import < 500) }}
       effective_cutoff: >
         {{ cutoff * 0.95 if currently_on else cutoff }}
+      price_on: >
+        {{ price >= effective_cutoff and price >= 0.6 }}
+      next_price: >
+        {% set slots = (state_attr('sensor.nordpool_kwh_se3_sek_3_10_025', 'raw_today') or [])
+                     + (state_attr('sensor.nordpool_kwh_se3_sek_3_10_025', 'raw_tomorrow') or []) %}
+        {% set upcoming = slots | selectattr('start', 'gt', now()) | list %}
+        {{ upcoming[0].value | float(none) if upcoming | length > 0 else none }}
+      # Keep saving through a single cheaper slot when the next slot qualifies
+      # again, instead of running the heat pump for 15 min mid-peak.
+      bridge: >
+        {{ currently_on and not price_on and next_price is not none
+           and next_price >= effective_cutoff and next_price >= 0.6 }}
       target_on: >
-        {{ price >= effective_cutoff and price >= 0.6 and not exporting_to_grid }}
+        {{ (price_on or bridge) and not exporting_to_grid }}
       elapsed: >
         {{ (now() - states.input_boolean.energy_saving_active.last_changed).total_seconds() }}
       enough_time: >
