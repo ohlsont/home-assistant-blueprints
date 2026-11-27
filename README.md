@@ -4,6 +4,10 @@ Automations-based heating control for Home Assistant. Blockheat decides when to
 save energy (based on electricity price, PV production, and time windows) and
 computes temperature targets for a heat pump.
 
+The Qvantum can maintain a washroom minimum independently of the bedrooms
+heated by the Daikin. At a BOR of 22 °C, a washroom reading below 21 °C calls
+for heat until the room reaches 21.5 °C, subject to the overheat guard.
+
 ## How It Works
 
 All logic is implemented as native Home Assistant automations. See
